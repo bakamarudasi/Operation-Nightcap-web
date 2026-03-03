@@ -652,6 +652,290 @@ export const App = () => {
 
 ---
 
+## CG カットイン演出仕様
+
+セクハラカードが成功した時、バトル画面の上に CG シーンがカットインで割り込む。
+
+### 発動条件
+
+```
+セクハラカード出す → resolveRound() で酔いLv条件チェック
+  ├── 不発: セリフだけ表示して通常ラウンドに戻る
+  └── 成功: RoundResult.cgEvent に CGEvent がセットされる
+            → BattleScreen が cgEvent を検知して CGOverlay を表示
+```
+
+### カットイン演出タイムライン
+
+```
+時間(ms)   演出
+─────────────────────────────────────────────────────
+  0        画面フリーズ（バトルUI操作不可に）
+  0~200    ① フラッシュ — 画面全体が白く光る（opacity 0→1→0）
+200~500    ② スラッシュイン — CG画像が画面外から斜めにスライドイン
+           　 背景は暗転（黒 opacity 0→0.7）
+500~700    ③ CG画像がバウンドして定位置に着地
+           　 スプリングアニメーション（overshoot → settle）
+700~       ④ テキストボックスが下からフェードイン
+           　 話者名 + タイプライターでセリフ表示
+  ↓        ⑤ クリック/タップで次のセリフへ
+           　 （タイプ途中 → 全文即表示、完了後 → 次のセリフ）
+  ↓        ⑥ 最後のセリフ後、クリックで閉じる
+           　 CG画像がフェードアウト + スケールダウン
+           　 暗転解除
+  ↓        ⑦ バトル画面に復帰（操作可能に）
+```
+
+### 視覚イメージ
+
+```
+┌─────────────────────────────────┐
+│          バトル画面              │ ← 暗転オーバーレイ (黒 70%)
+│  ┌───────────────────────────┐  │
+│  │                           │  │
+│  │      CG イラスト           │  │ ← 中央に配置、角丸 + ドロップシャドウ
+│  │      (画像 or カラー背景)  │  │
+│  │                           │  │
+│  │                           │  │
+│  └───────────────────────────┘  │
+│  ┌───────────────────────────┐  │
+│  │ ブレイズ                   │  │ ← テキストボックス
+│  │ 「……べつに、嫌じゃねーけど │  │    タイプライター表示
+│  │   。今日だけだからな」     │  │
+│  │               ▶ 次へ      │  │
+│  └───────────────────────────┘  │
+└─────────────────────────────────┘
+```
+
+### CGOverlay コンポーネント（詳細）
+
+```tsx
+interface CGOverlayProps {
+  /** 表示する CG イベント */
+  cgEvent: CGEvent;
+  /** CG 画像 URL（import 済み。未指定時はカラーフォールバック） */
+  imageUrl?: string;
+  /** キャラのテーマカラー（テキストボックス色に使う） */
+  themeColor?: string;
+  /** 全セリフ終了後に呼ばれるコールバック */
+  onClose: () => void;
+}
+
+interface CGOverlayState {
+  /** 現在のアニメーションフェーズ */
+  phase: 'flash' | 'slide-in' | 'dialogue' | 'closing';
+  /** 現在表示中のセリフインデックス */
+  dialogueIndex: number;
+  /** タイプライターが完了したか */
+  typewriterDone: boolean;
+}
+```
+
+### Framer Motion バリアント定義
+
+```tsx
+// ① フラッシュ
+const flashVariants = {
+  initial: { opacity: 0 },
+  flash:   { opacity: [0, 1, 0], transition: { duration: 0.2, times: [0, 0.5, 1] } },
+};
+
+// ② CG画像スライドイン
+const cgImageVariants = {
+  initial: { x: '120%', rotate: 8, scale: 0.9 },
+  enter:   {
+    x: 0, rotate: 0, scale: 1,
+    transition: { type: 'spring', stiffness: 300, damping: 20, delay: 0.2 }
+  },
+  exit:    {
+    opacity: 0, scale: 0.8,
+    transition: { duration: 0.3 }
+  },
+};
+
+// ③ 暗転背景
+const backdropVariants = {
+  initial: { opacity: 0 },
+  enter:   { opacity: 0.7, transition: { duration: 0.3 } },
+  exit:    { opacity: 0,   transition: { duration: 0.3 } },
+};
+
+// ④ テキストボックス
+const textboxVariants = {
+  initial: { y: 60, opacity: 0 },
+  enter:   {
+    y: 0, opacity: 1,
+    transition: { type: 'spring', stiffness: 200, damping: 25, delay: 0.5 }
+  },
+  exit:    { y: 30, opacity: 0, transition: { duration: 0.2 } },
+};
+```
+
+### CGOverlay 実装イメージ
+
+```tsx
+export const CGOverlay = ({ cgEvent, imageUrl, themeColor, onClose }: CGOverlayProps) => {
+  const [dialogueIndex, setDialogueIndex] = useState(0);
+  const { displayedText, isComplete, skipToEnd } = useTypewriter(
+    cgEvent.dialogue[dialogueIndex]?.text ?? '',
+    { speed: 30 }
+  );
+
+  const currentLine = cgEvent.dialogue[dialogueIndex];
+  const isLastLine = dialogueIndex >= cgEvent.dialogue.length - 1;
+
+  const handleClick = () => {
+    if (!isComplete) {
+      skipToEnd();                        // タイプ途中 → 全文表示
+    } else if (isLastLine) {
+      onClose();                          // 最後のセリフ → 閉じる
+    } else {
+      setDialogueIndex((i) => i + 1);    // 次のセリフへ
+    }
+  };
+
+  return (
+    <motion.div className={styles.overlay} onClick={handleClick}>
+      {/* 暗転背景 */}
+      <motion.div className={styles.backdrop}
+        variants={backdropVariants} initial="initial" animate="enter" exit="exit"
+      />
+
+      {/* フラッシュ */}
+      <motion.div className={styles.flash}
+        variants={flashVariants} initial="initial" animate="flash"
+      />
+
+      {/* CG画像 */}
+      <motion.div className={styles.cgImage}
+        variants={cgImageVariants} initial="initial" animate="enter" exit="exit"
+      >
+        {imageUrl ? (
+          <img src={imageUrl} alt={cgEvent.id} />
+        ) : (
+          <div className={styles.cgPlaceholder}
+            style={{ background: `linear-gradient(135deg, ${themeColor}44, ${themeColor}88)` }}
+          >
+            <span className={styles.placeholderEmoji}>
+              {CARD_DATA[cgEvent.triggerCard]?.emoji ?? '💫'}
+            </span>
+          </div>
+        )}
+      </motion.div>
+
+      {/* テキストボックス */}
+      <motion.div className={styles.textbox}
+        variants={textboxVariants} initial="initial" animate="enter" exit="exit"
+        style={{ borderColor: themeColor }}
+      >
+        <div className={styles.speaker}>{currentLine?.speaker}</div>
+        <div className={styles.text}>{displayedText}</div>
+        <div className={styles.nextHint}>
+          {isComplete ? (isLastLine ? '▶ 閉じる' : '▶ 次へ') : ''}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+```
+
+### BattleScreen からの呼び出し
+
+```tsx
+// BattleScreen.tsx（簡略）
+const BattleScreen = () => {
+  const [activeCG, setActiveCG] = useState<CGEvent | null>(null);
+
+  const handleRoundResolve = (result: RoundResult) => {
+    // ... ダメージ適用、ゲージ更新 ...
+
+    if (result.cgEvent) {
+      // CG 発動 → バトルUI を操作不可にしてカットイン表示
+      setActiveCG(result.cgEvent);
+    } else {
+      proceedToNextRound();
+    }
+  };
+
+  const handleCGClose = () => {
+    setActiveCG(null);
+    // CG 終了後に instantWin チェック
+    const endResult = checkGameEnd();
+    if (endResult) {
+      showResult(endResult);
+    } else {
+      proceedToNextRound();
+    }
+  };
+
+  return (
+    <div className={styles.battleScreen}>
+      {/* ... バトル UI ... */}
+
+      <AnimatePresence>
+        {activeCG && (
+          <CGOverlay
+            key={activeCG.id}
+            cgEvent={activeCG}
+            imageUrl={getCGImage(opponent.id, activeCG)}
+            themeColor={opponent.theme.color}
+            onClose={handleCGClose}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+```
+
+### useTypewriter フック
+
+```ts
+interface UseTypewriterOptions {
+  speed?: number;       // ms/文字（デフォルト: 30）
+  startDelay?: number;  // 開始遅延（デフォルト: 0）
+}
+
+interface UseTypewriterReturn {
+  displayedText: string;    // 現在表示されている部分テキスト
+  isComplete: boolean;      // 全文表示済みか
+  skipToEnd: () => void;    // 残りを即時表示
+}
+
+function useTypewriter(text: string, options?: UseTypewriterOptions): UseTypewriterReturn;
+```
+
+> テキストが変わるたび（dialogueIndex 更新時）に自動リセットされる。
+
+### 不発時の演出
+
+セクハラカード失敗時は CG カットインは発生しない。代わりに：
+
+```
+1. カード出す → 通常のカード解決アニメ
+2. DialogueBox に失敗セリフ表示
+   例:「は？何やってんだ？」「おいおい…シラフでそれかよ」
+3. ドリンク等のダメージがあればそちらも処理
+4. 次のラウンドへ
+```
+
+### ギャラリーからの再生
+
+CGギャラリーでも同じ `CGOverlay` コンポーネントを再利用する。
+バトル中とギャラリーで異なるのは `onClose` の行き先だけ。
+
+```tsx
+// GalleryScreen.tsx
+<CGOverlay
+  cgEvent={selectedCG}
+  imageUrl={...}
+  themeColor={...}
+  onClose={() => setSelectedCG(null)}  // ギャラリーに戻る
+/>
+```
+
+---
+
 ## アセット命名規則
 
 ```
