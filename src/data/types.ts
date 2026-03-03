@@ -84,6 +84,8 @@ export interface BattleState {
   opponentDrunk: number;
   playerDeckRemaining: string[];
   opponentDeckRemaining: string[];
+  playerDiscard: string[];
+  opponentDiscard: string[];
   playerHand: string[];
   opponentHand: string[];
   selectedCard: string | null;

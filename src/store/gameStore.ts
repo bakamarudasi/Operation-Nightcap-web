@@ -60,6 +60,8 @@ const initialBattle: BattleState = {
   opponentDrunk: 0,
   playerDeckRemaining: [],
   opponentDeckRemaining: [],
+  playerDiscard: [],
+  opponentDiscard: [],
   playerHand: [],
   opponentHand: [],
   selectedCard: null,
@@ -120,16 +122,28 @@ export const useGameStore = create<GameStore>()(
           const handSize = b.playerReducedHand ? 3 : 4;
           b.playerReducedHand = false;
 
-          // プレイヤー手札
-          const pRemaining = [...b.playerDeckRemaining];
+          // プレイヤー手札（デッキ枯渇時は捨て山をリシャッフル）
+          let pRemaining = [...b.playerDeckRemaining];
+          let pDiscard = [...b.playerDiscard];
+          if (pRemaining.length < handSize && pDiscard.length > 0) {
+            shuffleArray(pDiscard);
+            pRemaining = [...pRemaining, ...pDiscard];
+            pDiscard = [];
+          }
           const pHand: string[] = [];
           const pCount = Math.min(handSize, pRemaining.length);
           for (let i = 0; i < pCount; i++) {
             pHand.push(pRemaining.shift()!);
           }
 
-          // 相手手札
-          const oRemaining = [...b.opponentDeckRemaining];
+          // 相手手札（同様にリシャッフル）
+          let oRemaining = [...b.opponentDeckRemaining];
+          let oDiscard = [...b.opponentDiscard];
+          if (oRemaining.length < 4 && oDiscard.length > 0) {
+            shuffleArray(oDiscard);
+            oRemaining = [...oRemaining, ...oDiscard];
+            oDiscard = [];
+          }
           const oHand: string[] = [];
           const oCount = Math.min(4, oRemaining.length);
           for (let i = 0; i < oCount; i++) {
@@ -147,6 +161,8 @@ export const useGameStore = create<GameStore>()(
               ...b,
               playerDeckRemaining: pRemaining,
               opponentDeckRemaining: oRemaining,
+              playerDiscard: pDiscard,
+              opponentDiscard: oDiscard,
               playerHand: pHand,
               opponentHand: oHand,
               selectedCard: null,
@@ -201,6 +217,8 @@ export const useGameStore = create<GameStore>()(
             round: state.battle.round + 1,
             playerDrunk: Math.max(0, Math.min(10, state.battle.playerDrunk + result.playerDamage - result.playerHeal)),
             opponentDrunk: Math.max(0, Math.min(10, state.battle.opponentDrunk + result.opponentDamage - result.opponentHeal)),
+            playerDiscard: [...state.battle.playerDiscard, ...state.battle.playerHand],
+            opponentDiscard: [...state.battle.opponentDiscard, ...state.battle.opponentHand],
             playerHand: [],
             opponentHand: [],
             selectedCard: null,

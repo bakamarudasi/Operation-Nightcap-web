@@ -159,7 +159,10 @@ export function BattleScreen() {
     const selectedId = battle.selectedCard;
     const pCard = CARD_DATA[selectedId];
     const result = playRound();
-    if (!result) return;
+    if (!result) {
+      setPlayingCardIdx(null);
+      return;
+    }
 
     // プレイヤーカードをフィールドに表示
     if (pCard) {
