@@ -1,0 +1,717 @@
+/* ============================================
+   タイトル画面 — ロドスバー入口演出
+   ============================================ */
+
+/* --- Title Screen Variables --- */
+.title-screen {
+  --ts-bg-dark: #1a0e08;
+  --ts-bg-warm: #2a1a10;
+  --ts-lantern-red: #c93030;
+  --ts-lantern-glow: #ff4444;
+  --ts-gold: #d4a853;
+  --ts-gold-light: #f0d48a;
+  --ts-text-warm: #e8d5c0;
+  --ts-text-dim: #9a8070;
+  --ts-btn-bg: rgba(60, 35, 18, 0.85);
+  --ts-btn-border: rgba(180, 140, 90, 0.4);
+  --ts-btn-hover: rgba(80, 50, 25, 0.95);
+  --ts-vignette-strength: 0.6;
+  --ts-rain-opacity: 0.15;
+}
+
+/* --- Time Themes --- */
+.title-screen.time-morning {
+  --ts-bg-dark: #2a2018;
+  --ts-lantern-glow: #ff6644;
+  --ts-vignette-strength: 0.3;
+  --ts-rain-opacity: 0.08;
+}
+.title-screen.time-afternoon {
+  --ts-bg-dark: #1e1610;
+  --ts-vignette-strength: 0.35;
+  --ts-rain-opacity: 0.1;
+}
+.title-screen.time-evening {
+  --ts-bg-dark: #180c06;
+  --ts-lantern-glow: #ff3333;
+  --ts-vignette-strength: 0.5;
+  --ts-rain-opacity: 0.18;
+}
+.title-screen.time-night {
+  --ts-bg-dark: #120804;
+  --ts-lantern-glow: #ff4444;
+  --ts-vignette-strength: 0.7;
+  --ts-rain-opacity: 0.2;
+}
+
+/* --- Screen Override --- */
+.title-screen {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ts-bg-dark);
+  border-left: none;
+  border-right: none;
+  box-shadow: none;
+  font-family: 'Shippori Mincho', serif;
+  transition: background 2s ease;
+}
+
+/* === Background Layers === */
+.ts-bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition: opacity 2s ease;
+}
+.ts-bg-gradient {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 20%, rgba(201, 48, 48, 0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 30% 80%, rgba(180, 120, 50, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 70% 80%, rgba(180, 120, 50, 0.06) 0%, transparent 60%),
+    linear-gradient(180deg, var(--ts-bg-dark) 0%, #241408 40%, var(--ts-bg-dark) 100%);
+}
+.ts-bg-noise {
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.ts-bg-vignette {
+  background: radial-gradient(ellipse 70% 70% at 50% 50%, transparent 40%, rgba(0,0,0,var(--ts-vignette-strength)) 100%);
+}
+
+/* === Rain === */
+.ts-rain-container {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: var(--ts-rain-opacity);
+  overflow: hidden;
+}
+.ts-raindrop {
+  position: absolute;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(200, 210, 230, 0.6), transparent);
+  animation: tsRainFall linear infinite;
+}
+@keyframes tsRainFall {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(800px); }
+}
+
+/* === Particles === */
+.ts-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ts-particle {
+  position: absolute;
+  background: var(--ts-gold-light);
+  border-radius: 50%;
+  opacity: 0;
+  animation: tsFloatUp linear infinite;
+  box-shadow: 0 0 6px rgba(240, 212, 138, 0.4);
+}
+@keyframes tsFloatUp {
+  0% { opacity: 0; transform: translateY(0) translateX(0); }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.2; }
+  100% { opacity: 0; transform: translateY(-800px) translateX(30px); }
+}
+
+/* === Smoke === */
+.ts-smoke-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ts-smoke {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 70%);
+  animation: tsSmokeDrift 12s ease-in-out infinite;
+}
+@keyframes tsSmokeDrift {
+  0% { transform: translateX(-100px) translateY(50px) scale(1); opacity: 0; }
+  30% { opacity: 0.5; }
+  70% { opacity: 0.3; }
+  100% { transform: translateX(200px) translateY(-100px) scale(2); opacity: 0; }
+}
+
+/* === Main Container === */
+.ts-container {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  opacity: 0;
+  animation: tsFadeInUp 1.2s ease-out 0.3s forwards;
+}
+@keyframes tsFadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* === Noren === */
+.ts-noren-wrapper {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: tsNorenDrop 1s ease-out 0.6s forwards;
+}
+@keyframes tsNorenDrop {
+  from { opacity: 0; transform: translateY(-40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ts-noren-panel {
+  width: 60px;
+  height: 90px;
+  background: linear-gradient(180deg, #8b1a1a 0%, #a02020 30%, #8b1a1a 100%);
+  border-radius: 0 0 8px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow:
+    inset 0 -20px 20px rgba(0,0,0,0.2),
+    0 4px 12px rgba(0,0,0,0.5);
+  animation: tsNorenSway 4s ease-in-out infinite;
+  transform-origin: top center;
+}
+.ts-noren-panel:nth-child(1) { animation-delay: 0s; }
+.ts-noren-panel:nth-child(2) { animation-delay: 0.3s; }
+.ts-noren-panel:nth-child(3) { animation-delay: 0.6s; }
+@keyframes tsNorenSway {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+.ts-noren-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: #5a1010;
+  border-radius: 0 0 2px 2px;
+}
+.ts-noren-text {
+  color: var(--ts-gold-light);
+  font-family: 'Zen Antique', serif;
+  font-size: 1.4rem;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+/* === Lanterns === */
+.ts-lanterns {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  opacity: 0;
+  animation: tsFadeInUp 1s ease-out 0.9s forwards;
+}
+.ts-lantern {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: tsLanternSwing 3s ease-in-out infinite;
+  transform-origin: top center;
+  cursor: pointer;
+  transition: filter 0.3s;
+}
+.ts-lantern:hover { filter: brightness(1.3); }
+.ts-lantern:nth-child(1) { animation-delay: 0s; }
+.ts-lantern:nth-child(2) { animation-delay: 1s; }
+.ts-lantern:nth-child(3) { animation-delay: 2s; }
+@keyframes tsLanternSwing {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+.ts-lantern-string {
+  width: 2px;
+  height: 18px;
+  background: linear-gradient(180deg, transparent, #8a7060);
+}
+.ts-lantern-cap {
+  width: 32px;
+  height: 10px;
+  background: linear-gradient(180deg, #c9a030, #a07818);
+  border-radius: 3px 3px 0 0;
+  box-shadow: 0 -1px 4px rgba(201, 160, 48, 0.3);
+}
+.ts-lantern-body {
+  width: 56px;
+  height: 72px;
+  background: radial-gradient(ellipse at 40% 40%, #ff5555, #cc2222 50%, #991515);
+  border-radius: 28px / 36px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 0 30px rgba(255, 68, 68, 0.4),
+    0 0 60px rgba(255, 68, 68, 0.15),
+    inset 0 -10px 20px rgba(0,0,0,0.3),
+    inset 0 5px 10px rgba(255, 150, 150, 0.2);
+}
+.ts-lantern-body::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 26px / 34px;
+  background: radial-gradient(ellipse at 35% 30%, rgba(255,200,200,0.15), transparent 60%);
+}
+.ts-lantern-kanji {
+  color: var(--ts-gold-light);
+  font-family: 'Zen Antique', serif;
+  font-size: 1.3rem;
+  text-shadow: 0 0 8px rgba(240, 212, 138, 0.5), 0 1px 2px rgba(0,0,0,0.5);
+  z-index: 1;
+}
+.ts-lantern-tassel {
+  width: 6px;
+  height: 14px;
+  background: linear-gradient(180deg, #a07818, #806010 60%, transparent);
+  border-radius: 0 0 3px 3px;
+}
+.ts-lantern-glow {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(255, 68, 68, 0.2) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: tsGlowPulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes tsGlowPulse {
+  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+}
+/* Lantern click effect */
+.ts-lantern.clicked .ts-lantern-body {
+  box-shadow:
+    0 0 50px rgba(255, 68, 68, 0.7),
+    0 0 100px rgba(255, 68, 68, 0.3),
+    inset 0 -10px 20px rgba(0,0,0,0.3),
+    inset 0 5px 10px rgba(255, 150, 150, 0.3);
+}
+.ts-lantern.clicked .ts-lantern-glow {
+  animation: tsGlowBurst 0.6s ease-out;
+}
+@keyframes tsGlowBurst {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(2); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+}
+
+/* === Title Area === */
+.ts-title-area {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  opacity: 0;
+  animation: tsFadeInUp 1s ease-out 1.2s forwards;
+}
+.ts-title-badges {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+.ts-title-badge {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #a02020, #801818);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ts-gold-light);
+  font-family: 'Zen Antique', serif;
+  font-size: 1.2rem;
+  border: 1px solid rgba(240, 212, 138, 0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  position: relative;
+}
+.ts-title-badge::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px solid rgba(240, 212, 138, 0.15);
+}
+
+/* SVG Brush Stroke */
+.ts-title-svg-container {
+  position: relative;
+  width: 420px;
+  height: 90px;
+  margin: 0 auto 0.5rem;
+}
+.ts-title-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ts-title-brush-text {
+  font-family: 'Zen Antique', serif;
+  font-size: 64px;
+  fill: none;
+  stroke: var(--ts-text-warm);
+  stroke-width: 1.5;
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  letter-spacing: 0.15em;
+}
+.ts-title-brush-fill {
+  font-family: 'Zen Antique', serif;
+  font-size: 64px;
+  fill: var(--ts-text-warm);
+  opacity: 0;
+  letter-spacing: 0.15em;
+  filter: url(#brushTexture);
+}
+.ts-title-brush-shadow {
+  font-family: 'Zen Antique', serif;
+  font-size: 64px;
+  fill: rgba(0,0,0,0.3);
+  opacity: 0;
+  letter-spacing: 0.15em;
+  filter: blur(4px);
+}
+/* Brush animation trigger */
+.brush-animate .ts-title-brush-text {
+  animation: tsBrushStroke 2.5s ease-out forwards;
+}
+.brush-animate .ts-title-brush-fill {
+  animation: tsBrushFillIn 1s ease-out 2s forwards;
+}
+.brush-animate .ts-title-brush-shadow {
+  animation: tsBrushFillIn 1s ease-out 2.2s forwards;
+}
+@keyframes tsBrushStroke {
+  0% { stroke-dashoffset: 600; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes tsBrushFillIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Ink splatters */
+.ts-ink-splatter {
+  position: absolute;
+  background: var(--ts-text-warm);
+  border-radius: 50%;
+  opacity: 0;
+  filter: blur(0.5px);
+}
+.brush-animate .ts-ink-splatter {
+  animation: tsSplatAppear 0.3s ease-out forwards;
+}
+@keyframes tsSplatAppear {
+  0% { opacity: 0; transform: scale(0); }
+  60% { opacity: 0.4; transform: scale(1.5); }
+  100% { opacity: 0.15; transform: scale(1); }
+}
+
+.ts-title-sub {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 1rem;
+  color: var(--ts-gold);
+  letter-spacing: 0.5em;
+  opacity: 0;
+}
+.brush-animate .ts-title-sub {
+  animation: tsFadeInUp 0.8s ease-out 2.8s forwards;
+}
+
+/* === Time Indicator === */
+.ts-time-indicator {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(30, 18, 10, 0.8);
+  border: 1px solid rgba(180, 140, 90, 0.2);
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  animation: tsFadeInUp 0.8s ease-out 3.5s forwards;
+}
+.ts-time-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ts-gold);
+  box-shadow: 0 0 6px rgba(212, 168, 83, 0.5);
+  animation: tsTimePulse 3s ease-in-out infinite;
+}
+@keyframes tsTimePulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+.ts-time-label {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 0.8rem;
+  color: var(--ts-text-dim);
+  letter-spacing: 0.1em;
+}
+.ts-time-status {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 0.75rem;
+  color: var(--ts-gold);
+  opacity: 0.8;
+}
+
+/* === Decorative Line === */
+.ts-deco-line {
+  width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ts-gold) 30%, var(--ts-gold) 70%, transparent);
+  margin: 0 auto 2.5rem;
+  position: relative;
+  opacity: 0;
+  animation: tsFadeInUp 1s ease-out 3s forwards;
+}
+.ts-deco-line::before {
+  content: '◆';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--ts-gold);
+  font-size: 0.5rem;
+  background: var(--ts-bg-dark);
+  padding: 0 8px;
+}
+
+/* === Menu === */
+.ts-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 320px;
+  opacity: 0;
+  animation: tsFadeInUp 1s ease-out 3.2s forwards;
+}
+.ts-menu-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 24px;
+  background: var(--ts-btn-bg);
+  border: 1px solid var(--ts-btn-border);
+  border-radius: 4px;
+  color: var(--ts-text-warm);
+  font-family: 'Shippori Mincho', serif;
+  font-size: 1.15rem;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+.ts-menu-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--ts-gold);
+  transform: scaleY(0);
+  transition: transform 0.3s ease;
+}
+.ts-menu-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(212, 168, 83, 0.05), transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.ts-menu-btn:hover {
+  background: var(--ts-btn-hover);
+  border-color: rgba(212, 168, 83, 0.6);
+  transform: translateX(4px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3), -2px 0 10px rgba(212, 168, 83, 0.1);
+}
+.ts-menu-btn:hover::before { transform: scaleY(1); }
+.ts-menu-btn:hover::after { opacity: 1; }
+.ts-menu-btn:active {
+  transform: translateX(2px) scale(0.98);
+}
+.ts-btn-icon {
+  font-size: 1.3rem;
+  filter: drop-shadow(0 0 4px rgba(255,255,255,0.1));
+}
+.ts-btn-label {
+  position: relative;
+  z-index: 1;
+}
+.ts-menu-btn.ts-primary {
+  border-color: rgba(201, 48, 48, 0.5);
+  background: linear-gradient(135deg, rgba(120, 30, 30, 0.7), rgba(60, 35, 18, 0.85));
+}
+.ts-menu-btn.ts-primary::before { background: var(--ts-lantern-red); }
+.ts-menu-btn.ts-primary:hover {
+  border-color: rgba(201, 48, 48, 0.8);
+  box-shadow: 0 4px 20px rgba(201, 48, 48, 0.2), -2px 0 10px rgba(201, 48, 48, 0.1);
+}
+
+/* === Currency === */
+.ts-currency {
+  margin-top: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  animation: tsFadeInUp 1s ease-out 3.4s forwards;
+}
+.ts-currency-icon {
+  width: 22px;
+  height: 22px;
+  background: radial-gradient(circle at 40% 35%, #f0d48a, #c49530);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: #5a3a10;
+  font-weight: bold;
+  box-shadow: 0 0 8px rgba(212, 168, 83, 0.3);
+  position: relative;
+}
+.ts-currency-icon::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.ts-currency-amount {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 0.95rem;
+  color: var(--ts-gold);
+  letter-spacing: 0.1em;
+}
+
+/* === Decorations === */
+.ts-deco-tokkuri {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+  font-size: 2.5rem;
+  opacity: 0;
+  animation: tsFadeInUp 1s ease-out 4s forwards;
+  filter: grayscale(0.3) brightness(0.6);
+  z-index: 3;
+  pointer-events: none;
+}
+.ts-deco-ochoko {
+  position: absolute;
+  bottom: 38px;
+  left: 90px;
+  font-size: 1.5rem;
+  opacity: 0;
+  animation: tsFadeInUp 1s ease-out 4.2s forwards;
+  filter: grayscale(0.3) brightness(0.6);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* === Bottom Bar === */
+.ts-bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 10%, var(--ts-lantern-red) 30%, var(--ts-gold) 50%, var(--ts-lantern-red) 70%, transparent 90%);
+  opacity: 0.4;
+  z-index: 20;
+}
+
+/* === Audio Control === */
+.ts-audio-control {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 50;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(30, 18, 10, 0.8);
+  border: 1px solid rgba(180, 140, 90, 0.3);
+  color: var(--ts-gold);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  animation: tsFadeInUp 0.8s ease-out 3.8s forwards;
+}
+.ts-audio-control:hover {
+  background: rgba(50, 30, 15, 0.9);
+  border-color: rgba(212, 168, 83, 0.5);
+  box-shadow: 0 0 15px rgba(212, 168, 83, 0.15);
+}
+.ts-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+}
+.ts-bar {
+  width: 3px;
+  background: var(--ts-gold);
+  border-radius: 1px;
+  transition: height 0.3s ease;
+  height: 3px;
+}
+.ts-audio-control.playing .ts-bar {
+  animation: tsAudioBar 1s ease-in-out infinite;
+}
+.ts-bar:nth-child(1) { animation-delay: 0s; }
+.ts-bar:nth-child(2) { animation-delay: 0.15s; }
+.ts-bar:nth-child(3) { animation-delay: 0.3s; }
+.ts-bar:nth-child(4) { animation-delay: 0.1s; }
+@keyframes tsAudioBar {
+  0%, 100% { height: 4px; }
+  50% { height: 14px; }
+}
+
+/* === Responsive === */
+@media (max-width: 480px) {
+  .ts-title-svg-container { width: 300px; height: 70px; }
+  .ts-title-brush-text,
+  .ts-title-brush-fill,
+  .ts-title-brush-shadow { font-size: 48px; }
+  .ts-menu { width: 280px; }
+  .ts-lanterns { gap: 1.2rem; }
+  .ts-deco-tokkuri, .ts-deco-ochoko { display: none; }
+}
