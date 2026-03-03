@@ -147,13 +147,13 @@ export function SelectScreen() {
     setPhase('noren-close');
 
     addTimer(() => {
-      // Phase 2: VS screen
-      setPhase('vs');
+      // Phase 2: noren opens to reveal VS
+      setPhase('noren-open');
       addTimer(() => playVsSound(), 100);
 
       addTimer(() => {
-        // Phase 3: noren opens over VS
-        setPhase('noren-open');
+        // Phase 3: VS screen (noren fully open)
+        setPhase('vs');
 
         addTimer(() => {
           // Phase 4: kanpai
