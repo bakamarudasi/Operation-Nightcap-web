@@ -20,10 +20,21 @@ function getDrunkStage(value: number) {
   return DRUNK_STAGES[DRUNK_STAGES.length - 1];
 }
 
-// 効果音
+// 効果音（AudioContextを再利用）
+let _audioCtx: AudioContext | null = null;
+function getAudioContext(): AudioContext {
+  if (!_audioCtx || _audioCtx.state === 'closed') {
+    _audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  if (_audioCtx.state === 'suspended') {
+    _audioCtx.resume();
+  }
+  return _audioCtx;
+}
+
 function playSound(type: 'slam' | 'flip') {
   try {
-    const x = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const x = getAudioContext();
     if (type === 'slam') {
       const o = x.createOscillator();
       o.type = 'sine';
@@ -135,12 +146,20 @@ export function BattleScreen() {
   }, [battle.playerDrunk]);
 
   const opponentDrunkLevel = getDrunkLevel(battle.opponentDrunk);
-  const playerDrunkLevel = getDrunkLevel(battle.playerDrunk);
 
   const oppDrunkStage = getDrunkStage(battle.opponentDrunk);
   const plDrunkStage = getDrunkStage(battle.playerDrunk);
 
   const drunkClassName = (level: number) => level > 0 ? `drunk-${level}` : '';
+
+  const particleStyles = useMemo(() =>
+    Array.from({ length: 12 }).map(() => ({
+      left: `${Math.random() * 100}%`,
+      bottom: '-10px',
+      animationDuration: `${10 + Math.random() * 15}s`,
+      animationDelay: `${Math.random() * 10}s`,
+    })),
+  []);
 
   const oppFlush = useMemo(() => {
     const f = Math.min(battle.opponentDrunk / 10 * 0.3, 0.3);
@@ -179,22 +198,15 @@ export function BattleScreen() {
 
     // 相手カードを少し遅れて表示
     setTimeout(() => {
-      // 相手のカードIDをメッセージから推測（または直接取得）
-      const state = useGameStore.getState();
-      const oppHand = state.battle.opponentHand;
-      // playRoundで既に処理済みなのでメッセージからカード情報を取得
-      // 結果メッセージを解析して相手カードを特定
-      const msgs = result.messages;
-      // 相手カードの情報はメッセージに含まれるが、直接的な方法として
-      // 全カードから探す
+      // 相手カードをplayRoundの結果から直接取得
+      const oppCard = CARD_DATA[result.opponentCardId];
       let oppCardInfo: { emoji: string; name: string; val: string } | null = null;
-      for (const [, card] of Object.entries(CARD_DATA)) {
-        if (msgs.some(m => m.includes(card.name))) {
-          const v = card.type === 'food' ? (card.heal === 99 ? '+MAX' : `+${card.heal ?? 0}`) :
-                    card.type === 'drink' ? `${card.damage === -1 ? '?' : card.damage}` : '';
-          oppCardInfo = { emoji: card.emoji, name: card.name, val: v };
-          break;
-        }
+      if (oppCard) {
+        const v = oppCard.type === 'food' ? (oppCard.heal === 99 ? '+MAX' : `+${oppCard.heal ?? 0}`) :
+                  oppCard.type === 'drink' ? `${oppCard.damage === -1 ? '?' : oppCard.damage}` :
+                  oppCard.type === 'chug' ? '特殊' :
+                  oppCard.type === 'harassment' ? '特殊' : '';
+        oppCardInfo = { emoji: oppCard.emoji, name: oppCard.name, val: v };
       }
 
       if (oppCardInfo) {
@@ -217,12 +229,15 @@ export function BattleScreen() {
             setDialogue({ speaker: currentOpponent?.name ?? '', text: result.messages.join(' / ') });
           }
 
-          // リアクション
-          const isPlayerWin = result.messages.some(m => m.includes('酔い+') || m.includes('ダメージ'));
-          if (isPlayerWin) {
+          // リアクション（実際のダメージ値で判定）
+          const oppNetDamage = result.opponentDamage - result.opponentHeal;
+          const plNetDamage = result.playerDamage - result.playerHeal;
+          if (oppNetDamage > 0 && oppNetDamage >= plNetDamage) {
             setReaction('😵');
-          } else {
+          } else if (plNetDamage > 0) {
             setReaction('😏');
+          } else {
+            setReaction(null);
           }
           setTimeout(() => setReaction(null), 2000);
 
@@ -234,8 +249,7 @@ export function BattleScreen() {
           // 即勝利
           if (result.instantWin) {
             setTimeout(() => {
-              const reward = 500;
-              endBattle('player_win');
+              const reward = endBattle('player_win');
               setResultReward(reward);
               setGameResult('player_win');
             }, result.cgEvent ? 5000 : 2000);
@@ -246,22 +260,22 @@ export function BattleScreen() {
           setTimeout(() => {
             const end = checkGameEnd();
             if (end) {
-              const b = useGameStore.getState().battle;
-              const reward = end === 'player_win' ? (b.playerDrunk === 0 ? 800 : 500) :
-                             end === 'opponent_win' ? 100 : 200;
-              endBattle(end);
+              const reward = endBattle(end);
               setResultReward(reward);
               setGameResult(end);
             } else {
               // 直前のラウンド記録
               const pc = pCard;
               if (pc && oppCardInfo) {
-                const isWin = result.messages.some(m => m.includes('酔い+'));
+                const netOpp = result.opponentDamage - result.opponentHeal;
+                const netPl = result.playerDamage - result.playerHeal;
+                const roundRes = netOpp > netPl ? '勝ち' : netPl > netOpp ? '負け' : '引分';
+                const roundColor = netOpp > netPl ? '#8bc98b' : netPl > netOpp ? '#c98b8b' : 'var(--gold)';
                 setLastRound({
                   pl: `${pc.emoji} ${pc.name}`,
                   op: `${oppCardInfo.emoji} ${oppCardInfo.name}`,
-                  res: isWin ? '勝ち' : '負け',
-                  resColor: isWin ? '#8bc98b' : '#c98b8b'
+                  res: roundRes,
+                  resColor: roundColor
                 });
               }
 
@@ -286,7 +300,7 @@ export function BattleScreen() {
         }, 400);
       }, 400);
     }, 800);
-  }, [battle.selectedCard, battle.isProcessing, gameResult]);
+  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, getDrunkLevel, playRound, selectCard]);
 
   // カード選択後に自動で出す
   useEffect(() => {
@@ -312,16 +326,11 @@ export function BattleScreen() {
 
       {/* パーティクル */}
       <div className="battle-particles">
-        {Array.from({ length: 12 }).map((_, i) => (
+        {particleStyles.map((style, i) => (
           <div
             key={i}
             className="battle-particle"
-            style={{
-              left: `${Math.random() * 100}%`,
-              bottom: '-10px',
-              animationDuration: `${10 + Math.random() * 15}s`,
-              animationDelay: `${Math.random() * 10}s`,
-            }}
+            style={style}
           />
         ))}
       </div>
@@ -332,7 +341,7 @@ export function BattleScreen() {
         <div className="battle-header">
           <div className="battle-bar-name">ロドスバー</div>
           <div className="battle-header-center">
-            <div className="round-display">R.{battle.round}/{battle.maxRounds}</div>
+            <div className="round-display">R.{Math.min(battle.round + 1, battle.maxRounds)}/{battle.maxRounds}</div>
           </div>
           <div className="battle-money">
             <div className="battle-money-icon">龍</div>

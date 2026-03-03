@@ -5,6 +5,7 @@ import { randomPick } from './utils.ts';
 interface ExtendedResult extends RoundResult {
   opponentDiscardNext?: boolean;
   playerReducedHand?: boolean;
+  opponentReducedHand?: boolean;
 }
 
 function getDrunkLevel(drunkValue: number): number {
@@ -115,7 +116,8 @@ export const BattleEngine = {
         result.playerReducedHand = true;
         result.messages.push('🫗 こぼし！相手のカードを無効化！（次のラウンド手札3枚）');
       } else {
-        result.messages.push('🫗 相手がこぼし！カードが無効化された！');
+        result.opponentReducedHand = true;
+        result.messages.push('🫗 相手がこぼし！カードが無効化された！（相手の次ラウンド手札3枚）');
       }
     }
 

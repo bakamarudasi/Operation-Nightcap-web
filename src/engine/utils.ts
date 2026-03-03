@@ -7,5 +7,6 @@ export function shuffleArray<T>(arr: T[]): T[] {
 }
 
 export function randomPick<T>(arr: T[]): T {
+  if (arr.length === 0) return undefined as unknown as T;
   return arr[Math.floor(Math.random() * arr.length)];
 }

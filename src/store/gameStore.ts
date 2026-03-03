@@ -33,9 +33,9 @@ interface GameStore {
   initBattle: (opponentId: string) => void;
   drawHands: () => void;
   selectCard: (cardId: string) => void;
-  playRound: () => { messages: string[]; cgEvent: CGEvent | null; instantWin: boolean } | null;
+  playRound: () => { messages: string[]; cgEvent: CGEvent | null; instantWin: boolean; opponentCardId: string; playerDamage: number; opponentDamage: number; playerHeal: number; opponentHeal: number } | null;
   checkGameEnd: () => 'player_win' | 'opponent_win' | 'draw' | null;
-  endBattle: (result: 'player_win' | 'opponent_win' | 'draw') => void;
+  endBattle: (result: 'player_win' | 'opponent_win' | 'draw') => number;
 
   // ショップ
   buyCard: (cardId: string) => boolean;
@@ -66,6 +66,7 @@ const initialBattle: BattleState = {
   isProcessing: false,
   opponentDiscardNext: false,
   playerReducedHand: false,
+  opponentReducedHand: false,
   spillActive: false,
 };
 
@@ -129,17 +130,20 @@ export const useGameStore = create<GameStore>()(
           }
 
           // 相手手札
+          const oHandSize = b.opponentReducedHand ? 3 : 4;
+          b.opponentReducedHand = false;
           const oRemaining = [...b.opponentDeckRemaining];
           const oHand: string[] = [];
-          const oCount = Math.min(4, oRemaining.length);
+          const oCount = Math.min(oHandSize, oRemaining.length);
           for (let i = 0; i < oCount; i++) {
             oHand.push(oRemaining.shift()!);
           }
 
-          // 乾杯強制の効果
+          // 乾杯強制の効果（破棄したカードはデッキの底に戻す）
           if (b.opponentDiscardNext && oHand.length > 1) {
             const discardIdx = Math.floor(Math.random() * oHand.length);
-            oHand.splice(discardIdx, 1);
+            const [discardedCard] = oHand.splice(discardIdx, 1);
+            oRemaining.push(discardedCard);
           }
 
           return {
@@ -207,6 +211,7 @@ export const useGameStore = create<GameStore>()(
             isProcessing: true,
             opponentDiscardNext: result.opponentDiscardNext ?? state.battle.opponentDiscardNext,
             playerReducedHand: result.playerReducedHand ?? state.battle.playerReducedHand,
+            opponentReducedHand: result.opponentReducedHand ?? state.battle.opponentReducedHand,
             spillActive: result.spillNullified,
           },
         }));
@@ -215,6 +220,11 @@ export const useGameStore = create<GameStore>()(
           messages: result.messages,
           cgEvent: result.cgEvent,
           instantWin: result.instantWin,
+          opponentCardId,
+          playerDamage: result.playerDamage,
+          opponentDamage: result.opponentDamage,
+          playerHeal: result.playerHeal,
+          opponentHeal: result.opponentHeal,
         };
       },
 
@@ -231,21 +241,21 @@ export const useGameStore = create<GameStore>()(
       },
 
       endBattle: (result) => {
-        set((state) => {
-          let reward = 0;
-          if (result === 'player_win') {
-            reward = state.battle.playerDrunk === 0 ? 800 : 500;
-          } else if (result === 'opponent_win') {
-            reward = 100;
-          } else {
-            reward = 200;
-          }
-          return {
-            money: state.money + reward,
-            wins: result === 'player_win' ? state.wins + 1 : state.wins,
-            losses: result === 'opponent_win' ? state.losses + 1 : state.losses,
-          };
+        const state = get();
+        let reward = 0;
+        if (result === 'player_win') {
+          reward = state.battle.playerDrunk === 0 ? 800 : 500;
+        } else if (result === 'opponent_win') {
+          reward = 100;
+        } else {
+          reward = 200;
+        }
+        set({
+          money: state.money + reward,
+          wins: result === 'player_win' ? state.wins + 1 : state.wins,
+          losses: result === 'opponent_win' ? state.losses + 1 : state.losses,
         });
+        return reward;
       },
 
       buyCard: (cardId) => {
@@ -254,6 +264,9 @@ export const useGameStore = create<GameStore>()(
         if (!card) return false;
         if (state.money < card.price) return false;
         if (state.playerDeck.length >= 12) return false;
+        // 同じカードは最大3枚まで
+        const sameCount = state.playerDeck.filter(id => id === cardId).length;
+        if (sameCount >= 3) return false;
 
         set({
           money: state.money - card.price,

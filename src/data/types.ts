@@ -90,6 +90,7 @@ export interface BattleState {
   isProcessing: boolean;
   opponentDiscardNext: boolean;
   playerReducedHand: boolean;
+  opponentReducedHand: boolean;
   spillActive: boolean;
 }
 
