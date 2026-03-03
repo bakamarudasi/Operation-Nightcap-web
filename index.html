@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ロドスバー ～今夜は帰さない～</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/cards.css">
+  <link rel="stylesheet" href="css/battle.css">
+  <link rel="stylesheet" href="css/shop.css">
+  <link rel="stylesheet" href="css/cg.css">
+  <link rel="stylesheet" href="css/gallery.css">
+</head>
+<body>
+  <!-- メイン画面（バー入口） -->
+  <div id="screen-title" class="screen active">
+    <div class="title-bg">
+      <div class="title-overlay"></div>
+      <div class="title-content">
+        <h1 class="title-logo">CLOSURE'S BAR</h1>
+        <p class="title-sub">～今夜は帰さない～</p>
+        <div class="title-menu">
+          <button class="menu-btn" data-screen="select">🍷 対戦する</button>
+          <button class="menu-btn" data-screen="shop">🏪 ショップ</button>
+          <button class="menu-btn" data-screen="gallery">🖼️ CGギャラリー</button>
+        </div>
+        <div class="title-money">💰 <span id="title-money">3200</span> 龍門幣</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 対戦相手選択画面 -->
+  <div id="screen-select" class="screen">
+    <div class="select-header">
+      <button class="back-btn" data-screen="title">← 戻る</button>
+      <h2>対戦相手を選べ</h2>
+    </div>
+    <div id="character-list" class="character-list"></div>
+  </div>
+
+  <!-- 対戦画面 -->
+  <div id="screen-battle" class="screen">
+    <div class="battle-header">
+      <span class="battle-bar-name">CLOSURE'S BAR</span>
+      <span id="round-display" class="round-display">R.1/12</span>
+      <span class="battle-money">💰 <span id="battle-money">3200</span></span>
+    </div>
+    <div class="battle-main">
+      <div class="battle-left">
+        <div class="opponent-area">
+          <div id="opponent-sprite" class="character-sprite"></div>
+          <div id="opponent-name" class="opponent-name"></div>
+        </div>
+      </div>
+      <div class="battle-center">
+        <div class="gauge-area">
+          <div class="gauge-label">相手の酔い</div>
+          <div class="drunk-gauge">
+            <div id="opponent-gauge" class="drunk-gauge-fill" style="width:0%"></div>
+          </div>
+          <div id="opponent-drunk-text" class="gauge-text">Lv.0 シラフ (0/10)</div>
+        </div>
+        <div id="table-area" class="table-area">
+          <div id="opponent-card-slot" class="card-slot opponent-slot">
+            <div class="card card-back">?</div>
+          </div>
+          <div class="vs-text">VS</div>
+          <div id="player-card-slot" class="card-slot player-slot">
+            <div class="card card-back">?</div>
+          </div>
+        </div>
+        <div id="dialogue-area" class="dialogue-area">
+          <span id="dialogue-speaker" class="dialogue-speaker"></span>
+          <span id="dialogue-text" class="dialogue-text"></span>
+        </div>
+        <div class="gauge-area player-gauge-area">
+          <div class="gauge-label">ドクターの酔い</div>
+          <div class="drunk-gauge">
+            <div id="player-gauge" class="drunk-gauge-fill" style="width:0%"></div>
+          </div>
+          <div id="player-drunk-text" class="gauge-text">Lv.0 シラフ (0/10)</div>
+        </div>
+      </div>
+      <div class="battle-right">
+        <div id="deck-count" class="deck-count">残りデッキ: 12枚</div>
+      </div>
+    </div>
+    <div id="hand-area" class="hand-area">
+      <!-- 手札カードがここに入る -->
+    </div>
+    <div id="battle-result" class="battle-result hidden">
+      <div class="result-content">
+        <h2 id="result-title"></h2>
+        <p id="result-message"></p>
+        <div id="result-reward"></div>
+        <button class="menu-btn" id="result-back-btn">バーに戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ショップ画面 -->
+  <div id="screen-shop" class="screen">
+    <div class="shop-header">
+      <button class="back-btn" data-screen="title">← 戻る</button>
+      <h2>🏪 CLOSURE'S BAR SHOP</h2>
+      <span class="shop-money">💰 <span id="shop-money">3200</span> 龍門幣</span>
+    </div>
+    <div id="closure-dialogue" class="closure-dialogue"></div>
+    <div id="shop-items" class="shop-items"></div>
+    <div class="deck-editor">
+      <h3>現在のデッキ (<span id="deck-size">12</span>/12)</h3>
+      <div id="deck-display" class="deck-display"></div>
+    </div>
+  </div>
+
+  <!-- CGギャラリー画面 -->
+  <div id="screen-gallery" class="screen">
+    <div class="gallery-header">
+      <button class="back-btn" data-screen="title">← 戻る</button>
+      <h2>🖼️ CG GALLERY</h2>
+      <span id="gallery-progress" class="gallery-progress">解放率: 0/0 (0%)</span>
+    </div>
+    <div id="gallery-content" class="gallery-content"></div>
+  </div>
+
+  <!-- CGオーバーレイ -->
+  <div id="cg-overlay" class="cg-overlay hidden">
+    <div class="cg-image-container">
+      <div id="cg-image" class="cg-image"></div>
+    </div>
+    <div id="cg-textbox" class="cg-textbox">
+      <div id="cg-speaker" class="cg-speaker"></div>
+      <div id="cg-text" class="cg-text"></div>
+      <div class="cg-next">▶ クリックで次へ</div>
+    </div>
+  </div>
+
+  <script src="js/data/cards.js"></script>
+  <script src="js/data/characters.js"></script>
+  <script src="js/data/shop.js"></script>
+  <script src="js/game-state.js"></script>
+  <script src="js/battle-engine.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/cg-system.js"></script>
+  <script src="js/shop-system.js"></script>
+  <script src="js/gallery.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
