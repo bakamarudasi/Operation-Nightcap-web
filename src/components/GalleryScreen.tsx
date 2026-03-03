@@ -1,0 +1,172 @@
+import { useState } from 'react';
+import { useGameStore } from '../store/gameStore.ts';
+import { CHARACTER_DATA } from '../data/characters.ts';
+import { randomPick } from '../engine/utils.ts';
+
+export function GalleryScreen() {
+  const setScreen = useGameStore((s) => s.setScreen);
+  const unlockedCGs = useGameStore((s) => s.unlockedCGs);
+  const showCG = useGameStore((s) => s.showCG);
+  const wins = useGameStore((s) => s.wins);
+  const losses = useGameStore((s) => s.losses);
+
+  const [activeTab, setActiveTab] = useState<'cg' | 'portrait'>('cg');
+  const [selectedChar, setSelectedChar] = useState<string>('blaze');
+  const [drunkLevel, setDrunkLevel] = useState(0);
+  const [currentLine, setCurrentLine] = useState('');
+
+  const characters = Object.values(CHARACTER_DATA);
+  const char = CHARACTER_DATA[selectedChar];
+
+  // CG一覧
+  const allCGs = characters.flatMap(c => c.cgEvents.map(e => ({ ...e, charId: c.id, charName: c.name })));
+  const unlockedCount = allCGs.filter(cg => unlockedCGs.includes(cg.id)).length;
+
+  // 立ち絵: 酔いLvのセリフ
+  const handleCharSelect = (charId: string) => {
+    setSelectedChar(charId);
+    setDrunkLevel(0);
+    const c = CHARACTER_DATA[charId];
+    if (c) {
+      setCurrentLine(c.drunkLevels[0].lines[0]);
+    }
+  };
+
+  const handleDrunkLevel = (level: number) => {
+    setDrunkLevel(level);
+    if (char) {
+      const lvData = char.drunkLevels.find(l => l.level === level);
+      if (lvData) {
+        setCurrentLine(randomPick(lvData.lines));
+      }
+    }
+  };
+
+  const handleNextLine = () => {
+    if (char) {
+      const lvData = char.drunkLevels.find(l => l.level === drunkLevel);
+      if (lvData) {
+        setCurrentLine(randomPick(lvData.lines));
+      }
+    }
+  };
+
+  // blush opacity
+  const blushOpacity = drunkLevel >= 3 ? 0.8 : drunkLevel >= 2 ? 0.5 : drunkLevel >= 1 ? 0.25 : 0;
+
+  return (
+    <div className="screen active">
+      <div className="gallery-header">
+        <button className="back-btn" onClick={() => setScreen('title')}>← 戻る</button>
+        <h2>🖼️ ギャラリー</h2>
+      </div>
+
+      {/* タブ切替 */}
+      <div className="gallery-tabs">
+        <button
+          className={`gallery-tab ${activeTab === 'cg' ? 'active' : ''}`}
+          onClick={() => setActiveTab('cg')}
+        >
+          🖼️ CG
+        </button>
+        <button
+          className={`gallery-tab ${activeTab === 'portrait' ? 'active' : ''}`}
+          onClick={() => setActiveTab('portrait')}
+        >
+          👗 立ち絵
+        </button>
+      </div>
+
+      {/* CGタブ */}
+      {activeTab === 'cg' && (
+        <div className="gallery-tab-content active">
+          <span className="gallery-progress">
+            解放率: {unlockedCount}/{allCGs.length} ({allCGs.length > 0 ? Math.round(unlockedCount / allCGs.length * 100) : 0}%)
+          </span>
+          <div className="gallery-content">
+            {allCGs.map((cg) => {
+              const isUnlocked = unlockedCGs.includes(cg.id);
+              return (
+                <div
+                  key={cg.id}
+                  className={`gallery-item ${isUnlocked ? '' : 'locked'}`}
+                  onClick={() => {
+                    if (isUnlocked) {
+                      showCG(cg);
+                    }
+                  }}
+                >
+                  {isUnlocked ? (
+                    <>
+                      <span className="gallery-thumb">
+                        {cg.dialogue[0]?.speaker === 'ドクター' ? '💫' : cg.charName}
+                      </span>
+                      <span className="gallery-label">{cg.id.replace(/_/g, ' ')}</span>
+                    </>
+                  ) : (
+                    <span className="gallery-thumb">???</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 立ち絵タブ */}
+      {activeTab === 'portrait' && (
+        <div className="gallery-tab-content active">
+          <div className="portrait-view-layout">
+            {/* 左: キャラ選択リスト */}
+            <div className="portrait-char-list">
+              {characters.map((c) => (
+                <button
+                  key={c.id}
+                  className={`portrait-char-btn ${selectedChar === c.id ? 'active' : ''}`}
+                  onClick={() => handleCharSelect(c.id)}
+                >
+                  {c.theme.icon} {c.name}
+                </button>
+              ))}
+            </div>
+
+            {/* 右: 立ち絵表示エリア */}
+            {char && (
+              <div className="portrait-view-main">
+                <div className="portrait-sprite-area">
+                  <div className="portrait-sprite">{char.theme.icon}</div>
+                  <div className="portrait-blush" style={{ opacity: blushOpacity }}></div>
+                </div>
+                <div className="portrait-info">
+                  <h3 className="portrait-char-name">{char.name}</h3>
+                  <p className="portrait-char-subtitle">{char.subtitle}</p>
+                </div>
+                <div className="portrait-drunk-selector">
+                  {char.drunkLevels.map((lv) => (
+                    <button
+                      key={lv.level}
+                      className={`drunk-level-btn ${drunkLevel === lv.level ? 'active' : ''}`}
+                      onClick={() => handleDrunkLevel(lv.level)}
+                    >
+                      Lv.{lv.level} {lv.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="portrait-dialogue">
+                  <p className="portrait-line">{currentLine || char.drunkLevels[0].lines[0]}</p>
+                  <button className="portrait-next-line-btn" onClick={handleNextLine}>
+                    ↻ セリフ切替
+                  </button>
+                </div>
+                <div className="portrait-stats">
+                  <span>戦績: {wins}勝 {losses}敗</span>
+                  <span>CG: {char.cgEvents.filter(e => unlockedCGs.includes(e.id)).length}/{char.cgEvents.length}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
