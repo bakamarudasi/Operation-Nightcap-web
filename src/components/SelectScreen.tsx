@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import type { CharacterDef } from '../data/types.ts';
@@ -75,6 +75,9 @@ function playKanpaiSound() {
   });
 }
 
+/* ── フェーズ型 ── */
+type Phase = 'select' | 'noren-close' | 'vs' | 'noren-open' | 'kanpai' | 'noren-final';
+
 /* ── コンポーネント ── */
 export function SelectScreen() {
   const setScreen = useGameStore((s) => s.setScreen);
@@ -84,14 +87,16 @@ export function SelectScreen() {
   const losses = useGameStore((s) => s.losses);
   const unlockedCGs = useGameStore((s) => s.unlockedCGs);
 
-  const characters = Object.values(CHARACTER_DATA);
+  // Fix #3: useMemo でキャラ配列を安定化
+  const characters = useMemo(() => Object.values(CHARACTER_DATA), []);
   const charCount = characters.length;
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isAnim, setIsAnim] = useState(false);
+  const [moneyShake, setMoneyShake] = useState(false);
 
   // VS / Kanpai phase
-  const [phase, setPhase] = useState<'select' | 'noren-close' | 'vs' | 'noren-open' | 'kanpai' | 'noren-final'>('select');
+  const [phase, setPhase] = useState<Phase>('select');
   const [vsChar, setVsChar] = useState<CharacterDef | null>(null);
 
   // kanpai sub-states
@@ -125,8 +130,11 @@ export function SelectScreen() {
   /* ── 飲み開始演出 ── */
   const startDrink = useCallback(() => {
     if (isAnim || charCount === 0) return;
+    // Fix #4: 所持金不足時のビジュアルフィードバック
     if (money < DRINK_COST) {
       playErrSound();
+      setMoneyShake(true);
+      setTimeout(() => setMoneyShake(false), 500);
       return;
     }
     const char = characters[currentIdx];
@@ -181,6 +189,7 @@ export function SelectScreen() {
 
           // Final: transition to battle
           addTimer(() => {
+            // Fix #2: noren-final で暗転させてからバトルへ
             setPhase('noren-final');
             addTimer(() => {
               // reset everything
@@ -221,18 +230,27 @@ export function SelectScreen() {
     : 0;
   const cgTotal = currentChar?.cgEvents.length ?? 0;
 
+  /* ── セレクトUI表示条件 ── */
+  const showSelectContent = phase === 'select' || phase === 'noren-close' || phase === 'noren-final';
+
   /* ── render ── */
   return (
     <div className="screen sel-screen">
 
       {/* ====== SELECT UI ====== */}
-      {(phase === 'select' || phase === 'noren-close' || phase === 'noren-final') && (
+      {showSelectContent && (
         <div className="sel-content">
           {/* Header */}
           <div className="sel-header">
-            <button className="back-btn" onClick={() => setScreen('title')}>← 戻る</button>
+            <button
+              className="back-btn"
+              disabled={isAnim}
+              onClick={() => !isAnim && setScreen('title')}
+            >
+              ← 戻る
+            </button>
             <h2>対戦相手を選べ</h2>
-            <div className="sel-money">
+            <div className={`sel-money ${moneyShake ? 'shake' : ''}`}>
               <span className="sel-money-icon">龍</span>
               <span>{money.toLocaleString()} 龍門幣</span>
             </div>
@@ -329,8 +347,14 @@ export function SelectScreen() {
       )}
 
       {/* ====== NOREN (curtain) ====== */}
+      {/* Fix #1: pointer-events:auto でクリック透過を防止 */}
+      {/* Fix #2: noren-final は閉じた状態で開始 (closed-instant) */}
       {(phase === 'noren-close' || phase === 'noren-open' || phase === 'noren-final') && (
-        <div className={`sel-noren ${phase === 'noren-close' || phase === 'noren-final' ? 'closing' : 'opening'}`}>
+        <div className={`sel-noren ${
+          phase === 'noren-close' ? 'closing' :
+          phase === 'noren-final' ? 'closed-instant' :
+          'opening'
+        }`}>
           <div className="sel-noren-half sel-noren-left">
             <span className="sel-noren-kanji">酒</span>
           </div>
@@ -357,7 +381,7 @@ export function SelectScreen() {
       )}
 
       {/* ====== KANPAI ====== */}
-      {phase === 'kanpai' && vsChar && (
+      {(phase === 'kanpai' || phase === 'noren-final') && vsChar && (
         <div className="sel-kanpai">
           {/* cups */}
           <div className="sel-kanpai-cups">

@@ -46,6 +46,20 @@
   color: var(--gold);
 }
 
+/* Fix #4: 所持金不足時のシェイクアニメーション */
+.sel-money.shake {
+  animation: moneyShake 0.4s ease;
+  color: var(--lantern-bright);
+}
+
+@keyframes moneyShake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
 .sel-money-icon {
   display: flex;
   align-items: center;
@@ -307,12 +321,13 @@
 /* ============================================
    NOREN (curtain transition)
    ============================================ */
+/* Fix #1: pointer-events:auto で背後のボタンへのクリック透過を防止 */
 .sel-noren {
   position: absolute;
   inset: 0;
   z-index: 50;
   display: flex;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .sel-noren-half {
@@ -355,6 +370,12 @@
 }
 .sel-noren.closing .sel-noren-right {
   animation: norenCloseRight 0.5s ease-in forwards;
+}
+
+/* Fix #2: closed-instant — アニメなしで閉じた状態を即表示 (kanpai→battle 遷移用) */
+.sel-noren.closed-instant .sel-noren-left,
+.sel-noren.closed-instant .sel-noren-right {
+  transform: translateX(0);
 }
 
 /* Opening: slide out to sides */
