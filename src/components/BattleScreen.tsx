@@ -1,13 +1,67 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
-import { Card, CardBack } from './Card.tsx';
 import { randomPick } from '../engine/utils.ts';
+
+// 酔い段階
+const DRUNK_STAGES = [
+  { max: 0, text: 'シラフ',   cls: 'drunk-sober' },
+  { max: 1, text: 'ほろ酔い', cls: 'drunk-tipsy' },
+  { max: 3, text: '酔い',     cls: 'drunk-good' },
+  { max: 6, text: 'べろべろ', cls: 'drunk-done' },
+  { max: 9, text: '泥酔',     cls: 'drunk-wasted' },
+  { max: 10, text: '潰れ',    cls: 'drunk-gone' },
+];
+
+function getDrunkStage(value: number) {
+  for (const s of DRUNK_STAGES) {
+    if (value <= s.max) return s;
+  }
+  return DRUNK_STAGES[DRUNK_STAGES.length - 1];
+}
+
+// 効果音
+function playSound(type: 'slam' | 'flip') {
+  try {
+    const x = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (type === 'slam') {
+      const o = x.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(180, x.currentTime);
+      o.frequency.exponentialRampToValueAtTime(50, x.currentTime + 0.15);
+      const g = x.createGain();
+      g.gain.setValueAtTime(0.12, x.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, x.currentTime + 0.2);
+      o.connect(g); g.connect(x.destination);
+      o.start(); o.stop(x.currentTime + 0.2);
+      const b = x.createBuffer(1, x.sampleRate * 0.08, x.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.15));
+      const n = x.createBufferSource();
+      n.buffer = b;
+      const ng = x.createGain();
+      ng.gain.value = 0.08;
+      n.connect(ng); ng.connect(x.destination);
+      n.start();
+    } else if (type === 'flip') {
+      const o = x.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = 2000;
+      const g = x.createGain();
+      g.gain.setValueAtTime(0.04, x.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, x.currentTime + 0.12);
+      o.connect(g); g.connect(x.destination);
+      o.start(); o.stop(x.currentTime + 0.12);
+    }
+  } catch (_) { /* ignore */ }
+}
 
 export function BattleScreen() {
   const battle = useGameStore((s) => s.battle);
   const currentOpponent = useGameStore((s) => s.currentOpponent);
   const money = useGameStore((s) => s.money);
+  const wins = useGameStore((s) => s.wins);
+  const losses = useGameStore((s) => s.losses);
   const drawHands = useGameStore((s) => s.drawHands);
   const selectCard = useGameStore((s) => s.selectCard);
   const playRound = useGameStore((s) => s.playRound);
@@ -18,9 +72,28 @@ export function BattleScreen() {
   const getDrunkLevel = useGameStore((s) => s.getDrunkLevel);
 
   const [dialogue, setDialogue] = useState({ speaker: '', text: '' });
-  const [tableCards, setTableCards] = useState<{ player: string | null; opponent: string | null }>({ player: null, opponent: null });
+  const [displayText, setDisplayText] = useState('');
+  const [tableCards, setTableCards] = useState<{
+    player: { id: string; emoji: string; name: string; val: string } | null;
+    opponent: { id: string; emoji: string; name: string; val: string } | null;
+  }>({ player: null, opponent: null });
+  const [playerFlipped, setPlayerFlipped] = useState(false);
+  const [oppFlipped, setOppFlipped] = useState(false);
   const [gameResult, setGameResult] = useState<'player_win' | 'opponent_win' | 'draw' | null>(null);
   const [resultReward, setResultReward] = useState(0);
+  const [reaction, setReaction] = useState<string | null>(null);
+  const [fieldShaking, setFieldShaking] = useState(false);
+  const [slamPlayer, setSlamPlayer] = useState(false);
+  const [slamOpp, setSlamOpp] = useState(false);
+
+  const [playingCardIdx, setPlayingCardIdx] = useState<number | null>(null);
+  const [lastRound, setLastRound] = useState<{ pl: string; op: string; res: string; resColor: string }>({
+    pl: '-', op: '-', res: '-', resColor: 'var(--gold)'
+  });
+
+  const fieldRef = useRef<HTMLDivElement>(null);
+  const tiltRef = useRef<HTMLDivElement>(null);
+  const blurRef = useRef<HTMLDivElement>(null);
 
   // 最初の手札を配る
   useEffect(() => {
@@ -33,82 +106,186 @@ export function BattleScreen() {
     }
   }, []);
 
+  // タイピングエフェクト
+  useEffect(() => {
+    if (!dialogue.text) { setDisplayText(''); return; }
+    let i = 0;
+    setDisplayText('');
+    const timer = setInterval(() => {
+      if (i < dialogue.text.length) {
+        setDisplayText(dialogue.text.substring(0, i + 1));
+        i++;
+      } else {
+        clearInterval(timer);
+      }
+    }, 30);
+    return () => clearInterval(timer);
+  }, [dialogue.text]);
+
+  // 酔い演出更新
+  useEffect(() => {
+    if (blurRef.current) {
+      const blur = Math.min(battle.playerDrunk / 10 * 4, 4);
+      blurRef.current.style.backdropFilter = `blur(${blur}px)`;
+    }
+    if (tiltRef.current) {
+      const tilt = (Math.random() - 0.5) * Math.min(battle.playerDrunk / 10 * 3, 3);
+      tiltRef.current.style.transform = `rotate(${tilt}deg)`;
+    }
+  }, [battle.playerDrunk]);
+
   const opponentDrunkLevel = getDrunkLevel(battle.opponentDrunk);
   const playerDrunkLevel = getDrunkLevel(battle.playerDrunk);
 
+  const oppDrunkStage = getDrunkStage(battle.opponentDrunk);
+  const plDrunkStage = getDrunkStage(battle.playerDrunk);
+
   const drunkClassName = (level: number) => level > 0 ? `drunk-${level}` : '';
 
-  const getDrunkLevelInfo = (drunkValue: number) => {
-    const level = getDrunkLevel(drunkValue);
-    if (!currentOpponent) return { name: '', level };
-    const data = currentOpponent.drunkLevels.find(l => l.level === level);
-    return data || { name: '???', level };
-  };
+  const oppFlush = useMemo(() => {
+    const f = Math.min(battle.opponentDrunk / 10 * 0.3, 0.3);
+    return `radial-gradient(circle at 50% 45%, rgba(200, 40, 40, ${f}), transparent 70%)`;
+  }, [battle.opponentDrunk]);
 
-  const handleCardClick = (cardId: string) => {
-    if (battle.isProcessing || gameResult) return;
+  const handleCardClick = (cardId: string, idx: number) => {
+    if (battle.isProcessing || gameResult || playingCardIdx !== null) return;
     selectCard(cardId);
+    setPlayingCardIdx(idx);
   };
 
   const handlePlayCard = useCallback(() => {
     if (!battle.selectedCard || battle.isProcessing || gameResult) return;
 
     const selectedId = battle.selectedCard;
+    const pCard = CARD_DATA[selectedId];
     const result = playRound();
     if (!result) return;
 
-    // テーブルにカード表示
-    setTableCards({ player: selectedId, opponent: result.messages.length > 0 ? 'shown' : null });
-
-    // セリフ
-    if (result.messages.length > 0) {
-      setDialogue({ speaker: '', text: result.messages.join(' / ') });
+    // プレイヤーカードをフィールドに表示
+    if (pCard) {
+      const val = pCard.type === 'food' ? (pCard.heal === 99 ? '+MAX' : `+${pCard.heal ?? 0}`) :
+                  pCard.type === 'drink' ? `${pCard.damage === -1 ? '1~3' : pCard.damage}` :
+                  '';
+      setTableCards(prev => ({
+        ...prev,
+        player: { id: selectedId, emoji: pCard.emoji, name: pCard.name, val }
+      }));
+      setPlayerFlipped(true);
+      setSlamPlayer(true);
+      playSound('slam');
+      setFieldShaking(true);
+      setTimeout(() => { setSlamPlayer(false); setFieldShaking(false); }, 400);
     }
 
-    // CG
-    if (result.cgEvent) {
-      setTimeout(() => {
-        showCG(result.cgEvent!);
-      }, 1500);
-    }
-
-    // 即勝利
-    if (result.instantWin) {
-      setTimeout(() => {
-        const reward = 500;
-        endBattle('player_win');
-        setResultReward(reward);
-        setGameResult('player_win');
-      }, result.cgEvent ? 5000 : 2000);
-      return;
-    }
-
-    // 勝敗チェック
+    // 相手カードを少し遅れて表示
     setTimeout(() => {
-      const end = checkGameEnd();
-      if (end) {
-        const b = useGameStore.getState().battle;
-        const reward = end === 'player_win' ? (b.playerDrunk === 0 ? 800 : 500) :
-                       end === 'opponent_win' ? 100 : 200;
-        endBattle(end);
-        setResultReward(reward);
-        setGameResult(end);
-      } else {
-        // 次のラウンド
-        setTableCards({ player: null, opponent: null });
-        drawHands();
-
-        // 相手のセリフ更新
-        const state = useGameStore.getState();
-        if (state.currentOpponent) {
-          const lvl = getDrunkLevel(state.battle.opponentDrunk);
-          const levelData = state.currentOpponent.drunkLevels.find(l => l.level === lvl);
-          if (levelData) {
-            setDialogue({ speaker: state.currentOpponent.name, text: randomPick(levelData.lines) });
-          }
+      // 相手のカードIDをメッセージから推測（または直接取得）
+      const state = useGameStore.getState();
+      const oppHand = state.battle.opponentHand;
+      // playRoundで既に処理済みなのでメッセージからカード情報を取得
+      // 結果メッセージを解析して相手カードを特定
+      const msgs = result.messages;
+      // 相手カードの情報はメッセージに含まれるが、直接的な方法として
+      // 全カードから探す
+      let oppCardInfo: { emoji: string; name: string; val: string } | null = null;
+      for (const [, card] of Object.entries(CARD_DATA)) {
+        if (msgs.some(m => m.includes(card.name))) {
+          const v = card.type === 'food' ? (card.heal === 99 ? '+MAX' : `+${card.heal ?? 0}`) :
+                    card.type === 'drink' ? `${card.damage === -1 ? '?' : card.damage}` : '';
+          oppCardInfo = { emoji: card.emoji, name: card.name, val: v };
+          break;
         }
       }
-    }, 2000);
+
+      if (oppCardInfo) {
+        setTableCards(prev => ({ ...prev, opponent: { id: '', ...oppCardInfo! } }));
+      }
+
+      setSlamOpp(true);
+      playSound('slam');
+      setTimeout(() => setSlamOpp(false), 400);
+
+      // 相手カードフリップ
+      setTimeout(() => {
+        setOppFlipped(true);
+        playSound('flip');
+
+        // 結果表示
+        setTimeout(() => {
+          // セリフ
+          if (result.messages.length > 0) {
+            setDialogue({ speaker: currentOpponent?.name ?? '', text: result.messages.join(' / ') });
+          }
+
+          // リアクション
+          const isPlayerWin = result.messages.some(m => m.includes('酔い+') || m.includes('ダメージ'));
+          if (isPlayerWin) {
+            setReaction('😵');
+          } else {
+            setReaction('😏');
+          }
+          setTimeout(() => setReaction(null), 2000);
+
+          // CG
+          if (result.cgEvent) {
+            setTimeout(() => { showCG(result.cgEvent!); }, 1000);
+          }
+
+          // 即勝利
+          if (result.instantWin) {
+            setTimeout(() => {
+              const reward = 500;
+              endBattle('player_win');
+              setResultReward(reward);
+              setGameResult('player_win');
+            }, result.cgEvent ? 5000 : 2000);
+            return;
+          }
+
+          // 勝敗チェック
+          setTimeout(() => {
+            const end = checkGameEnd();
+            if (end) {
+              const b = useGameStore.getState().battle;
+              const reward = end === 'player_win' ? (b.playerDrunk === 0 ? 800 : 500) :
+                             end === 'opponent_win' ? 100 : 200;
+              endBattle(end);
+              setResultReward(reward);
+              setGameResult(end);
+            } else {
+              // 直前のラウンド記録
+              const pc = pCard;
+              if (pc && oppCardInfo) {
+                const isWin = result.messages.some(m => m.includes('酔い+'));
+                setLastRound({
+                  pl: `${pc.emoji} ${pc.name}`,
+                  op: `${oppCardInfo.emoji} ${oppCardInfo.name}`,
+                  res: isWin ? '勝ち' : '負け',
+                  resColor: isWin ? '#8bc98b' : '#c98b8b'
+                });
+              }
+
+              // リセットして次のラウンド
+              setTableCards({ player: null, opponent: null });
+              setPlayerFlipped(false);
+              setOppFlipped(false);
+              setPlayingCardIdx(null);
+              drawHands();
+
+              // 相手のセリフ更新
+              const s = useGameStore.getState();
+              if (s.currentOpponent) {
+                const lvl = getDrunkLevel(s.battle.opponentDrunk);
+                const levelData = s.currentOpponent.drunkLevels.find(l => l.level === lvl);
+                if (levelData) {
+                  setDialogue({ speaker: s.currentOpponent.name, text: randomPick(levelData.lines) });
+                }
+              }
+            }
+          }, 1500);
+        }, 400);
+      }, 400);
+    }, 800);
   }, [battle.selectedCard, battle.isProcessing, gameResult]);
 
   // カード選択後に自動で出す
@@ -121,101 +298,270 @@ export function BattleScreen() {
 
   if (!currentOpponent) return null;
 
+  const charGlow = currentOpponent.theme.colorGlow;
+
   return (
-    <div className="screen active">
-      {/* ヘッダー */}
-      <div className="battle-header">
-        <span className="battle-bar-name">ロドスバー</span>
-        <span className="round-display">R.{battle.round}/{battle.maxRounds}</span>
-        <span className="battle-money">💰 {money}</span>
-      </div>
+    <div className="screen active" style={{ position: 'relative' }}>
+      {/* 背景レイヤー */}
+      <div className="battle-bg-layer battle-bg-gradient" />
+      <div className="battle-bg-layer battle-bg-noise" />
+      <div className="battle-bg-layer battle-bg-table" />
 
-      {/* メインエリア */}
-      <div className="battle-main">
-        {/* 左: 相手キャラ */}
-        <div className="battle-left">
-          <div className="opponent-area">
-            <div className={`character-sprite ${drunkClassName(opponentDrunkLevel)}`}>
-              {currentOpponent.theme.icon}
-            </div>
-            <div className="opponent-name">{currentOpponent.name}</div>
-          </div>
-        </div>
+      {/* 酔いブラー */}
+      <div className="battle-drunk-blur" ref={blurRef} />
 
-        {/* 中央 */}
-        <div className="battle-center">
-          {/* 相手の酔いゲージ */}
-          <div className="gauge-area">
-            <div className="gauge-label">相手の酔い</div>
-            <div className="drunk-gauge">
-              <div
-                className="drunk-gauge-fill"
-                style={{ width: `${(battle.opponentDrunk / 10) * 100}%` }}
-              ></div>
-            </div>
-            <div className="gauge-text">
-              Lv.{opponentDrunkLevel} {getDrunkLevelInfo(battle.opponentDrunk).name} ({battle.opponentDrunk}/10)
-            </div>
-          </div>
-
-          {/* テーブルエリア */}
-          <div className="table-area">
-            <div className="card-slot opponent-slot">
-              {tableCards.opponent ? (
-                <CardBack />
-              ) : (
-                <CardBack />
-              )}
-            </div>
-            <div className="vs-text">VS</div>
-            <div className="card-slot player-slot">
-              {tableCards.player ? (
-                <Card cardId={tableCards.player} size="table" />
-              ) : (
-                <CardBack />
-              )}
-            </div>
-          </div>
-
-          {/* セリフ */}
-          <div className="dialogue-area">
-            {dialogue.speaker && (
-              <span className="dialogue-speaker">{dialogue.speaker}:</span>
-            )}
-            <span className="dialogue-text">{dialogue.text}</span>
-          </div>
-
-          {/* プレイヤーの酔いゲージ */}
-          <div className="gauge-area player-gauge-area">
-            <div className="gauge-label">ドクターの酔い</div>
-            <div className="drunk-gauge">
-              <div
-                className="drunk-gauge-fill"
-                style={{ width: `${(battle.playerDrunk / 10) * 100}%` }}
-              ></div>
-            </div>
-            <div className="gauge-text">
-              Lv.{playerDrunkLevel} ({battle.playerDrunk}/10)
-            </div>
-          </div>
-        </div>
-
-        {/* 右: デッキ情報 */}
-        <div className="battle-right">
-          <div className="deck-count">残りデッキ: {battle.playerDeckRemaining.length}枚</div>
-        </div>
-      </div>
-
-      {/* 手札エリア */}
-      <div className="hand-area">
-        {battle.playerHand.map((cardId, i) => (
-          <Card
-            key={`${cardId}-${i}`}
-            cardId={cardId}
-            selected={battle.selectedCard === cardId}
-            onClick={() => handleCardClick(cardId)}
+      {/* パーティクル */}
+      <div className="battle-particles">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div
+            key={i}
+            className="battle-particle"
+            style={{
+              left: `${Math.random() * 100}%`,
+              bottom: '-10px',
+              animationDuration: `${10 + Math.random() * 15}s`,
+              animationDelay: `${Math.random() * 10}s`,
+            }}
           />
         ))}
+      </div>
+
+      {/* 酔い傾きラッパー */}
+      <div className="battle-tilt-wrapper" ref={tiltRef}>
+        {/* ヘッダー */}
+        <div className="battle-header">
+          <div className="battle-bar-name">ロドスバー</div>
+          <div className="battle-header-center">
+            <div className="round-display">R.{battle.round}/{battle.maxRounds}</div>
+          </div>
+          <div className="battle-money">
+            <div className="battle-money-icon">龍</div>
+            <span>{money.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {/* メインレイアウト */}
+        <div className="battle-main">
+          {/* 左: キャラクター立ち絵 */}
+          <div className="battle-left" style={{ '--char-glow': charGlow } as React.CSSProperties}>
+            <div className={`char-portrait ${drunkClassName(opponentDrunkLevel)}`}>
+              <div className="char-portrait-flush" style={{ background: oppFlush }} />
+              <div className="char-portrait-icon">{currentOpponent.theme.icon}</div>
+              <div className={`char-reaction ${reaction ? 'show' : ''}`}>{reaction}</div>
+            </div>
+            <div className="char-info">
+              <div className="char-name">{currentOpponent.name}</div>
+              <div className="char-subtitle">{currentOpponent.subtitle}</div>
+              <div className={`char-drunk-label ${oppDrunkStage.cls}`}>
+                {oppDrunkStage.text}
+              </div>
+            </div>
+          </div>
+
+          {/* 中央: ゲームエリア */}
+          <div className="battle-center">
+            {/* 相手バー */}
+            <div className="opponent-bar">
+              <div className="opp-portrait-mini">{currentOpponent.theme.icon}</div>
+              <div className="opp-info">
+                <div className="opp-name-row">
+                  <div className="opp-name">{currentOpponent.name}</div>
+                  <div className="opp-title">{currentOpponent.subtitle}</div>
+                </div>
+                <div className="gauge-row">
+                  <div className="gauge-label-sm">酔い</div>
+                  <div className="gauge-track">
+                    <div
+                      className="gauge-fill opp-fill"
+                      style={{ width: `${(battle.opponentDrunk / 10) * 100}%` }}
+                    />
+                  </div>
+                  <div className="gauge-lvl">
+                    <span className="lvl-t">{oppDrunkStage.text}</span>
+                    <span className="lvl-n">({battle.opponentDrunk}/10)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* フィールド */}
+            <div className="battle-field">
+              <div className={`field-table ${fieldShaking ? 'field-shaking' : ''}`} ref={fieldRef}>
+                <div className="card-slots">
+                  {/* 相手カード */}
+                  <div className={`card-slot ${slamOpp ? 'card-slam' : ''}`}>
+                    <div className={`card-3d ${oppFlipped ? 'flipped' : ''}`}>
+                      <div className="card-3d-face card-3d-back">
+                        <div className="card-back-pattern wave" />
+                        <div className="card-back-frame" />
+                        <div className="card-back-q">？</div>
+                      </div>
+                      <div className="card-3d-face card-3d-front">
+                        <div className="card-front-content">
+                          <div className="card-front-icon">{tableCards.opponent?.emoji ?? ''}</div>
+                          <div className="card-front-name">{tableCards.opponent?.name ?? ''}</div>
+                          <div className="card-front-val">{tableCards.opponent?.val ?? ''}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="vs-badge">VS</div>
+
+                  {/* プレイヤーカード */}
+                  <div className={`card-slot ${slamPlayer ? 'card-slam' : ''}`}>
+                    <div className={`card-3d ${playerFlipped ? 'flipped' : ''}`}>
+                      <div className="card-3d-face card-3d-back">
+                        <div className="card-back-pattern check" />
+                        <div className="card-back-frame" />
+                        <div className="card-back-q">？</div>
+                      </div>
+                      <div className="card-3d-face card-3d-front">
+                        <div className="card-front-content">
+                          <div className="card-front-icon">{tableCards.player?.emoji ?? ''}</div>
+                          <div className="card-front-name">{tableCards.player?.name ?? ''}</div>
+                          <div className="card-front-val">{tableCards.player?.val ?? ''}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* セリフ */}
+            <div className="dialogue-area">
+              <div className="dialogue-bar">
+                <div className="dlg-name">{dialogue.speaker ? `${dialogue.speaker}：` : ''}</div>
+                <div className="dlg-text">{displayText}</div>
+              </div>
+            </div>
+
+            {/* プレイヤーゲージ */}
+            <div className="player-gauge-row gauge-row">
+              <div className="gauge-label-sm">ドクターの酔い</div>
+              <div className="gauge-track">
+                <div
+                  className="gauge-fill player-fill"
+                  style={{ width: `${(battle.playerDrunk / 10) * 100}%` }}
+                />
+              </div>
+              <div className="gauge-lvl">
+                <span className="lvl-t">{plDrunkStage.text}</span>
+                <span className="lvl-n">({battle.playerDrunk}/10)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 右: ステータスパネル */}
+          <div className="status-panel">
+            <div className="panel-section">
+              <div className="panel-label">ドクター状態</div>
+              <div className={`char-drunk-label ${plDrunkStage.cls}`} style={{ textAlign: 'center', padding: '8px', background: 'rgba(30,18,10,0.4)', borderRadius: '6px', border: '1px solid rgba(80,50,25,0.2)' }}>
+                {plDrunkStage.text}
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <div className="panel-label">酔いレベル</div>
+              <div className="panel-gauge-mini">
+                <div className="panel-gauge-label">
+                  <span className="lbl">酔い度</span>
+                  <span className="val">{battle.playerDrunk} / 10</span>
+                </div>
+                <div className="panel-gauge-track">
+                  <div
+                    className="panel-gauge-fill pl-fill"
+                    style={{ width: `${(battle.playerDrunk / 10) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <div className="panel-label">戦績</div>
+              <div className="panel-record">
+                <div className="panel-record-item">
+                  <span className="panel-record-num win-c">{wins}</span>
+                  <span className="panel-record-label">勝ち</span>
+                </div>
+                <div className="panel-record-item">
+                  <span className="panel-record-num lose-c">{losses}</span>
+                  <span className="panel-record-label">負け</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <div className="panel-label">デッキ</div>
+              <div className="panel-deck">
+                <div className="panel-deck-icon">🃏</div>
+                <div className="panel-deck-info">
+                  <div className="panel-deck-label">残りカード</div>
+                  <div className="panel-deck-num">{battle.playerDeckRemaining.length}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <div className="panel-label">相手デッキ</div>
+              <div className="panel-deck">
+                <div className="panel-deck-icon">🎴</div>
+                <div className="panel-deck-info">
+                  <div className="panel-deck-label">残りカード</div>
+                  <div className="panel-deck-num">{battle.opponentDeckRemaining.length}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <div className="panel-label">直前のラウンド</div>
+              <div className="panel-stat">
+                <div className="panel-stat-name">自分</div>
+                <div className="panel-stat-val">{lastRound.pl}</div>
+              </div>
+              <div className="panel-stat">
+                <div className="panel-stat-name">相手</div>
+                <div className="panel-stat-val">{lastRound.op}</div>
+              </div>
+              <div className="panel-stat">
+                <div className="panel-stat-name">結果</div>
+                <div className="panel-stat-val" style={{ color: lastRound.resColor }}>{lastRound.res}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 手札エリア */}
+        <div className="hand-area">
+          {battle.playerHand.map((cardId, i) => {
+            const card = CARD_DATA[cardId];
+            if (!card) return null;
+            const isPlaying = playingCardIdx === i;
+            const isDisabled = (battle.isProcessing || playingCardIdx !== null) && !isPlaying;
+            const isSelected = battle.selectedCard === cardId && !isPlaying;
+            const valText = card.type === 'food' ? (card.heal === 99 ? 'MAX回復' : `回復 ${card.heal}`) :
+                            card.type === 'drink' ? (card.damage === -1 ? '1~3' : `${card.damage}`) :
+                            card.type === 'chug' ? '特殊' :
+                            card.type === 'harassment' ? '特殊' : '';
+
+            return (
+              <div
+                key={`${cardId}-${i}`}
+                className={`hand-card type-${card.type} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${isDisabled ? 'disabled' : ''}`}
+                onClick={() => handleCardClick(cardId, i)}
+              >
+                <div className="hand-tooltip">
+                  <div className="tooltip-name">{card.name}</div>
+                  <div className="tooltip-desc">{card.description}</div>
+                </div>
+                <div className="hand-icon">{card.emoji}</div>
+                <div className="hand-name">{card.name}</div>
+                <div className="hand-val">{valText}</div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* 勝敗リザルト */}
@@ -223,8 +569,8 @@ export function BattleScreen() {
         <div className="battle-result">
           <div className="result-content">
             <h2>
-              {gameResult === 'player_win' ? '🏆 勝利！' :
-               gameResult === 'opponent_win' ? '💀 敗北…' : '🤝 引き分け'}
+              {gameResult === 'player_win' ? '勝利！' :
+               gameResult === 'opponent_win' ? '敗北…' : '引き分け'}
             </h2>
             <p>
               {gameResult === 'player_win'
@@ -233,7 +579,7 @@ export function BattleScreen() {
                 ? currentOpponent.battleLines.winLine
                 : 'いい勝負だった…'}
             </p>
-            <div id="result-reward">+{resultReward} 龍門幣</div>
+            <div className="result-reward">+{resultReward} 龍門幣</div>
             <button className="menu-btn" onClick={() => setScreen('title')}>
               店に戻る
             </button>
