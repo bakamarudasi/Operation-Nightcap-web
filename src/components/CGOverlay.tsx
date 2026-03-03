@@ -10,9 +10,15 @@ export function CGOverlay() {
 
   const [displayText, setDisplayText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const typeIntervalRef = useRef<number | null>(null);
 
   const currentLine = activeCG?.dialogue[cgDialogueIndex];
+
+  // 画像の読み込み状態をCG切り替え時にリセット
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [activeCG?.id]);
 
   useEffect(() => {
     if (!currentLine) return;
@@ -72,12 +78,33 @@ export function CGOverlay() {
             background: `linear-gradient(135deg, ${activeCG.cgColor}44, ${activeCG.cgColor}88)`,
           }}
         >
-          <div className="cg-placeholder">
-            <div className="cg-placeholder-emoji" style={{ fontSize: '80px' }}>{eventEmoji}</div>
-            <div className="cg-placeholder-text" style={{ fontSize: '16px', color: '#f5e6d3', marginTop: '16px' }}>
-              {activeCG.id.replace(/_/g, ' ').toUpperCase()}
+          {activeCG.image ? (
+            <>
+              <img
+                src={activeCG.image}
+                alt={activeCG.id}
+                className="cg-actual-image"
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setImageLoaded(false)}
+                style={{ display: imageLoaded ? 'block' : 'none' }}
+              />
+              {!imageLoaded && (
+                <div className="cg-placeholder">
+                  <div className="cg-placeholder-emoji" style={{ fontSize: '80px' }}>{eventEmoji}</div>
+                  <div className="cg-placeholder-text" style={{ fontSize: '16px', color: '#f5e6d3', marginTop: '16px' }}>
+                    {activeCG.id.replace(/_/g, ' ').toUpperCase()}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="cg-placeholder">
+              <div className="cg-placeholder-emoji" style={{ fontSize: '80px' }}>{eventEmoji}</div>
+              <div className="cg-placeholder-text" style={{ fontSize: '16px', color: '#f5e6d3', marginTop: '16px' }}>
+                {activeCG.id.replace(/_/g, ' ').toUpperCase()}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
       <div className="cg-textbox">

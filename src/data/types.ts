@@ -34,6 +34,7 @@ export interface CGEvent {
   requiredDrunkLevel: number;
   cgColor: string;
   instantWin?: boolean;
+  image?: string;
   dialogue: CGDialogueLine[];
 }
 
