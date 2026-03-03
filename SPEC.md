@@ -366,6 +366,7 @@ export const TitleScreen = () => {
       <button onClick={() => setScreen('select')}>🍷 対戦する</button>
       <button onClick={() => setScreen('shop')}>🏪 ショップ</button>
       <button onClick={() => setScreen('gallery')}>🖼️ CGギャラリー</button>
+      <button onClick={() => setScreen('settings')}>⚙️ 設定</button>
       <div>💰 {money} 龍門幣</div>
     </div>
   );
@@ -520,16 +521,16 @@ interface HandAreaProps {
   │  Title   │ ← currentScreen で切替（React の条件レンダリング）
   └────┬─────┘
        │
-  ┌────┴──────┬──────────┐
-  ▼           ▼          ▼
-┌──────┐  ┌──────┐  ┌────────┐
-│Select│  │ Shop │  │Gallery │
-└──┬───┘  └──────┘  └────────┘
-   │
-   ▼
-┌──────┐
-│Battle│ → 勝敗結果 → Title に戻る
-└──────┘
+  ┌────┴──────┬──────────┬──────────┐
+  ▼           ▼          ▼          ▼
+┌──────┐  ┌──────┐  ┌────────┐  ┌──────────┐
+│Select│  │ Shop │  │Gallery │  │ Settings │
+└──┬───┘  └──────┘  └────────┘  └────┬─────┘
+   │                                  │
+   ▼                                  ▼
+┌──────┐                       ┌───────────┐
+│Battle│→勝敗結果→Titleへ      │PortraitView│ ← 立ち絵鑑賞
+└──────┘                       └───────────┘
 ```
 
 ```tsx
@@ -539,11 +540,13 @@ export const App = () => {
 
   return (
     <AnimatePresence mode="wait">
-      {screen === 'title'   && <TitleScreen   key="title" />}
-      {screen === 'select'  && <SelectScreen  key="select" />}
-      {screen === 'battle'  && <BattleScreen  key="battle" />}
-      {screen === 'shop'    && <ShopScreen    key="shop" />}
-      {screen === 'gallery' && <GalleryScreen key="gallery" />}
+      {screen === 'title'        && <TitleScreen       key="title" />}
+      {screen === 'select'       && <SelectScreen      key="select" />}
+      {screen === 'battle'       && <BattleScreen      key="battle" />}
+      {screen === 'shop'         && <ShopScreen        key="shop" />}
+      {screen === 'gallery'      && <GalleryScreen     key="gallery" />}
+      {screen === 'settings'     && <SettingsScreen    key="settings" />}
+      {screen === 'portraitView' && <PortraitViewScreen key="portraitView" />}
     </AnimatePresence>
   );
 };
@@ -1559,6 +1562,311 @@ CGギャラリーでも同じ `CGOverlay` コンポーネントを再利用す�
   themeColor={...}
   onClose={() => setSelectedCG(null)}  // ギャラリーに戻る
 />
+```
+
+---
+
+## 設定画面（SettingsScreen）
+
+タイトル画面から「⚙️ 設定」で遷移。
+音量・テキスト速度などの基本設定に加え、**立ち絵鑑賞モード**への入口を持つ。
+
+### レイアウト
+
+```
+┌─────────────────────────────────────────────┐
+│ ← 戻る          ⚙️ 設 定                    │
+├─────────────────────────────────────────────┤
+│                                             │
+│  🔊 BGM 音量   ──●──────────── 80%          │
+│                                             │
+│  🔉 SE 音量    ──────●──────── 60%          │
+│                                             │
+│  💬 テキスト速度 ────●─────── ふつう         │
+│     （はやい ← → おそい）                    │
+│                                             │
+├─────────────────────────────────────────────┤
+│                                             │
+│  👗 立ち絵鑑賞   →                           │
+│  解放したキャラの立ち絵を酔い段階ごとに       │
+│  自由に眺められるモード                       │
+│                                             │
+├─────────────────────────────────────────────┤
+│                                             │
+│  🗑️ データリセット                           │
+│  （確認ダイアログ付き）                       │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+### 型定義の拡張
+
+```ts
+// useGameStore の currentScreen に追加
+type ScreenId =
+  | 'title' | 'select' | 'battle' | 'shop' | 'gallery'
+  | 'settings'      // ← 追加
+  | 'portraitView';  // ← 追加
+```
+
+### SettingsScreen コンポーネント
+
+```tsx
+export const SettingsScreen = () => {
+  const setScreen = useGameStore((s) => s.setScreen);
+  const { bgmVolume, seVolume, textSpeed, setBgmVolume, setSeVolume, setTextSpeed } =
+    useSettingsStore();
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <button onClick={() => setScreen('title')}>← 戻る</button>
+        <h2>⚙️ 設定</h2>
+      </div>
+
+      <div className={styles.section}>
+        <label>🔊 BGM 音量</label>
+        <input type="range" min={0} max={1} step={0.05}
+               value={bgmVolume} onChange={e => setBgmVolume(+e.target.value)} />
+
+        <label>🔉 SE 音量</label>
+        <input type="range" min={0} max={1} step={0.05}
+               value={seVolume} onChange={e => setSeVolume(+e.target.value)} />
+
+        <label>💬 テキスト速度</label>
+        <input type="range" min={10} max={80} step={5}
+               value={textSpeed} onChange={e => setTextSpeed(+e.target.value)} />
+        <span>{textSpeed <= 20 ? 'はやい' : textSpeed <= 40 ? 'ふつう' : 'おそい'}</span>
+      </div>
+
+      <div className={styles.section}>
+        <button className={styles.portraitBtn} onClick={() => setScreen('portraitView')}>
+          👗 立ち絵鑑賞 →
+        </button>
+        <p className={styles.hint}>キャラの立ち絵を酔い段階ごとに自由に眺められます</p>
+      </div>
+
+      <div className={styles.section}>
+        <button className={styles.dangerBtn} onClick={handleReset}>
+          🗑️ データリセット
+        </button>
+      </div>
+    </div>
+  );
+};
+```
+
+---
+
+## 立ち絵鑑賞モード（PortraitViewScreen）
+
+設定画面から「👗 立ち絵鑑賞」で遷移。
+解放済みキャラの立ち絵を好きな酔いレベルで鑑賞できる。
+酔い演出（頬赤み・揺れ・服の乱れ）がリアルタイムで適用される。
+
+### 解放条件
+
+- **キャラ自体の解放**: そのキャラに1回以上勝利するとアンロック
+- **酔いLv差分の解放**: バトル中にそのLvまで酔わせたことがあればアンロック
+
+```ts
+// useGameStore への追加
+interface GameStore {
+  // ... 既存 ...
+  /** キャラ別: 到達したことのある最大酔いLv */
+  maxDrunkReached: Record<CharacterId, number>;
+  /** 対戦したことのあるキャラ */
+  encounteredCharacters: Set<CharacterId>;
+
+  updateMaxDrunk: (characterId: CharacterId, level: number) => void;
+  addEncountered: (characterId: CharacterId) => void;
+}
+```
+
+> バトル中にキャラの酔いが上がるたびに `updateMaxDrunk` を呼ぶ。
+> 勝敗に関係なく「酔わせた最高Lv」が記録される。
+
+### レイアウト
+
+```
+┌───────────────────────────────────────────────────┐
+│ ← 設定に戻る         👗 立ち絵鑑賞               │
+├───────┬───────────────────────────────────────────┤
+│       │                                           │
+│ BLAZE │          ┌─────────────────┐              │
+│ [🔥]  │          │                 │              │
+│       │          │   ブレイズ立ち絵  │              │
+│ ???   │          │   （酔い演出適用）│              │
+│ [🔒]  │          │                 │              │
+│       │          │                 │              │
+│ ???   │          └─────────────────┘              │
+│ [🔒]  │                                           │
+│       │   名前:  ブレイズ / BLAZE                  │
+│       │   称号:  燃え盛る太陽                      │
+│       │                                           │
+│       │   酔いレベル:                              │
+│       │   [Lv0] [Lv1] [Lv2] [Lv3🔒] [Lv4🔒]     │
+│       │    シラフ ほろ酔い 酔い  ???    ???         │
+│       │                                           │
+│       │   💬 「なぁドクター、もう一杯いこうぜ」    │
+│       │      ↻ セリフ切替                         │
+│       │                                           │
+│       │   📊 戦績: 5勝 2敗                        │
+│       │   🖼️ CG解放率: 3/5                       │
+│       │                                           │
+└───────┴───────────────────────────────────────────┘
+```
+
+### PortraitViewScreen コンポーネント
+
+```tsx
+export const PortraitViewScreen = () => {
+  const setScreen = useGameStore((s) => s.setScreen);
+  const encountered = useGameStore((s) => s.encounteredCharacters);
+  const maxDrunk = useGameStore((s) => s.maxDrunkReached);
+
+  const [selectedChar, setSelectedChar] = useState<CharacterId | null>(
+    encountered.size > 0 ? [...encountered][0] : null
+  );
+  const [viewDrunkLevel, setViewDrunkLevel] = useState<DrunkLevelValue>(0);
+  const [currentLineIndex, setCurrentLineIndex] = useState(0);
+
+  const character = selectedChar ? CHARACTER_DATA[selectedChar] : null;
+  const drunkInfo = character?.drunkLevels.find(l => l.level === viewDrunkLevel);
+  const isLevelUnlocked = selectedChar
+    ? (maxDrunk[selectedChar] ?? 0) >= viewDrunkLevel
+    : false;
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <button onClick={() => setScreen('settings')}>← 設定に戻る</button>
+        <h2>👗 立ち絵鑑賞</h2>
+      </div>
+
+      <div className={styles.layout}>
+        {/* 左: キャラ選択リスト */}
+        <div className={styles.charList}>
+          {Object.values(CHARACTER_DATA).map(c => {
+            const unlocked = encountered.has(c.id);
+            return (
+              <button
+                key={c.id}
+                className={clsx(styles.charBtn, {
+                  [styles.selected]: selectedChar === c.id,
+                  [styles.locked]: !unlocked,
+                })}
+                onClick={() => unlocked && setSelectedChar(c.id)}
+                disabled={!unlocked}
+              >
+                {unlocked ? c.theme.icon : '🔒'} {unlocked ? c.name : '???'}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 右: 立ち絵表示エリア */}
+        {character && (
+          <div className={styles.viewArea}>
+            {/* 立ち絵（酔い演出付き） */}
+            <div className={styles.portraitFrame}>
+              <CharacterSprite
+                characterId={character.id}
+                imageUrl={getPortrait(character.id, isLevelUnlocked ? viewDrunkLevel : 0)}
+                drunkLevel={isLevelUnlocked ? viewDrunkLevel : 0}
+                size="large"
+              />
+            </div>
+
+            {/* キャラ情報 */}
+            <div className={styles.charInfo}>
+              <h3>{character.name} / {character.nameEn}</h3>
+              <p className={styles.subtitle}>{character.subtitle}</p>
+            </div>
+
+            {/* 酔いレベル切替ボタン */}
+            <div className={styles.drunkSelector}>
+              <span>酔いレベル:</span>
+              {character.drunkLevels.map(dl => {
+                const unlocked = (maxDrunk[character.id] ?? 0) >= dl.level;
+                return (
+                  <button
+                    key={dl.level}
+                    className={clsx(styles.lvBtn, {
+                      [styles.active]: viewDrunkLevel === dl.level,
+                      [styles.locked]: !unlocked,
+                    })}
+                    onClick={() => unlocked && setViewDrunkLevel(dl.level)}
+                    disabled={!unlocked}
+                  >
+                    {unlocked ? `Lv${dl.level} ${dl.name}` : `Lv${dl.level} 🔒`}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* セリフ表示 */}
+            {isLevelUnlocked && drunkInfo && (
+              <div className={styles.dialogue}>
+                <p>💬 「{drunkInfo.lines[currentLineIndex]}」</p>
+                <button onClick={() =>
+                  setCurrentLineIndex((currentLineIndex + 1) % drunkInfo.lines.length)
+                }>
+                  ↻ セリフ切替
+                </button>
+              </div>
+            )}
+
+            {/* 戦績 */}
+            <div className={styles.stats}>
+              <span>📊 戦績: {wins}勝 {losses}敗</span>
+              <span>🖼️ CG解放率: {unlockedCount}/{totalCount}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+```
+
+### 酔いレベル切替時の演出
+
+酔いレベルをクリックで切り替えた瞬間、立ち絵がスムーズに変化する。
+
+```
+Lv0 → Lv1 クリック:
+  - 立ち絵が一瞬ふわっと揺れる（scale 1.02 → 1.0, 300ms）
+  - 頬に赤みが追加される（opacity 0 → 0.15, 400ms）
+  - セリフが切り替わる（フェードアウト → フェードイン）
+  - 酔い揺れアニメーションが開始
+
+Lv1 → Lv2 クリック:
+  - 差分画像があれば crossfade（旧画像フェードアウト/新画像フェードイン, 500ms）
+  - 赤みが強まる（opacity 0.15 → 0.3）
+  - 揺れが大きくなる
+  - 「うぅ…」的な SE が鳴る（将来）
+
+Lv2 → Lv3 クリック:
+  - 画面全体が少し暖色寄りに（CSSフィルタ transition）
+  - 立ち絵の揺れが激しく
+  - セリフがデレデレに
+```
+
+### バトル中の記録ロジック
+
+```ts
+// battle-engine.ts の applyDamageAndHeal 内に追加
+function applyDamageAndHeal(result: RoundResult) {
+  // ... 既存のダメージ/回復処理 ...
+
+  // 酔いLvが上がったら記録
+  const newDrunkLevel = GameState.getDrunkLevel(GameState.battle.opponentDrunk);
+  const currentMax = GameState.maxDrunkReached[GameState.currentOpponent] ?? 0;
+  if (newDrunkLevel > currentMax) {
+    GameState.updateMaxDrunk(GameState.currentOpponent, newDrunkLevel);
+  }
+}
 ```
 
 ---

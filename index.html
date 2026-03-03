@@ -23,6 +23,7 @@
           <button class="menu-btn" data-screen="select">🍷 対戦する</button>
           <button class="menu-btn" data-screen="shop">🏪 ショップ</button>
           <button class="menu-btn" data-screen="gallery">🖼️ CGギャラリー</button>
+          <button class="menu-btn" data-screen="settings">⚙️ 設定</button>
         </div>
         <div class="title-money">💰 <span id="title-money">3200</span> 龍門幣</div>
       </div>
@@ -121,6 +122,78 @@
       <span id="gallery-progress" class="gallery-progress">解放率: 0/0 (0%)</span>
     </div>
     <div id="gallery-content" class="gallery-content"></div>
+  </div>
+
+  <!-- 設定画面 -->
+  <div id="screen-settings" class="screen">
+    <div class="settings-header">
+      <button class="back-btn" data-screen="title">← 戻る</button>
+      <h2>⚙️ 設定</h2>
+    </div>
+    <div class="settings-content">
+      <div class="settings-section">
+        <label class="settings-label">🔊 BGM 音量</label>
+        <input type="range" id="bgm-volume" min="0" max="100" value="80" class="settings-slider">
+        <span id="bgm-volume-value" class="settings-value">80%</span>
+      </div>
+      <div class="settings-section">
+        <label class="settings-label">🔉 SE 音量</label>
+        <input type="range" id="se-volume" min="0" max="100" value="60" class="settings-slider">
+        <span id="se-volume-value" class="settings-value">60%</span>
+      </div>
+      <div class="settings-section">
+        <label class="settings-label">💬 テキスト速度</label>
+        <input type="range" id="text-speed" min="10" max="80" step="5" value="30" class="settings-slider">
+        <span id="text-speed-value" class="settings-value">ふつう</span>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-section">
+        <button class="menu-btn portrait-view-btn" data-screen="portrait-view">
+          👗 立ち絵鑑賞 →
+        </button>
+        <p class="settings-hint">キャラの立ち絵を酔い段階ごとに自由に眺められます</p>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-section">
+        <button class="menu-btn danger-btn" id="data-reset-btn">🗑️ データリセット</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 立ち絵鑑賞画面 -->
+  <div id="screen-portrait-view" class="screen">
+    <div class="portrait-view-header">
+      <button class="back-btn" data-screen="settings">← 設定に戻る</button>
+      <h2>👗 立ち絵鑑賞</h2>
+    </div>
+    <div class="portrait-view-layout">
+      <!-- 左: キャラ選択リスト -->
+      <div id="portrait-char-list" class="portrait-char-list">
+        <!-- JSで動的に生成 -->
+      </div>
+      <!-- 右: 立ち絵表示エリア -->
+      <div class="portrait-view-main">
+        <div id="portrait-sprite-area" class="portrait-sprite-area">
+          <div id="portrait-sprite" class="portrait-sprite"></div>
+          <div id="portrait-blush" class="portrait-blush" style="opacity:0"></div>
+        </div>
+        <div class="portrait-info">
+          <h3 id="portrait-char-name" class="portrait-char-name"></h3>
+          <p id="portrait-char-subtitle" class="portrait-char-subtitle"></p>
+        </div>
+        <div id="portrait-drunk-selector" class="portrait-drunk-selector">
+          <!-- 酔いLvボタンがJSで動的に生成 -->
+        </div>
+        <div id="portrait-dialogue" class="portrait-dialogue">
+          <p id="portrait-line" class="portrait-line"></p>
+          <button id="portrait-next-line" class="portrait-next-line-btn">↻ セリフ切替</button>
+        </div>
+        <div class="portrait-stats">
+          <span id="portrait-record"></span>
+          <span id="portrait-cg-progress"></span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- CGオーバーレイ -->
