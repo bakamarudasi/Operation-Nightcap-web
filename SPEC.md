@@ -652,6 +652,408 @@ export const App = () => {
 
 ---
 
+## スケベ演出仕様
+
+このゲームの核心。酔いが深まるほどキャラの反応が変わり、
+CG が解放され、プレイヤーの「もっと酔わせたい」欲求を掻き立てる設計。
+
+### 1. CG 段階システム
+
+同じセクハラカードでも、**相手の酔いレベルによって CG の内容が変わる**。
+酔いが深いほどきわどいリアクションになる。
+
+```
+肩を寄せる（shoulder_lean）:
+  酔Lv1（条件ギリギリ）→ CG-A: 驚いてちょっと離れる（照れ）
+  酔Lv2（余裕あり）    → CG-B: 肩に寄りかかってくる
+  酔Lv3（べろべろ）    → CG-C: そのまま腕を組んでくる
+
+頭ポンポン（headpat）:
+  酔Lv2（条件ギリギリ）→ CG-A: 「子ども扱いすんな」と怒るが耳赤い
+  酔Lv3（べろべろ）    → CG-B: 目を閉じて受け入れる、甘え声
+
+見つめる（gaze）:
+  酔Lv2（条件ギリギリ）→ CG-A: 目をそらす、動揺
+  酔Lv3（べろべろ）    → CG-B: 見つめ返してくる、トロン目
+
+膝枕する（lap_pillow）:
+  酔Lv3（条件ギリギリ）→ CG-A: 恥ずかしがりながら乗る
+  ※段階1つのみ（条件Lv3なので上はない）
+
+キス（kiss）:
+  酔Lv3（条件ギリギリ）→ CG-A: 即勝利。最高潮のCG
+  ※段階1つのみ（即勝利なのでこれが最終到達点）
+```
+
+#### 型定義の拡張
+
+```ts
+export interface CGEvent {
+  id: string;
+  triggerCard: CardId;
+  requiredDrunkLevel: number;
+  cgColor: string;
+  instantWin?: boolean;
+  dialogue: DialogueLine[];
+  // ▼ 追加: 段階CG
+  variants?: CGVariant[];
+}
+
+export interface CGVariant {
+  /** この段階が発動する酔いLv（requiredDrunkLevel より高い） */
+  drunkLevel: number;
+  /** この段階のCG ID（ギャラリー管理用） */
+  cgId: string;
+  /** 差し替えるダイアログ */
+  dialogue: DialogueLine[];
+  /** 差し替えるCGカラー（画像なし時用） */
+  cgColor?: string;
+}
+```
+
+#### 解決ロジック
+
+```ts
+function resolveCGEvent(cgEvent: CGEvent, currentDrunkLevel: number): {
+  cgId: string;
+  dialogue: DialogueLine[];
+  cgColor: string;
+} {
+  // variants が定義されていれば、酔いLvの高い方から条件チェック
+  if (cgEvent.variants) {
+    const matched = cgEvent.variants
+      .filter(v => currentDrunkLevel >= v.drunkLevel)
+      .sort((a, b) => b.drunkLevel - a.drunkLevel)[0];
+    if (matched) {
+      return {
+        cgId: matched.cgId,
+        dialogue: matched.dialogue,
+        cgColor: matched.cgColor ?? cgEvent.cgColor,
+      };
+    }
+  }
+  // デフォルト（基本CG）
+  return {
+    cgId: cgEvent.id,
+    dialogue: cgEvent.dialogue,
+    cgColor: cgEvent.cgColor,
+  };
+}
+```
+
+> **ギャラリーへの影響**: 各 variant の cgId も個別に `unlockedCGs` に記録される。
+> 同じカードでも酔いLv違いで別CGとしてギャラリーに並ぶ。
+
+### 2. キャラ反応のセリフ分岐
+
+セクハラカード以外でも、**酔いレベルに応じてバトル中のセリフが変化**する。
+
+#### 酔いLv × 状況 のセリフマトリクス
+
+```
+              酔Lv0(シラフ)    酔Lv1(ほろ酔い)   酔Lv2(酔い)      酔Lv3(べろべろ)
+─────────────────────────────────────────────────────────────────────────────────
+ドリンク受け  「くっ…効くな」   「うぅ…まだいけ  「あつい…暑い    「もう…やだ…
+              (強気)           る…」(意地)      よぉ…」(弱気)    ドクターのばか…」
+
+つまみ食べ    「うまそうな      「ん〜美味い♪」  「ドクター…      「あーん…して
+              もん食ってんな」  (ご機嫌)          食べさせて？」   …？」(甘え)
+              (普通)                              (おねだり)
+
+ラウンド開始  「さぁ来い！」    「へへ…次は       「ねぇ…もう     「…zzZ…えっ
+              (挑発)            負けないぞ」      やめない…？」    まだやるの…？」
+                               (絡み)            (甘え)           (うとうと)
+```
+
+#### 型定義
+
+```ts
+export interface Character {
+  // ... 既存フィールド ...
+  battleLines: {
+    // 既存（酔いLv不問の汎用セリフ）
+    playDrink: string[];
+    playFood: string[];
+    // ...
+
+    // ▼ 追加: 酔いLv別セリフ（オプショナル。未定義なら汎用を使う）
+    drunkLines?: {
+      [level in DrunkLevelValue]?: {
+        takeDamage?: string[];
+        eatFood?: string[];
+        roundStart?: string[];
+        idle?: string[];          // 何もしない時間のつぶやき
+      };
+    };
+  };
+}
+```
+
+#### セリフ取得ロジック
+
+```ts
+function getBattleLine(
+  character: Character,
+  situation: 'takeDamage' | 'eatFood' | 'roundStart' | 'idle',
+  drunkLevel: DrunkLevelValue
+): string {
+  // 酔いLv別セリフが定義されていればそちらを優先
+  const drunkLines = character.battleLines.drunkLines?.[drunkLevel]?.[situation];
+  if (drunkLines && drunkLines.length > 0) {
+    return randomPick(drunkLines);
+  }
+  // フォールバック: 汎用セリフ
+  const fallbackMap = {
+    takeDamage: character.battleLines.takeDamage,
+    eatFood: character.battleLines.playFood,
+    roundStart: character.battleLines.playDrink,
+    idle: character.drunkLevels.find(l => l.level === drunkLevel)?.lines ?? [],
+  };
+  return randomPick(fallbackMap[situation]) ?? '';
+}
+```
+
+### 3. 隠し CG / ご褒美 CG
+
+通常のセクハラカードでは解放されない**特殊条件CG**。
+ギャラリーでは「???」で表示され、コンプリート欲を刺激する。
+
+#### 隠しCG一覧（ブレイズの例）
+
+| CG ID | 解放条件 | 内容 |
+|-------|---------|------|
+| `blaze_perfect` | ブレイズに酔いLv0（ノーダメ）で勝利 | 「…っ、あたしの負けだよ。強いな、ドクター」悔しそうだけど尊敬の目 |
+| `blaze_drunk_together` | 自分もLv3以上でブレイズに勝利 | 二人とも酔っ払って寄りかかってるCG。「…ドクターも弱いくせに」 |
+| `blaze_all_cg` | ブレイズの通常CG全解放 | ご褒美CG。「…あんたにはかなわないな。全部見られちゃったじゃん…」 |
+| `blaze_loss_3` | ブレイズに3回負ける | 「おいおい大丈夫かよ…ほら水飲め」世話焼きCG |
+
+#### 型定義
+
+```ts
+export interface HiddenCG {
+  id: string;
+  characterId: CharacterId;
+  /** 解放条件の判定関数名（engine/rewards.ts で定義） */
+  condition: HiddenCGCondition;
+  /** ギャラリーでのヒントテキスト（未解放時に表示） */
+  hint: string;
+  /** CG内容 */
+  cgColor: string;
+  dialogue: DialogueLine[];
+}
+
+export type HiddenCGCondition =
+  | { type: 'perfect_win'; characterId: CharacterId }
+  | { type: 'drunk_win'; characterId: CharacterId; minPlayerDrunk: number }
+  | { type: 'all_cg_unlocked'; characterId: CharacterId }
+  | { type: 'loss_count'; characterId: CharacterId; count: number };
+```
+
+#### 解放チェック（バトル結果時に実行）
+
+```ts
+// engine/rewards.ts
+function checkHiddenCGs(
+  result: GameEndResult,
+  character: Character,
+  playerDrunk: number,
+  gameStore: GameStore
+): HiddenCG[] {
+  const unlocked: HiddenCG[] = [];
+
+  for (const hcg of HIDDEN_CG_DATA[character.id] ?? []) {
+    if (gameStore.isCGUnlocked(hcg.id)) continue; // 既に解放済み
+
+    const met = evaluateCondition(hcg.condition, {
+      result, character, playerDrunk, gameStore
+    });
+
+    if (met) {
+      unlocked.push(hcg);
+      gameStore.unlockCG(hcg.id);
+    }
+  }
+  return unlocked;
+}
+```
+
+#### ギャラリーでの表示
+
+```
+┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐
+│ 肩  │ │ 頭  │ │ 見  │ │ 膝  │ │ キス│  ← 通常CG（解放済みは画像表示）
+│寄せる│ │ポンポン│ │つめる│ │ 枕 │ │     │
+└─────┘ └─────┘ └─────┘ └─────┘ └─────┘
+┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐
+│ ???  │ │ ???  │ │ ???  │ │ ???  │  ← 隠しCG（未解放は「???」+ ヒント）
+│ヒント│ │ヒント│ │ヒント│ │ヒント│     「ノーダメで勝利すると…？」
+└─────┘ └─────┘ └─────┘ └─────┘
+```
+
+### 4. 酔い演出の視覚変化
+
+酔いレベルが上がるほど、立ち絵やUI全体に視覚変化を加える。
+
+#### 立ち絵の段階変化
+
+```
+酔Lv0 (シラフ):
+  - 通常立ち絵
+  - 表情: 自信満々
+
+酔Lv1 (ほろ酔い):
+  - 頬に赤み（CSSフィルタ: hue-rotate + overlay）
+  - 微笑み表情差分
+  - 立ち絵がわずかに揺れる（Framer Motion: x ±2px, 2s周期）
+
+酔Lv2 (酔い):
+  - 頬の赤みが強まる
+  - 目がトロンとする表情差分
+  - 揺れが大きくなる（x ±5px, 1.5s周期）
+  - 服の乱れ差分（ボタン1つ外れる等）
+
+酔Lv3 (べろべろ):
+  - 顔全体が赤い
+  - 目がトロトロ、口が半開き
+  - 大きく揺れる（x ±8px, 1s周期 + rotate ±3deg）
+  - 服がさらに乱れる
+  - セリフが甘え声（テキストにハートマーク混じる）
+
+酔Lv4 (潰れ):
+  - 目を閉じている
+  - 体が傾いている（rotate 5deg）
+  - 立ち絵が下にずれる（寝落ち演出）
+```
+
+#### CharacterSprite の酔い演出実装
+
+```tsx
+const drunkEffects: Record<DrunkLevelValue, {
+  sway: { x: number; duration: number };
+  rotate: number;
+  filter: string;
+  translateY: number;
+}> = {
+  0: { sway: { x: 0,  duration: 0 },   rotate: 0,  filter: 'none',                          translateY: 0 },
+  1: { sway: { x: 2,  duration: 2 },   rotate: 0,  filter: 'saturate(1.1)',                  translateY: 0 },
+  2: { sway: { x: 5,  duration: 1.5 }, rotate: 0,  filter: 'saturate(1.2) brightness(1.05)', translateY: 0 },
+  3: { sway: { x: 8,  duration: 1 },   rotate: 3,  filter: 'saturate(1.4) brightness(1.1)',  translateY: 0 },
+  4: { sway: { x: 3,  duration: 2.5 }, rotate: 5,  filter: 'saturate(1.3) brightness(1.0)',  translateY: 20 },
+};
+
+export const CharacterSprite = ({ characterId, imageUrl, drunkLevel }: CharacterSpriteProps) => {
+  const effect = drunkEffects[drunkLevel];
+
+  return (
+    <motion.div
+      className={styles.sprite}
+      animate={{
+        x: effect.sway.x > 0
+          ? [0, effect.sway.x, 0, -effect.sway.x, 0]
+          : 0,
+        rotate: effect.rotate,
+        y: effect.translateY,
+      }}
+      transition={{
+        x: { repeat: Infinity, duration: effect.sway.duration, ease: 'easeInOut' },
+        rotate: { type: 'spring', stiffness: 50 },
+        y: { type: 'spring', stiffness: 80 },
+      }}
+      style={{ filter: effect.filter }}
+    >
+      {/* 頬の赤み（CSS overlay） */}
+      {drunkLevel >= 1 && (
+        <div
+          className={styles.blush}
+          style={{ opacity: drunkLevel * 0.15 }}
+        />
+      )}
+
+      {imageUrl ? (
+        <img src={imageUrl} alt={characterId} />
+      ) : (
+        <div className={styles.placeholder}>
+          {CHARACTER_DATA[characterId]?.theme.icon}
+        </div>
+      )}
+    </motion.div>
+  );
+};
+```
+
+#### 頬赤み CSS
+
+```css
+/* CharacterSprite.module.css */
+.blush {
+  position: absolute;
+  top: 30%;
+  left: 15%;
+  right: 15%;
+  height: 20%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 100, 100, 0.5) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+```
+
+#### 画像差分の管理（将来用）
+
+```
+assets/characters/blaze/
+├── portrait.webp              # Lv0: 通常
+├── portrait-drunk-1.webp      # Lv1: ほろ酔い（微笑み、頬赤い）
+├── portrait-drunk-2.webp      # Lv2: 酔い（トロン目、服乱れ）
+├── portrait-drunk-3.webp      # Lv3: べろべろ（甘え顔、服大乱れ）
+└── portrait-drunk-4.webp      # Lv4: 潰れ（目閉じ、傾き）
+```
+
+```ts
+// 差分画像の動的読み込み
+const portraits = import.meta.glob<{ default: string }>(
+  '@/assets/characters/*/portrait*.webp',
+  { eager: true }
+);
+
+function getPortrait(characterId: string, drunkLevel: DrunkLevelValue): string {
+  if (drunkLevel === 0) {
+    const key = `/src/assets/characters/${characterId}/portrait.webp`;
+    return portraits[key]?.default ?? '';
+  }
+  // 酔い差分があればそれを使う、なければ通常
+  const drunkKey = `/src/assets/characters/${characterId}/portrait-drunk-${drunkLevel}.webp`;
+  const baseKey = `/src/assets/characters/${characterId}/portrait.webp`;
+  return portraits[drunkKey]?.default ?? portraits[baseKey]?.default ?? '';
+}
+```
+
+> **画像差分がない時**: CSSフィルタ + 赤みオーバーレイ + 揺れアニメで代用。
+> 画像が追加されたら自動で差し替わる設計。
+
+### スケベ要素まとめ
+
+```
+酔わせる楽しさのループ:
+
+  酔いLv上がる → 立ち絵が赤面・揺れ・服乱れ（視覚報酬）
+       ↓
+  セリフが甘くなる（テキスト報酬）
+       ↓
+  セクハラカード使える → CG解放（最大報酬）
+       ↓
+  同じカードでも酔いLv高いと別CG（もっと酔わせたい欲）
+       ↓
+  隠しCGの存在がギャラリーで見える（コンプリート欲）
+       ↓
+  もう1回プレイしよう！
+```
+
+---
+
 ## 報酬・経済バランス
 
 ### 初期所持金
