@@ -95,12 +95,15 @@ export const useGameStore = create<GameStore>()(
       initBattle: (opponentId) => {
         const char = CHARACTER_DATA[opponentId];
         if (!char) return;
-        const playerDeckShuffled = [...get().playerDeck];
+        const state = get();
+        if (state.money < 500) return;
+        const playerDeckShuffled = [...state.playerDeck];
         const opponentDeckShuffled = [...char.deck_ai.defaultDeck];
         shuffleArray(playerDeckShuffled);
         shuffleArray(opponentDeckShuffled);
 
         set({
+          money: state.money - 500,
           currentOpponent: char,
           currentScreen: 'battle',
           battle: {
