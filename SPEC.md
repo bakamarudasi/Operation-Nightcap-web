@@ -353,6 +353,44 @@ interface SettingsStore {
 画面コンポーネントは **props を受け取らない**。
 Zustand ストアから直接状態を取得する。
 
+---
+
+#### TitleScreen — タイトル画面
+
+バーの入口。ゲーム全体のハブ。暗めのバー背景にネオンロゴが映える。
+
+```
+┌───────────────────────────────────────────────────┐
+│                                                   │
+│              ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓               │  ← バー背景（暗い）
+│              ▓  CLOSURE'S BAR    ▓               │  ← ネオン風ロゴ
+│              ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓               │     text-shadow glow
+│              ～今夜は帰さない～                    │  ← サブタイトル
+│                                                   │
+│              ┌──────────────────┐                  │
+│              │  🍷 対戦する     │                  │  ← メインボタン(大)
+│              └──────────────────┘                  │
+│              ┌──────────────────┐                  │
+│              │  🏪 ショップ     │                  │
+│              └──────────────────┘                  │
+│              ┌──────────────────┐                  │
+│              │  🖼️ ギャラリー   │                  │
+│              └──────────────────┘                  │
+│              ┌──────────────────┐                  │
+│              │  ⚙️ 設定         │                  │
+│              └──────────────────┘                  │
+│                                                   │
+│              💰 3,200 龍門幣                       │  ← 所持金表示
+│                                                   │
+└───────────────────────────────────────────────────┘
+```
+
+**スタイル要点**:
+- 背景: バーの暗い画像（`bg-title.webp`）+ 半透明オーバーレイ（黒60%）
+- ロゴ: 大きめフォント、ネオンglow（`text-shadow` で多重発光）
+- ボタン: 縦並び中央配置、ホバーで光る、`gap: 12px`
+- 所持金: フッター寄り、控えめサイズ
+
 ```tsx
 // screens/TitleScreen/TitleScreen.tsx
 export const TitleScreen = () => {
@@ -368,6 +406,361 @@ export const TitleScreen = () => {
       <button onClick={() => setScreen('gallery')}>🖼️ ギャラリー</button>
       <button onClick={() => setScreen('settings')}>⚙️ 設定</button>
       <div>💰 {money} 龍門幣</div>
+    </div>
+  );
+};
+```
+
+---
+
+#### SelectScreen — 対戦相手選択画面
+
+キャラクターカード一覧。対戦相手を選んでバトルへ。
+
+```
+┌───────────────────────────────────────────────────┐
+│ ← 戻る              対戦相手を選べ                │
+├───────────────────────────────────────────────────┤
+│                                                   │
+│  ┌─────────────┐  ┌─────────────┐  ┌───────────┐ │
+│  │  🔥         │  │  🧊         │  │  🔒       │ │
+│  │             │  │             │  │           │ │
+│  │  [立ち絵]   │  │  [立ち絵]   │  │   ???     │ │
+│  │             │  │             │  │           │ │
+│  │ ブレイズ     │  │  ???        │  │   ???     │ │
+│  │ 燃え盛る太陽 │  │  未解放     │  │   未解放  │ │
+│  │             │  │             │  │           │ │
+│  │ 戦績: 5勝2敗│  │             │  │           │ │
+│  └─────────────┘  └─────────────┘  └───────────┘ │
+│                                                   │
+│         ※ 未解放キャラは条件付きで開放             │
+│                                                   │
+└───────────────────────────────────────────────────┘
+```
+
+**カード構成**:
+- サムネイル画像（`select-icon.webp`）
+- テーマカラーの枠線 + glow
+- キャラ名 + 称号
+- 戦績表示（対戦済みキャラのみ）
+- 未解放キャラ: シルエット + 🔒 + 解放条件ヒント
+
+```tsx
+// screens/SelectScreen/SelectScreen.tsx
+export const SelectScreen = () => {
+  const setScreen = useGameStore((s) => s.setScreen);
+  const setOpponent = useGameStore((s) => s.setCurrentOpponent);
+  const encountered = useGameStore((s) => s.encounteredCharacters);
+
+  const handleSelect = (characterId: CharacterId) => {
+    setOpponent(characterId);
+    setScreen('battle');
+  };
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <button onClick={() => setScreen('title')}>← 戻る</button>
+        <h2>対戦相手を選べ</h2>
+      </div>
+      <div className={styles.characterGrid}>
+        {Object.values(CHARACTER_DATA).map(c => {
+          const unlocked = true; // 初期キャラは最初から解放。追加キャラは条件付き
+          return (
+            <motion.button
+              key={c.id}
+              className={clsx(styles.charCard, { [styles.locked]: !unlocked })}
+              style={{ borderColor: c.theme.color, boxShadow: `0 0 12px ${c.theme.colorGlow}` }}
+              onClick={() => unlocked && handleSelect(c.id)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.98 }}
+              disabled={!unlocked}
+            >
+              <div className={styles.icon}>{c.theme.icon}</div>
+              <div className={styles.portrait}>
+                {/* select-icon.webp or fallback */}
+              </div>
+              <h3>{unlocked ? c.name : '???'}</h3>
+              <p className={styles.subtitle}>{unlocked ? c.subtitle : '未解放'}</p>
+            </motion.button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+```
+
+---
+
+#### BattleScreen — バトル画面
+
+ゲームの核心。上に相手、下に自分、中央にカード場。
+
+```
+┌───────────────────────────────────────────────────┐
+│ CLOSURE'S BAR              R.3/12     💰 3,200    │ ← ヘッダー
+├───────────────────────────────────────────────────┤
+│                                                   │
+│   [相手の酔い] ██████░░░░ Lv.2 酔い (5/10)        │ ← 相手DrunkGauge
+│                                                   │
+│          ┌──────────┐                              │
+│          │          │                              │
+│          │ 相手立ち絵 │  ← CharacterSprite          │
+│          │ (酔い演出) │     酔いLvで表情・揺れ変化   │
+│          │          │                              │
+│          └──────────┘                              │
+│          「おい…暑くないか…？」                     │ ← DialogueBox
+│                                                   │
+│       ┌──────┐   VS   ┌──────┐                    │ ← テーブル（カード場）
+│       │相手の │        │自分の │                    │
+│       │カード │        │カード │                    │
+│       │  ？   │        │  ？   │                    │
+│       └──────┘        └──────┘                    │
+│                                                   │
+│   [自分の酔い] ████░░░░░░ Lv.1 ほろ酔い (3/10)    │ ← 自分DrunkGauge
+│                                                   │
+├───────────────────────────────────────────────────┤
+│                                                   │
+│   ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐            │ ← 手札エリア
+│   │🍺    │ │🍷    │ │🥜    │ │💋    │  残デッキ:8 │
+│   │ビール │ │ワイン │ │ナッツ │ │キス  │            │
+│   │ Dmg:1│ │ Dmg:2│ │Heal:1│ │条件:3│            │
+│   └──────┘ └──────┘ └──────┘ └──────┘            │
+│              ↑ 選択中（光る）                      │
+│                                                   │
+└───────────────────────────────────────────────────┘
+```
+
+**レイアウト構成**:
+- ヘッダー: バー名、ラウンド数、所持金
+- 上部: 相手のDrunkGauge
+- 中央上: 相手の立ち絵（CharacterSprite）+ セリフ（DialogueBox）
+- 中央: テーブルエリア（場に出したカード2枚 + VS表示）
+- 中央下: 自分のDrunkGauge
+- 下部: 手札エリア（4枚 + 残りデッキ数）
+
+**操作フロー**:
+1. 手札からカードをクリック → 選択状態（浮き上がる）
+2. もう一度クリック or 確認ボタン → カード場に出す
+3. 相手AIもカード選択 → 同時オープン
+4. 効果解決アニメーション → ゲージ更新
+
+```tsx
+// screens/BattleScreen/BattleScreen.tsx
+export const BattleScreen = () => {
+  const battle = useBattleStore();
+  const gameStore = useGameStore();
+  const opponent = CHARACTER_DATA[gameStore.currentOpponent!];
+
+  return (
+    <div className={styles.container}>
+      {/* ヘッダー */}
+      <div className={styles.header}>
+        <span>CLOSURE'S BAR</span>
+        <span>R.{battle.round}/{battle.maxRounds}</span>
+        <span>💰 {gameStore.money}</span>
+      </div>
+
+      {/* 相手エリア */}
+      <DrunkGauge value={battle.opponentDrunk} max={opponent.drunkMax} side="opponent" />
+      <CharacterSprite
+        characterId={opponent.id}
+        drunkLevel={getDrunkLevel(battle.opponentDrunk)}
+      />
+      <DialogueBox speaker={opponent.name} text={currentDialogue} />
+
+      {/* テーブル */}
+      <div className={styles.table}>
+        <Card card={battle.opponentPlayedCard} faceDown={!battle.isRevealed} />
+        <span className={styles.vs}>VS</span>
+        <Card card={battle.playerPlayedCard} faceDown={!battle.isRevealed} />
+      </div>
+
+      {/* 自分エリア */}
+      <DrunkGauge value={battle.playerDrunk} max={10} side="player" />
+
+      {/* 手札 */}
+      <HandArea
+        cards={battle.playerHand}
+        selectedIndex={battle.selectedCard}
+        onSelect={(i) => battle.selectCard(i)}
+        disabled={battle.isProcessing}
+      />
+      <span>残デッキ: {battle.playerDeckRemaining.length}枚</span>
+
+      {/* 結果モーダル */}
+      {battle.gameEnd && (
+        <ResultModal
+          result={battle.gameEnd}
+          reward={battle.reward}
+          onBack={() => gameStore.setScreen('title')}
+        />
+      )}
+
+      {/* CG オーバーレイ */}
+      {battle.activeCG && (
+        <CGOverlay
+          cgEvent={battle.activeCG}
+          themeColor={opponent.theme.color}
+          onClose={() => battle.clearCG()}
+        />
+      )}
+    </div>
+  );
+};
+```
+
+**バトル結果モーダル**:
+
+```
+┌───────────────────────────────────┐
+│                                   │
+│           🎉 勝 利 🎉            │
+│                                   │
+│    ブレイズを酔い潰した！          │
+│                                   │
+│    💰 +500 龍門幣                 │
+│                                   │
+│    ┌─────────────────────────┐    │
+│    │     バーに戻る           │    │
+│    └─────────────────────────┘    │
+│                                   │
+└───────────────────────────────────┘
+```
+
+---
+
+#### ShopScreen — ショップ画面
+
+クロージャが店番をするカード売買 & デッキ編集画面。
+
+```
+┌───────────────────────────────────────────────────┐
+│ ← 戻る    🏪 CLOSURE'S BAR SHOP    💰 3,200 龍門幣│
+├───────────────────────────────────────────────────┤
+│                                                   │
+│  🐧「いらっしゃい。今日は何にする？」              │ ← クロージャのセリフ
+│                                                   │
+├────────────── 販売カード ─────────────────────────┤
+│                                                   │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐   │
+│  │🍺    │ │🍷    │ │🥃    │ │🍶    │ │🍹    │   │  ← ドリンク
+│  │ビール │ │ワイン │ │ｳｲｽｷｰ│ │ 白酒 │ │ｶｸﾃﾙ │   │
+│  │ 100龍 │ │ 300龍 │ │ 500龍│ │ 800龍│ │ 400龍│   │
+│  └──────┘ └──────┘ └──────┘ └──────┘ └──────┘   │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐             │
+│  │🥜    │ │🍢    │ │🍜    │ │💊    │             │  ← フード
+│  │ナッツ │ │焼き鳥│ │ラーメン│ │ウコン │             │
+│  │ 100龍 │ │ 300龍 │ │ 600龍│ │1200龍│             │
+│  └──────┘ └──────┘ └──────┘ └──────┘             │
+│  ┌──────┐ ┌──────┐ ┌──────┐                      │
+│  │🍻    │ │🥂    │ │💧    │                      │  ← 特殊
+│  │一気飲み│ │乾杯  │ │こぼし │                      │
+│  │ 800龍 │ │ 700龍 │ │ 500龍│                      │
+│  └──────┘ └──────┘ └──────┘                      │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐   │
+│  │💕    │ │✋    │ │👀    │ │🛌    │ │💋    │   │  ← セクハラ
+│  │肩寄せ │ │ﾎﾟﾝﾎﾟﾝ │ │見つめ│ │膝枕  │ │キス  │   │
+│  │1500龍 │ │1500龍 │ │1500龍│ │2000龍│ │3000龍│   │
+│  └──────┘ └──────┘ └──────┘ └──────┘ └──────┘   │
+│                                                   │
+├──────────── 現在のデッキ (12/12) ─────────────────┤
+│                                                   │
+│  🍺🍺🍺🍺 🍷🍷 🥃 🥜🥜🥜 🍢 🍻                  │  ← デッキ表示
+│                                                   │
+│  ※ カードをクリックで売却（半額買取）               │
+│                                                   │
+└───────────────────────────────────────────────────┘
+```
+
+**レイアウト構成**:
+- ヘッダー: 戻るボタン、ショップ名、所持金
+- クロージャセリフ: 操作に応じて変化するNPCセリフ欄
+- 販売エリア: カード種別ごとにグリッド配置（購入価格表示付き）
+- デッキエリア: 現在のデッキ構成を表示（クリックで売却）
+
+**購入操作**:
+1. カードをクリック → 購入確認
+2. 所持金足りない → クロージャ「お金が足りないよ」
+3. デッキ満杯 → クロージャ「デッキがいっぱいだよ。先に売ってね」
+4. 購入成功 → デッキに追加 + 所持金減算 + クロージャセリフ変化
+
+**売却操作**:
+1. デッキエリアのカードをクリック → 売却確認
+2. 売却 → デッキから除外 + 所持金加算（購入の50%）
+
+```tsx
+// screens/ShopScreen/ShopScreen.tsx
+export const ShopScreen = () => {
+  const { money, playerDeck, setScreen } = useGameStore();
+  const [closureDialogue, setClosureDialogue] = useState(
+    randomPick(SHOP_DATA.closureLines.greeting)
+  );
+
+  const handleBuy = (cardId: CardId) => {
+    const card = CARD_DATA[cardId];
+    if (money < card.price) {
+      setClosureDialogue(randomPick(SHOP_DATA.closureLines.insufficient));
+      return;
+    }
+    if (playerDeck.length >= 12) {
+      setClosureDialogue(randomPick(SHOP_DATA.closureLines.deckFull));
+      return;
+    }
+    useGameStore.getState().buyCard(cardId);
+    setClosureDialogue(randomPick(SHOP_DATA.closureLines[getShopLineCategory(card.type)]));
+  };
+
+  const handleSell = (index: number) => {
+    useGameStore.getState().sellCard(index);
+    setClosureDialogue(randomPick(SHOP_DATA.closureLines.sell));
+  };
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <button onClick={() => setScreen('title')}>← 戻る</button>
+        <h2>🏪 CLOSURE'S BAR SHOP</h2>
+        <span>💰 {money} 龍門幣</span>
+      </div>
+
+      <div className={styles.closureDialogue}>
+        🐧「{closureDialogue}」
+      </div>
+
+      {/* 販売カード（種別ごとにセクション分け） */}
+      <div className={styles.shopGrid}>
+        {(['drink', 'food', 'chug', 'harassment'] as CardType[]).map(type => (
+          <div key={type} className={styles.shopSection}>
+            {SHOP_DATA.availableCards
+              .filter(id => CARD_DATA[id].type === type)
+              .map(id => (
+                <ShopCard
+                  key={id}
+                  card={CARD_DATA[id]}
+                  onBuy={() => handleBuy(id)}
+                  affordable={money >= CARD_DATA[id].price}
+                />
+              ))}
+          </div>
+        ))}
+      </div>
+
+      {/* デッキ表示 */}
+      <div className={styles.deckEditor}>
+        <h3>現在のデッキ ({playerDeck.length}/12)</h3>
+        <div className={styles.deckDisplay}>
+          {playerDeck.map((cardId, i) => (
+            <Card
+              key={i}
+              card={CARD_DATA[cardId]}
+              onClick={() => handleSell(i)}
+              compact
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
