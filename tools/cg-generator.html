@@ -560,7 +560,7 @@
 <div class="modal-overlay hidden" id="importModal">
   <div class="modal">
     <h3>マニフェスト インポート</h3>
-    <textarea class="import-ta" id="importText" placeholder="cg-manifest.txt の内容を貼り付け..."></textarea>
+    <textarea class="import-ta" id="importText" placeholder="マニフェストの内容を貼り付け..."></textarea>
     <div class="ma">
       <button onclick="closeModal('importModal')">キャンセル</button>
       <button class="primary" onclick="doImport()">読み込み</button>
@@ -1420,7 +1420,8 @@ function downloadManifest() {
   const blob = new Blob([generateManifest()], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'cg-manifest.txt';
+  const en = document.getElementById('charNameEn')?.value?.trim().toLowerCase() || 'character';
+  a.download = `${en}.txt`;
   a.click(); URL.revokeObjectURL(a.href);
   toast('ダウンロード完了', 'ok');
 }
