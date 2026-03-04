@@ -143,7 +143,7 @@ export function SelectScreen() {
     setIsAnim(true);
     setVsChar(char);
 
-    // Phase 1: noren close
+    // Phase 1: noren close (CSS animation = 0.5s, 余裕を持たせて600ms待つ)
     setPhase('noren-close');
 
     addTimer(() => {
@@ -192,22 +192,15 @@ export function SelectScreen() {
             // Fix #2: noren-final で暗転させてからバトルへ
             setPhase('noren-final');
             addTimer(() => {
-              // reset everything
-              setPhase('select');
-              setVsChar(null);
-              setKanpaiFlash(false);
-              setKanpaiText(false);
-              setKanpaiDialogue(null);
-              setConfettiPieces([]);
-              setIsAnim(false);
-              // initBattle triggers screen transition to battle
+              // initBattle を先に呼ぶ（画面遷移でSelectScreenがアンマウントされるため、
+              // phase等のリセットは不要。先にphaseをselectに戻すとnorenが消えてフラッシュする）
               initBattle(char.id);
             }, 600);
           }, 6000);
 
         }, 600);
       }, 2500);
-    }, 500);
+    }, 600);
   }, [isAnim, charCount, money, characters, currentIdx, addTimer, initBattle]);
 
   /* ── キーボード操作 ── */

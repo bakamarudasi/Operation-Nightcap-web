@@ -493,6 +493,12 @@
   transform: rotateY(180deg);
 }
 
+/* プレイヤーカード: 選んだカードなので即表面表示（フリップ不要） */
+.card-3d.instant-flip {
+  transform: rotateY(180deg);
+  transition: none;
+}
+
 .card-3d-face {
   position: absolute;
   inset: 0;

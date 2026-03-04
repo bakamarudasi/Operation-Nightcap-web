@@ -166,8 +166,23 @@ export function BattleScreen() {
     return `radial-gradient(circle at 50% 45%, rgba(200, 40, 40, ${f}), transparent 70%)`;
   }, [battle.opponentDrunk]);
 
+  const handCardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
   const handleCardClick = (cardId: string, idx: number) => {
     if (battle.isProcessing || gameResult || playingCardIdx !== null) return;
+
+    // cardToField アニメーション用に --tx/--ty を計算
+    const cardEl = handCardRefs.current[idx];
+    const fieldEl = fieldRef.current;
+    if (cardEl && fieldEl) {
+      const cardRect = cardEl.getBoundingClientRect();
+      const fieldRect = fieldEl.getBoundingClientRect();
+      const tx = (fieldRect.left + fieldRect.width / 2) - (cardRect.left + cardRect.width / 2);
+      const ty = (fieldRect.top + fieldRect.height / 2) - (cardRect.top + cardRect.height / 2);
+      cardEl.style.setProperty('--tx', `${tx}px`);
+      cardEl.style.setProperty('--ty', `${ty}px`);
+    }
+
     selectCard(cardId);
     setPlayingCardIdx(idx);
   };
@@ -417,9 +432,9 @@ export function BattleScreen() {
 
                   <div className="vs-badge">VS</div>
 
-                  {/* プレイヤーカード */}
+                  {/* プレイヤーカード（自分のカードなので即表面表示） */}
                   <div className={`card-slot ${slamPlayer ? 'card-slam' : ''}`}>
-                    <div className={`card-3d ${playerFlipped ? 'flipped' : ''}`}>
+                    <div className={`card-3d ${playerFlipped ? 'instant-flip' : ''}`}>
                       <div className="card-3d-face card-3d-back">
                         <div className="card-back-pattern check" />
                         <div className="card-back-frame" />
@@ -557,6 +572,7 @@ export function BattleScreen() {
             return (
               <div
                 key={`${cardId}-${i}`}
+                ref={el => { handCardRefs.current[i] = el; }}
                 className={`hand-card type-${card.type} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${isDisabled ? 'disabled' : ''}`}
                 onClick={() => handleCardClick(cardId, i)}
               >
