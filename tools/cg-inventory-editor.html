@@ -466,7 +466,7 @@
 
   <!-- Import area -->
   <div class="import-area" id="importArea">
-    <textarea id="importText" placeholder="cg-manifest.txt の内容をここに貼り付け..."></textarea>
+    <textarea id="importText" placeholder="マニフェスト (.txt) の内容をここに貼り付け..."></textarea>
     <div style="display:flex; gap:8px;">
       <button class="primary" onclick="doImport()">読み込み実行</button>
       <button onclick="toggleImport()">キャンセル</button>
@@ -1004,7 +1004,7 @@ function downloadManifest() {
   const blob = new Blob([generateManifest()], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'cg-manifest.txt';
+  a.download = `${id}.txt`;
   a.click();
   URL.revokeObjectURL(a.href);
   toast('ダウンロード完了', 'ok');
@@ -1201,7 +1201,7 @@ function claudeScanSource() {
 1. src/data/characters.ts の cgEvents / afterEvents で参照されている画像
 2. src/ 内で ${c.id} のCGファイルパスを参照しているコード
 3. assets/characters/${c.id}/ で想定されるファイル構成
-4. cg-manifest.txt に記載のファイル
+4. tools/manifests/${c.id}.txt に記載のファイル
 5. ゲーム内で使われる立ち絵の全バリエーション（酔いレベル別、衣装状態別）
 
 出力フォーマット:
@@ -1303,7 +1303,7 @@ function claudeStatusCheck() {
 以下をチェック:
 1. assets/characters/${c.id}/ 配下の既存ファイル
 2. tools/staging/ の生成待ちファイル
-3. cg-manifest.txt との差分
+3. tools/manifests/${c.id}.txt との差分
 
 マニフェスト上の全ファイル:
 ${[...cgRows.map(r => r.file), ...portraitRows.map(r => r.file), ...iconRows.map(r => r.file)].join(', ')}

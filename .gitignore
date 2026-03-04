@@ -9,5 +9,5 @@ assets/**/*.webp
 assets/**/*.jpg
 assets/**/*.jpeg
 
-# マニフェストは追跡する
-!assets/**/cg-manifest.txt
+# マニフェストは追跡する (tools/manifests/ に集約)
+!tools/manifests/*.txt
