@@ -303,10 +303,99 @@
   }
   .drag-handle:hover { color: var(--text); }
 
+  /* Character switcher */
+  .char-switcher {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .char-switcher label {
+    font-size: 0.82em;
+    color: var(--text-dim);
+    margin-right: 4px;
+  }
+  .char-tab {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.82em;
+    transition: all 0.15s;
+  }
+  .char-tab:hover { border-color: var(--accent); color: var(--text); }
+  .char-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .char-tab-add {
+    padding: 6px 10px;
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.82em;
+  }
+  .char-tab-add:hover { border-color: var(--success); color: var(--success); background: transparent; }
+
+  /* Image preview */
+  .img-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .img-thumb:hover { transform: scale(2.5); z-index: 10; position: relative; }
+  .img-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7em;
+    color: var(--text-dim);
+  }
+
+  /* Lightbox */
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .lightbox.show { display: flex; }
+  .lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 0 40px rgba(233,69,96,0.3);
+  }
+
   @media (max-width: 700px) {
     .char-header { grid-template-columns: 1fr; }
     .toolbar { flex-direction: column; }
     body { padding: 10px; }
+    .img-thumb { width: 30px; height: 30px; }
   }
 </style>
 </head>
@@ -355,6 +444,12 @@
       <button onclick="copyToClipboard()">📋 クリップボードにコピー</button>
       <button onclick="hideExport()">閉じる</button>
     </div>
+  </div>
+
+  <!-- Character switcher -->
+  <div class="char-switcher" id="charSwitcher">
+    <label>キャラ:</label>
+    <!-- tabs rendered by JS -->
   </div>
 
   <!-- Character info -->
@@ -412,6 +507,7 @@
         <thead>
           <tr>
             <th style="width:30px"></th>
+            <th style="width:50px">画像</th>
             <th>ファイル名</th>
             <th>トリガー名</th>
             <th style="width:90px">酔いLv</th>
@@ -435,6 +531,7 @@
         <thead>
           <tr>
             <th style="width:30px"></th>
+            <th style="width:50px">画像</th>
             <th>ファイル名</th>
             <th>説明</th>
             <th style="width:90px">酔いLv</th>
@@ -458,6 +555,7 @@
         <thead>
           <tr>
             <th style="width:30px"></th>
+            <th style="width:50px">画像</th>
             <th>ファイル名</th>
             <th>説明</th>
             <th>備考</th>
@@ -471,36 +569,149 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('show')">
+  <img id="lightboxImg" src="" alt="">
+</div>
 
 <script>
 // --- State ---
 let cgRows = [];
 let portraitRows = [];
 let iconRows = [];
+let currentCharId = 'blaze';
+
+// --- Character presets ---
+const CHAR_PRESETS = {
+  blaze: {
+    id: 'blaze', name: 'ブレイズ', nameEn: 'BLAZE',
+    cgRows: [
+      { file: 'shoulder_lean.webp', trigger: '耳元でささやく', level: 'Lv.1', note: '' },
+      { file: 'headpat.webp', trigger: 'うなじを撫でる', level: 'Lv.2', note: '' },
+      { file: 'gaze.webp', trigger: '唇を見つめる', level: 'Lv.2', note: '' },
+      { file: 'breast_touch.webp', trigger: '胸に触れる', level: 'Lv.2', note: '' },
+      { file: 'hip_touch.webp', trigger: 'お尻をなでる', level: 'Lv.2', note: '' },
+      { file: 'ear_bite.webp', trigger: '耳を甘噛み', level: 'Lv.3', note: '' },
+      { file: 'lap_pillow.webp', trigger: '太ももに誘う', level: 'Lv.3', note: '' },
+      { file: 'kiss.webp', trigger: 'ディープキス', level: 'Lv.3', note: 'instant_win' },
+    ],
+    portraitRows: [
+      { file: 'portrait.webp', trigger: '基本立ち絵', level: '', note: '' },
+      { file: 'portrait-drunk-0.webp', trigger: '素面', level: 'Lv.0', note: '' },
+      { file: 'portrait-drunk-1.webp', trigger: 'ほろ酔い', level: 'Lv.1', note: '' },
+      { file: 'portrait-drunk-2.webp', trigger: '酔い', level: 'Lv.2', note: '' },
+      { file: 'portrait-drunk-3.webp', trigger: 'べろべろ', level: 'Lv.3', note: '' },
+      { file: 'portrait-drunk-4.webp', trigger: '潰れ', level: 'Lv.4', note: '' },
+    ],
+    iconRows: [
+      { file: 'select-icon.webp', trigger: 'キャラ選択画面用', note: '' },
+    ],
+  }
+};
 
 // --- Init with defaults ---
 function initDefaults() {
-  cgRows = [
-    { file: 'shoulder_lean.webp', trigger: '耳元でささやく', level: 'Lv.1', note: '' },
-    { file: 'headpat.webp', trigger: 'うなじを撫でる', level: 'Lv.2', note: '' },
-    { file: 'gaze.webp', trigger: '唇を見つめる', level: 'Lv.2', note: '' },
-    { file: 'breast_touch.webp', trigger: '胸に触れる', level: 'Lv.2', note: '' },
-    { file: 'hip_touch.webp', trigger: 'お尻をなでる', level: 'Lv.2', note: '' },
-    { file: 'ear_bite.webp', trigger: '耳を甘噛み', level: 'Lv.3', note: '' },
-    { file: 'lap_pillow.webp', trigger: '太ももに誘う', level: 'Lv.3', note: '' },
-    { file: 'kiss.webp', trigger: 'ディープキス', level: 'Lv.3', note: 'instant_win' },
-  ];
-  portraitRows = [
-    { file: 'portrait.webp', trigger: '基本立ち絵', level: '', note: '' },
-    { file: 'portrait-drunk-0.webp', trigger: '素面', level: 'Lv.0', note: '' },
-    { file: 'portrait-drunk-1.webp', trigger: 'ほろ酔い', level: 'Lv.1', note: '' },
-    { file: 'portrait-drunk-2.webp', trigger: '酔い', level: 'Lv.2', note: '' },
-    { file: 'portrait-drunk-3.webp', trigger: 'べろべろ', level: 'Lv.3', note: '' },
-    { file: 'portrait-drunk-4.webp', trigger: '潰れ', level: 'Lv.4', note: '' },
-  ];
-  iconRows = [
-    { file: 'select-icon.webp', trigger: 'キャラ選択画面用', note: '' },
-  ];
+  const preset = CHAR_PRESETS[currentCharId];
+  if (preset) {
+    cgRows = JSON.parse(JSON.stringify(preset.cgRows));
+    portraitRows = JSON.parse(JSON.stringify(preset.portraitRows));
+    iconRows = JSON.parse(JSON.stringify(preset.iconRows));
+  } else {
+    cgRows = [{ file: 'new_cg.webp', trigger: '新規イベント', level: 'Lv.1', note: '' }];
+    portraitRows = [{ file: 'portrait.webp', trigger: '基本立ち絵', level: '', note: '' }];
+    iconRows = [{ file: 'select-icon.webp', trigger: 'キャラ選択画面用', note: '' }];
+  }
+}
+
+// --- Character switcher ---
+function getCharList() {
+  const raw = localStorage.getItem('nightcap_cg_charlist');
+  if (raw) {
+    try { return JSON.parse(raw); } catch {}
+  }
+  return ['blaze'];
+}
+
+function saveCharList(list) {
+  localStorage.setItem('nightcap_cg_charlist', JSON.stringify(list));
+}
+
+function renderCharSwitcher() {
+  const container = document.getElementById('charSwitcher');
+  const list = getCharList();
+  let html = '<label>キャラ:</label>';
+  list.forEach(id => {
+    const data = loadCharData(id);
+    const label = data ? `${data.charName || id}` : id;
+    const active = id === currentCharId ? ' active' : '';
+    html += `<button class="char-tab${active}" onclick="switchChar('${esc(id)}')">${esc(label)}</button>`;
+  });
+  html += `<button class="char-tab-add" onclick="addNewChar()">+ 追加</button>`;
+  if (list.length > 1) {
+    html += `<button class="small danger" onclick="deleteChar()" style="margin-left:auto">このキャラを削除</button>`;
+  }
+  container.innerHTML = html;
+}
+
+function switchChar(id) {
+  saveLocal(); // save current first
+  currentCharId = id;
+  if (!loadLocalForChar(id)) {
+    initDefaults();
+  }
+  applyCharToUI();
+  render();
+  renderCharSwitcher();
+}
+
+function addNewChar() {
+  const id = prompt('新キャラのID (英字小文字)', '');
+  if (!id || !/^[a-z][a-z0-9_]*$/.test(id)) {
+    if (id !== null) toast('IDは英字小文字で入力してください', 'err');
+    return;
+  }
+  const list = getCharList();
+  if (list.includes(id)) { toast('このIDは既に存在します', 'err'); return; }
+  list.push(id);
+  saveCharList(list);
+  // Save new char with defaults
+  saveLocal();
+  currentCharId = id;
+  document.getElementById('charId').value = id;
+  document.getElementById('charName').value = '';
+  document.getElementById('charNameEn').value = id.toUpperCase();
+  initDefaults();
+  render();
+  saveLocal();
+  renderCharSwitcher();
+  toast(`キャラ「${id}」を追加しました`, 'ok');
+}
+
+function deleteChar() {
+  const list = getCharList();
+  if (list.length <= 1) { toast('最後のキャラは削除できません', 'err'); return; }
+  if (!confirm(`「${currentCharId}」を削除しますか？`)) return;
+  localStorage.removeItem('nightcap_cg_editor_' + currentCharId);
+  const newList = list.filter(id => id !== currentCharId);
+  saveCharList(newList);
+  currentCharId = newList[0];
+  if (!loadLocalForChar(currentCharId)) initDefaults();
+  applyCharToUI();
+  render();
+  renderCharSwitcher();
+  toast('削除しました', 'ok');
+}
+
+function applyCharToUI() {
+  const data = loadCharData(currentCharId);
+  if (data) {
+    document.getElementById('charId').value = data.charId || currentCharId;
+    document.getElementById('charName').value = data.charName || '';
+    document.getElementById('charNameEn').value = data.charNameEn || '';
+  } else {
+    document.getElementById('charId').value = currentCharId;
+    document.getElementById('charName').value = '';
+    document.getElementById('charNameEn').value = currentCharId.toUpperCase();
+  }
 }
 
 // --- Render ---
@@ -514,6 +725,7 @@ function render() {
 function renderTable(tableId, rows, hasLevel) {
   const tbody = document.getElementById(tableId);
   tbody.innerHTML = '';
+  const charId = document.getElementById('charId').value.trim() || 'unknown';
   rows.forEach((row, i) => {
     const tr = document.createElement('tr');
     tr.draggable = true;
@@ -523,7 +735,17 @@ function renderTable(tableId, rows, hasLevel) {
     tr.ondragover = dragOver;
     tr.ondrop = drop;
 
+    // Determine image path
+    let imgDir;
+    if (tableId === 'cgTable') {
+      imgDir = `../assets/characters/${charId}/cg/`;
+    } else {
+      imgDir = `../assets/characters/${charId}/`;
+    }
+    const imgSrc = imgDir + row.file;
+
     let html = `<td><span class="drag-handle">⠿</span></td>`;
+    html += `<td><img class="img-thumb" src="${esc(imgSrc)}" onerror="this.outerHTML='<div class=\\'img-placeholder\\'>---</div>'" onclick="openLightbox('${esc(imgSrc)}')"></td>`;
     html += `<td><input value="${esc(row.file)}" onchange="updateRow('${tableId}',${i},'file',this.value)"></td>`;
     html += `<td><input value="${esc(row.trigger)}" onchange="updateRow('${tableId}',${i},'trigger',this.value)"></td>`;
 
@@ -544,6 +766,12 @@ function renderTable(tableId, rows, hasLevel) {
     tr.innerHTML = html;
     tbody.appendChild(tr);
   });
+}
+
+function openLightbox(src) {
+  const lb = document.getElementById('lightbox');
+  document.getElementById('lightboxImg').src = src;
+  lb.classList.add('show');
 }
 
 function esc(s) { return s.replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
@@ -766,7 +994,7 @@ function doImport() {
   toast(`インポート完了: CG ${newCg.length}件, 立ち絵 ${newPortrait.length}件, アイコン ${newIcon.length}件`, 'ok');
 }
 
-// --- Local Storage ---
+// --- Local Storage (per-character) ---
 function saveLocal() {
   const data = {
     charId: document.getElementById('charId').value,
@@ -774,32 +1002,66 @@ function saveLocal() {
     charNameEn: document.getElementById('charNameEn').value,
     cgRows, portraitRows, iconRows
   };
-  localStorage.setItem('nightcap_cg_editor', JSON.stringify(data));
+  localStorage.setItem('nightcap_cg_editor_' + currentCharId, JSON.stringify(data));
+  // Keep charlist up to date
+  const list = getCharList();
+  if (!list.includes(currentCharId)) {
+    list.push(currentCharId);
+    saveCharList(list);
+  }
+}
+
+function loadCharData(id) {
+  const raw = localStorage.getItem('nightcap_cg_editor_' + id);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+function loadLocalForChar(id) {
+  const data = loadCharData(id);
+  if (!data) return false;
+  cgRows = data.cgRows || [];
+  portraitRows = data.portraitRows || [];
+  iconRows = data.iconRows || [];
+  return true;
 }
 
 function loadLocal() {
-  const raw = localStorage.getItem('nightcap_cg_editor');
-  if (!raw) return false;
-  try {
-    const data = JSON.parse(raw);
-    document.getElementById('charId').value = data.charId || '';
-    document.getElementById('charName').value = data.charName || '';
-    document.getElementById('charNameEn').value = data.charNameEn || '';
-    cgRows = data.cgRows || [];
-    portraitRows = data.portraitRows || [];
-    iconRows = data.iconRows || [];
-    return true;
-  } catch { return false; }
+  // Migration: move old single-key data to per-character
+  const oldRaw = localStorage.getItem('nightcap_cg_editor');
+  if (oldRaw) {
+    try {
+      const old = JSON.parse(oldRaw);
+      const oldId = old.charId || 'blaze';
+      localStorage.setItem('nightcap_cg_editor_' + oldId, oldRaw);
+      localStorage.removeItem('nightcap_cg_editor');
+      const list = getCharList();
+      if (!list.includes(oldId)) { list.push(oldId); saveCharList(list); }
+      currentCharId = oldId;
+    } catch {}
+  }
+  // Load last-used char
+  const lastChar = localStorage.getItem('nightcap_cg_lastchar');
+  if (lastChar) currentCharId = lastChar;
+  return loadLocalForChar(currentCharId);
 }
 
 function resetAll() {
-  if (!confirm('全てリセットしますか？')) return;
-  localStorage.removeItem('nightcap_cg_editor');
-  document.getElementById('charId').value = 'blaze';
-  document.getElementById('charName').value = 'ブレイズ';
-  document.getElementById('charNameEn').value = 'BLAZE';
+  if (!confirm(`「${currentCharId}」のデータをリセットしますか？`)) return;
+  localStorage.removeItem('nightcap_cg_editor_' + currentCharId);
+  const preset = CHAR_PRESETS[currentCharId];
+  if (preset) {
+    document.getElementById('charId').value = preset.id;
+    document.getElementById('charName').value = preset.name;
+    document.getElementById('charNameEn').value = preset.nameEn;
+  } else {
+    document.getElementById('charId').value = currentCharId;
+    document.getElementById('charName').value = '';
+    document.getElementById('charNameEn').value = currentCharId.toUpperCase();
+  }
   initDefaults();
   render();
+  saveLocal();
   toast('リセットしました', 'ok');
 }
 
@@ -921,7 +1183,15 @@ ${[...cgRows.map(r => r.file), ...portraitRows.map(r => r.file), ...iconRows.map
 if (!loadLocal()) {
   initDefaults();
 }
+applyCharToUI();
 render();
+renderCharSwitcher();
+// Remember last char on save
+const origSaveLocal = saveLocal;
+saveLocal = function() {
+  origSaveLocal();
+  localStorage.setItem('nightcap_cg_lastchar', currentCharId);
+};
 </script>
 </body>
 </html>
