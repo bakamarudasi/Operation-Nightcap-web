@@ -400,6 +400,8 @@
         <button class="sm" onclick="showImportModal()">インポート</button>
         <button class="sm" onclick="showExportModal()">エクスポート</button>
         <button class="sm" onclick="checkAllFiles()">ファイル確認</button>
+        <button class="sm" onclick="loadStagingManifest()" title="Claude Code生成画像の再読み込み" style="border-color:var(--generating)">staging更新</button>
+        <button class="sm" onclick="exportFeedback()" title="却下理由をClaude Codeにフィードバック" style="border-color:var(--warn)">FB出力</button>
       </div>
     </div>
 
@@ -650,6 +652,7 @@ function init() {
   updateCounts();
   checkConnection();
   checkAllFiles();
+  loadStagingManifest(); // Check for Claude Code generated images
 }
 
 // ============================================================
@@ -739,13 +742,122 @@ function updateFileStatus(item) {
   if (!item) { el.textContent = ''; return; }
   const exists = fileExistence[item.id];
   const path = getAssetPath(item);
+  const staged = stagingImages[item.id];
+  let html = '';
   if (exists === true) {
-    el.innerHTML = `<span style="color:var(--exists)">● ファイル存在:</span> ${path}`;
+    html = `<span style="color:var(--exists)">● アセット配置済み:</span> ${path}`;
   } else if (exists === false) {
-    el.innerHTML = `<span style="color:var(--missing)">● ファイル未検出:</span> ${path}`;
+    html = `<span style="color:var(--missing)">● アセット未配置:</span> ${path}`;
   } else {
-    el.innerHTML = `<span>● 未確認:</span> ${path}`;
+    html = `<span>● 未確認:</span> ${path}`;
   }
+  if (staged) {
+    html += `<br><span style="color:var(--generating)">● Claude生成画像あり</span> (staging/)`;
+  }
+  el.innerHTML = html;
+}
+
+// ============================================================
+// Claude Code Integration — staging/manifest.json
+// ============================================================
+//
+// Claude Code (with comfyui-mcp) writes:
+//   tools/staging/manifest.json — list of generated images
+//   tools/staging/<id>.webp     — generated image files
+//
+// Format of manifest.json:
+// {
+//   "items": {
+//     "shoulder_lean": { "image": "shoulder_lean.webp", "prompt": "...", "negPrompt": "...", "seed": 123 },
+//     "headpat": { ... }
+//   }
+// }
+//
+// This tool reads the manifest and shows staged images for review.
+// On reject/approve, results are exported to staging/feedback.json.
+
+let stagingImages = {}; // id → { image, prompt, negPrompt, seed }
+
+async function loadStagingManifest() {
+  try {
+    const res = await fetch('staging/manifest.json?t=' + Date.now());
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.items) return;
+
+    stagingImages = data.items;
+    let newCount = 0;
+
+    for (const [id, staged] of Object.entries(stagingImages)) {
+      const item = items.find(i => i.id === id);
+      if (!item) continue;
+
+      // Skip if already loaded this staged image
+      if (item.history.some(h => h.fromStaging && h.stagedFile === staged.image)) continue;
+
+      // Try to load the actual image from staging/
+      try {
+        const imgRes = await fetch(`staging/${staged.image}?t=${Date.now()}`);
+        if (!imgRes.ok) continue;
+        const blob = await imgRes.blob();
+        const dataUrl = await new Promise((ok, ng) => {
+          const r = new FileReader();
+          r.onload = () => ok(r.result);
+          r.onerror = ng;
+          r.readAsDataURL(blob);
+        });
+        item.history.push({
+          url: dataUrl,
+          ts: new Date().toISOString(),
+          adopted: false,
+          fromStaging: true,
+          stagedFile: staged.image,
+        });
+        if (item.status === 'pending') item.status = 'review';
+        // Apply Claude's prompts if user hasn't edited yet
+        if (staged.prompt && !item.posPrompt) item.posPrompt = staged.prompt;
+        if (staged.negPrompt && !item.negPrompt) item.negPrompt = staged.negPrompt;
+        newCount++;
+      } catch (e) { /* image not ready yet */ }
+    }
+
+    if (newCount > 0) {
+      saveAll(); renderList(); updateCounts();
+      toast(`Claude生成画像 ${newCount}件を読み込み`, 'ok');
+      if (selectedId) selectItem(selectedId);
+    }
+  } catch (e) { /* No manifest — normal */ }
+}
+
+function exportFeedback() {
+  const feedback = {};
+  for (const item of items) {
+    feedback[item.id] = {
+      file: item.file,
+      trigger: item.trigger,
+      level: item.level,
+      type: item.type,
+      status: item.status,
+      posPrompt: item.posPrompt || '',
+      negPrompt: item.negPrompt || '',
+      rejectionReasons: item.feedback.map(f => f.reason),
+      adopted: item.status === 'done',
+    };
+  }
+
+  const json = JSON.stringify({
+    timestamp: new Date().toISOString(),
+    charId: document.getElementById('charId').value,
+    items: feedback,
+  }, null, 2);
+
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'feedback.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('feedback.json をダウンロードしました → staging/ に配置してClaude Codeに読ませてください', 'ok');
 }
 
 // ============================================================
