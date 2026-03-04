@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import { randomPick } from '../engine/utils.ts';
+import { CharacterPortrait } from './CharacterPortrait.tsx';
 
 // 酔い段階
 const DRUNK_STAGES = [
@@ -370,7 +371,9 @@ export function BattleScreen() {
           <div className="battle-left" style={{ '--char-glow': charGlow } as React.CSSProperties}>
             <div className={`char-portrait ${drunkClassName(opponentDrunkLevel)}`}>
               <div className="char-portrait-flush" style={{ background: oppFlush }} />
-              <div className="char-portrait-icon">{currentOpponent.theme.icon}</div>
+              <div className="char-portrait-icon">
+                <CharacterPortrait theme={currentOpponent.theme} variant="portrait" />
+              </div>
               <div className={`char-reaction ${reaction ? 'show' : ''}`}>{reaction}</div>
             </div>
             <div className="char-info">
@@ -386,7 +389,9 @@ export function BattleScreen() {
           <div className="battle-center">
             {/* 相手バー */}
             <div className="opponent-bar">
-              <div className="opp-portrait-mini">{currentOpponent.theme.icon}</div>
+              <div className="opp-portrait-mini">
+                <CharacterPortrait theme={currentOpponent.theme} variant="icon" />
+              </div>
               <div className="opp-info">
                 <div className="opp-name-row">
                   <div className="opp-name">{currentOpponent.name}</div>

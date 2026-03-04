@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import type { CharacterDef } from '../data/types.ts';
+import { CharacterPortrait } from './CharacterPortrait.tsx';
 import '../styles/select.css';
 
 /* ── 定数 ── */
@@ -273,7 +274,9 @@ export function SelectScreen() {
                     style={{ '--char-color': char.theme.color } as React.CSSProperties}
                     onClick={() => goTo(i)}
                   >
-                    <div className="sel-card-sprite">{char.theme.icon}</div>
+                    <div className="sel-card-sprite">
+                      <CharacterPortrait theme={char.theme} variant="portrait" />
+                    </div>
                     <div className="sel-card-name">{char.name}</div>
                     <div className="sel-card-sub">{char.subtitle}</div>
                     <div className="sel-card-nameEn">{char.nameEn}</div>
@@ -368,7 +371,9 @@ export function SelectScreen() {
           </div>
           <div className="sel-vs-badge">VS</div>
           <div className="sel-vs-side sel-vs-opponent">
-            <div className="sel-vs-icon">{vsChar.theme.icon}</div>
+            <div className="sel-vs-icon">
+              <CharacterPortrait theme={vsChar.theme} variant="icon" />
+            </div>
             <div className="sel-vs-name">{vsChar.name}</div>
           </div>
         </div>

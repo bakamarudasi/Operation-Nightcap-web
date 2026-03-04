@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import { randomPick } from '../engine/utils.ts';
+import { CharacterPortrait } from './CharacterPortrait.tsx';
 
 export function GalleryScreen() {
   const setScreen = useGameStore((s) => s.setScreen);
@@ -125,7 +126,7 @@ export function GalleryScreen() {
                   className={`portrait-char-btn ${selectedChar === c.id ? 'active' : ''}`}
                   onClick={() => handleCharSelect(c.id)}
                 >
-                  {c.theme.icon} {c.name}
+                  <span className="portrait-char-btn-icon"><CharacterPortrait theme={c.theme} variant="icon" /></span> {c.name}
                 </button>
               ))}
             </div>
@@ -134,7 +135,7 @@ export function GalleryScreen() {
             {char && (
               <div className="portrait-view-main">
                 <div className="portrait-sprite-area">
-                  <div className="portrait-sprite">{char.theme.icon}</div>
+                  <div className="portrait-sprite"><CharacterPortrait theme={char.theme} variant="portrait" /></div>
                   <div className="portrait-blush" style={{ opacity: blushOpacity }}></div>
                 </div>
                 <div className="portrait-info">
