@@ -391,6 +391,42 @@
     box-shadow: 0 0 40px rgba(233,69,96,0.3);
   }
 
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .filter-bar input {
+    flex: 1;
+    padding: 6px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 0.85em;
+  }
+  .filter-bar input:focus { border-color: var(--accent); outline: none; }
+  .filter-bar select {
+    padding: 6px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+  .filter-bar .filter-count {
+    font-size: 0.8em;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  tr.filtered-out { display: none; }
+
   @media (max-width: 700px) {
     .char-header { grid-template-columns: 1fr; }
     .toolbar { flex-direction: column; }
@@ -476,6 +512,26 @@
     <div class="stat-item">合計: <span class="stat-num" id="statTotal">0</span></div>
   </div>
 
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <input type="text" id="filterText" placeholder="検索... (ファイル名・トリガー名・備考)" oninput="applyFilter()">
+    <select id="filterLevel" onchange="applyFilter()">
+      <option value="">全Lv</option>
+      <option value="Lv.0">Lv.0</option>
+      <option value="Lv.1">Lv.1</option>
+      <option value="Lv.2">Lv.2</option>
+      <option value="Lv.3">Lv.3</option>
+      <option value="Lv.4">Lv.4</option>
+    </select>
+    <select id="filterType" onchange="applyFilter()">
+      <option value="">全種類</option>
+      <option value="cg">イベントCG</option>
+      <option value="portrait">立ち絵</option>
+      <option value="icon">アイコン</option>
+    </select>
+    <span class="filter-count" id="filterCount"></span>
+  </div>
+
   <!-- Claude Code 連携パネル -->
   <div class="claude-panel">
     <div class="claude-panel-head" onclick="toggleClaudePanel()">
@@ -487,6 +543,7 @@
         現在の編集内容からClaude Code用プロンプトを生成します。コピーしてClaude Codeに貼り付けてください。
       </p>
       <div class="claude-actions">
+        <button onclick="claudeScanSource()">🔍 ソースから必要CG抽出</button>
         <button onclick="claudeGenAll()">📋 全CG生成プロンプト</button>
         <button onclick="claudeGenMissing()">📋 未作成のみ生成</button>
         <button onclick="claudeGenSingle()">📋 選択行のみ生成</button>
@@ -818,6 +875,52 @@ function updateStats() {
   saveLocal();
 }
 
+// --- Filter ---
+function applyFilter() {
+  const text = (document.getElementById('filterText').value || '').toLowerCase();
+  const level = document.getElementById('filterLevel').value;
+  const type = document.getElementById('filterType').value;
+
+  let shown = 0, total = 0;
+
+  const filterTable = (tableId, rows, tableType) => {
+    if (type && type !== tableType) {
+      // Hide entire section
+      document.getElementById(tableId).querySelectorAll('tr').forEach(tr => tr.classList.add('filtered-out'));
+      total += rows.length;
+      return;
+    }
+    const tbody = document.getElementById(tableId);
+    const trs = tbody.querySelectorAll('tr');
+    rows.forEach((row, i) => {
+      if (i >= trs.length) return;
+      const matchText = !text ||
+        (row.file || '').toLowerCase().includes(text) ||
+        (row.trigger || '').toLowerCase().includes(text) ||
+        (row.note || '').toLowerCase().includes(text);
+      const matchLevel = !level || row.level === level;
+      total++;
+      if (matchText && matchLevel) {
+        trs[i].classList.remove('filtered-out');
+        shown++;
+      } else {
+        trs[i].classList.add('filtered-out');
+      }
+    });
+  };
+
+  filterTable('cgTable', cgRows, 'cg');
+  filterTable('portraitTable', portraitRows, 'portrait');
+  filterTable('iconTable', iconRows, 'icon');
+
+  const countEl = document.getElementById('filterCount');
+  if (text || level || type) {
+    countEl.textContent = `${shown}/${total}件`;
+  } else {
+    countEl.textContent = '';
+  }
+}
+
 // --- Drag & Drop reorder ---
 let dragIdx = null, dragTable = null;
 function dragStart(e) {
@@ -1088,6 +1191,36 @@ function getCharInfo() {
     name: document.getElementById('charName').value.trim(),
     nameEn: document.getElementById('charNameEn').value.trim(),
   };
+}
+
+function claudeScanSource() {
+  const c = getCharInfo();
+  const prompt = `プロジェクト内のソースコードをスキャンして、キャラクター「${c.name}(${c.nameEn})」(ID: ${c.id}) に必要な全CG画像を洗い出してください。
+
+以下を調べて一覧にしてください:
+1. src/data/characters.ts の cgEvents / afterEvents で参照されている画像
+2. src/ 内で ${c.id} のCGファイルパスを参照しているコード
+3. assets/characters/${c.id}/ で想定されるファイル構成
+4. cg-manifest.txt に記載のファイル
+5. ゲーム内で使われる立ち絵の全バリエーション（酔いレベル別、衣装状態別）
+
+出力フォーマット:
+\`\`\`
+【イベントCG】
+- ファイル名 | トリガー | 酔いLv | 参照元ファイル:行番号
+
+【立ち絵】
+- ファイル名 | 説明 | 酔いLv | 参照元
+
+【アイコン】
+- ファイル名 | 説明 | 参照元
+
+【未定義だが必要と思われるもの】
+- (コードの構造から推測される不足CG)
+\`\`\`
+
+特に「コード内で参照されているが、マニフェストに未記載」のものを重点的に探してください。`;
+  showClaudePrompt(prompt);
 }
 
 function showClaudePrompt(text) {
