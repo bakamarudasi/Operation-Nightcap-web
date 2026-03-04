@@ -219,6 +219,60 @@
     overflow-y: auto;
   }
 
+  /* Claude panel */
+  .claude-panel {
+    margin-bottom: 16px;
+    background: var(--surface);
+    border-radius: 8px;
+    border: 1px solid #6c5ce7;
+    overflow: hidden;
+  }
+  .claude-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #6c5ce7 0%, #a855f7 100%);
+    cursor: pointer;
+    user-select: none;
+  }
+  .claude-panel-head h3 { font-size: 0.95em; }
+  .claude-panel-body {
+    display: none;
+    padding: 14px;
+  }
+  .claude-panel-body.show { display: block; }
+  .claude-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .claude-actions button {
+    background: linear-gradient(135deg, #6c5ce7, #a855f7);
+    border: none;
+    font-weight: 600;
+  }
+  .claude-actions button:hover {
+    background: linear-gradient(135deg, #7d6ef0, #b96cf7);
+  }
+  .claude-prompt-preview {
+    display: none;
+    background: #0d0d1a;
+    border: 1px solid #6c5ce7;
+    border-radius: 8px;
+    padding: 14px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.82em;
+    line-height: 1.6;
+    color: #ccc;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 10px;
+  }
+  .claude-prompt-preview.show { display: block; }
+
   /* Toast */
   .toast {
     position: fixed;
@@ -325,6 +379,26 @@
     <div class="stat-item">立ち絵: <span class="stat-num" id="statPortrait">0</span></div>
     <div class="stat-item">アイコン: <span class="stat-num" id="statIcon">0</span></div>
     <div class="stat-item">合計: <span class="stat-num" id="statTotal">0</span></div>
+  </div>
+
+  <!-- Claude Code 連携パネル -->
+  <div class="claude-panel">
+    <div class="claude-panel-head" onclick="toggleClaudePanel()">
+      <h3>🤖 Claude Code 連携</h3>
+      <span id="claudeToggle">▼</span>
+    </div>
+    <div class="claude-panel-body" id="claudeBody">
+      <p style="font-size:0.82em; color:var(--text-dim); margin-bottom:10px;">
+        現在の編集内容からClaude Code用プロンプトを生成します。コピーしてClaude Codeに貼り付けてください。
+      </p>
+      <div class="claude-actions">
+        <button onclick="claudeGenAll()">📋 全CG生成プロンプト</button>
+        <button onclick="claudeGenMissing()">📋 未作成のみ生成</button>
+        <button onclick="claudeGenSingle()">📋 選択行のみ生成</button>
+        <button onclick="claudeStatusCheck()">📋 ステータス確認</button>
+      </div>
+      <pre class="claude-prompt-preview" id="claudePreview"></pre>
+    </div>
   </div>
 
   <!-- Event CGs -->
@@ -736,6 +810,111 @@ function toast(msg, type) {
   el.className = 'toast show ' + (type || 'ok');
   clearTimeout(el._timer);
   el._timer = setTimeout(() => { el.className = 'toast'; }, 2500);
+}
+
+// --- Claude Code 連携 ---
+function toggleClaudePanel() {
+  const body = document.getElementById('claudeBody');
+  const toggle = document.getElementById('claudeToggle');
+  body.classList.toggle('show');
+  toggle.textContent = body.classList.contains('show') ? '▲' : '▼';
+}
+
+function getCharInfo() {
+  return {
+    id: document.getElementById('charId').value.trim() || 'unknown',
+    name: document.getElementById('charName').value.trim(),
+    nameEn: document.getElementById('charNameEn').value.trim(),
+  };
+}
+
+function showClaudePrompt(text) {
+  const el = document.getElementById('claudePreview');
+  el.textContent = text;
+  el.classList.add('show');
+  navigator.clipboard.writeText(text).then(() => {
+    toast('プロンプトをクリップボードにコピーしました！Claude Codeに貼り付けてください', 'ok');
+  }).catch(() => {
+    toast('プレビューからコピーしてください', 'err');
+  });
+}
+
+function claudeGenAll() {
+  const c = getCharInfo();
+  const allItems = [
+    ...cgRows.map(r => `  - ${r.file} (イベントCG / ${r.trigger} / ${r.level})`),
+    ...portraitRows.map(r => `  - ${r.file} (立ち絵 / ${r.trigger} / ${r.level || '-'})`),
+    ...iconRows.map(r => `  - ${r.file} (アイコン / ${r.trigger})`),
+  ];
+  const prompt = `キャラクター「${c.name}(${c.nameEn})」(ID: ${c.id}) のCG画像を全て生成してください。
+
+対象ファイル一覧:
+${allItems.join('\n')}
+
+配置先:
+  - イベントCG → assets/characters/${c.id}/cg/
+  - 立ち絵     → assets/characters/${c.id}/
+  - アイコン   → assets/characters/${c.id}/
+
+ComfyUIで生成して、tools/staging/ に出力してください。
+キャラの外見設定は src/data/characters.ts を参照してください。`;
+  showClaudePrompt(prompt);
+}
+
+function claudeGenMissing() {
+  const c = getCharInfo();
+  const prompt = `キャラクター「${c.name}(${c.nameEn})」(ID: ${c.id}) の未作成CGを確認して生成してください。
+
+tools/staging/manifest.json と assets/characters/${c.id}/ を比較して、
+まだ存在しないファイルだけを ComfyUI で生成してください。
+
+マニフェストの全ファイル一覧:
+${[...cgRows, ...portraitRows, ...iconRows].map(r => `  - ${r.file}`).join('\n')}
+
+キャラの外見設定は src/data/characters.ts を参照。
+出力先: tools/staging/`;
+  showClaudePrompt(prompt);
+}
+
+function claudeGenSingle() {
+  const c = getCharInfo();
+  // Collect all rows with index for selection
+  const all = [
+    ...cgRows.map((r,i) => ({...r, type: 'イベントCG', path: `assets/characters/${c.id}/cg/`})),
+    ...portraitRows.map((r,i) => ({...r, type: '立ち絵', path: `assets/characters/${c.id}/`})),
+    ...iconRows.map((r,i) => ({...r, type: 'アイコン', path: `assets/characters/${c.id}/`})),
+  ];
+  // For simplicity, generate for the first CG item or prompt user to pick
+  if (all.length === 0) { toast('行がありません', 'err'); return; }
+
+  const prompt = `キャラクター「${c.name}(${c.nameEn})」の以下のCGを1枚だけ生成してください。
+
+ファイル: ${all[0].file}
+種類: ${all[0].type}
+トリガー: ${all[0].trigger}
+配置先: ${all[0].path}
+
+ComfyUIで生成。キャラ外見は src/data/characters.ts 参照。
+出力先: tools/staging/
+
+※ 別の画像を指定する場合は、ファイル名を変更して貼り直してください。`;
+  showClaudePrompt(prompt);
+}
+
+function claudeStatusCheck() {
+  const c = getCharInfo();
+  const prompt = `キャラクター「${c.name}(${c.nameEn})」(ID: ${c.id}) のCG制作状況を確認してください。
+
+以下をチェック:
+1. assets/characters/${c.id}/ 配下の既存ファイル
+2. tools/staging/ の生成待ちファイル
+3. cg-manifest.txt との差分
+
+マニフェスト上の全ファイル:
+${[...cgRows.map(r => r.file), ...portraitRows.map(r => r.file), ...iconRows.map(r => r.file)].join(', ')}
+
+結果を「完了 / 未作成 / staging中」で一覧表示してください。`;
+  showClaudePrompt(prompt);
 }
 
 // --- Init ---
