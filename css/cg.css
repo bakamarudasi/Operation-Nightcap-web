@@ -109,3 +109,118 @@
 .cg-image.entering {
   animation: cgZoomIn 0.6s ease-out;
 }
+
+/* ============================================
+   CGシーケンスプレーヤー
+   ============================================ */
+
+.cg-sequence-player {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.cg-seq-frame {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* --- Enter transitions --- */
+.cg-seq-enter,
+.cg-seq-enter-fade {
+  animation: seqFadeIn 0.4s ease-out forwards;
+}
+
+.cg-seq-enter-slide-left {
+  animation: seqSlideInLeft 0.4s ease-out forwards;
+}
+
+.cg-seq-enter-zoom {
+  animation: seqZoomIn 0.4s ease-out forwards;
+}
+
+.cg-seq-enter-none {
+  opacity: 1;
+}
+
+/* --- Exit transitions --- */
+.cg-seq-exit-fade {
+  animation: seqFadeOut 0.3s ease-in forwards;
+}
+
+.cg-seq-exit-slide-left {
+  animation: seqSlideOutLeft 0.3s ease-in forwards;
+}
+
+.cg-seq-exit-zoom {
+  animation: seqZoomOut 0.3s ease-in forwards;
+}
+
+.cg-seq-exit-none {
+  opacity: 0;
+}
+
+/* --- Keyframes --- */
+@keyframes seqFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes seqFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes seqSlideInLeft {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes seqSlideOutLeft {
+  from { transform: translateX(0);     opacity: 1; }
+  to   { transform: translateX(-100%); opacity: 0; }
+}
+
+@keyframes seqZoomIn {
+  from { transform: scale(1.2); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes seqZoomOut {
+  from { transform: scale(1);   opacity: 1; }
+  to   { transform: scale(0.8); opacity: 0; }
+}
+
+/* --- フレームインジケーター --- */
+.cg-seq-indicators {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.cg-seq-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(245, 230, 211, 0.3);
+  transition: all 0.3s ease;
+}
+
+.cg-seq-dot.active {
+  background: var(--gold-bright, #f5c542);
+  box-shadow: 0 0 6px rgba(245, 197, 66, 0.6);
+  transform: scale(1.3);
+}
+
+.cg-seq-dot.passed {
+  background: rgba(245, 230, 211, 0.6);
+}

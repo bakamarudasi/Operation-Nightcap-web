@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
+import { CGSequencePlayer } from './CGSequencePlayer.tsx';
 
 export function CGOverlay() {
   const activeCG = useGameStore((s) => s.activeCG);
@@ -62,23 +63,34 @@ export function CGOverlay() {
 
   const triggerCard = CARD_DATA[activeCG.triggerCard];
   const eventEmoji = triggerCard?.emoji ?? '💫';
+  const hasFrames = activeCG.frames && activeCG.frames.length > 0;
 
   return (
     <div className="cg-overlay" onClick={handleClick}>
       <div className="cg-image-container">
-        <div
-          className="cg-image"
-          style={{
-            background: `linear-gradient(135deg, ${activeCG.cgColor}44, ${activeCG.cgColor}88)`,
-          }}
-        >
-          <div className="cg-placeholder">
-            <div className="cg-placeholder-emoji" style={{ fontSize: '80px' }}>{eventEmoji}</div>
-            <div className="cg-placeholder-text" style={{ fontSize: '16px', color: '#f5e6d3', marginTop: '16px' }}>
-              {activeCG.id.replace(/_/g, ' ').toUpperCase()}
+        {hasFrames ? (
+          <CGSequencePlayer
+            frames={activeCG.frames!}
+            cgColor={activeCG.cgColor}
+            dialogueIndex={cgDialogueIndex}
+            fallbackEmoji={eventEmoji}
+            eventId={activeCG.id}
+          />
+        ) : (
+          <div
+            className="cg-image"
+            style={{
+              background: `linear-gradient(135deg, ${activeCG.cgColor}44, ${activeCG.cgColor}88)`,
+            }}
+          >
+            <div className="cg-placeholder">
+              <div className="cg-placeholder-emoji" style={{ fontSize: '80px' }}>{eventEmoji}</div>
+              <div className="cg-placeholder-text" style={{ fontSize: '16px', color: '#f5e6d3', marginTop: '16px' }}>
+                {activeCG.id.replace(/_/g, ' ').toUpperCase()}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
       <div className="cg-textbox">
         <div className="cg-speaker">{currentLine.speaker}</div>

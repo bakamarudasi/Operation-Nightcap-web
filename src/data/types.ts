@@ -16,6 +16,15 @@ export interface CardDef {
   price: number;
 }
 
+export interface CostumeState {
+  level: number;
+  label: string;
+  description: string;
+  emoji: string;
+  /** CSS用: 衣装崩れの度合い 0.0~1.0 */
+  dishevelAmount: number;
+}
+
 export interface DrunkLevel {
   level: number;
   name: string;
@@ -28,6 +37,18 @@ export interface CGDialogueLine {
   text: string;
 }
 
+/** CGシーケンスの1フレーム */
+export interface CGSequenceFrame {
+  /** 画像パス (例: '/cg/blaze_breast_1.png') — 未設定ならプレースホルダー */
+  src?: string;
+  /** このフレームに対応するdialogue開始インデックス（クリックでセリフが進むと切替） */
+  dialogueStart?: number;
+  /** フレーム切替時のトランジション */
+  transition?: 'fade' | 'slide-left' | 'zoom' | 'none';
+  /** プレースホルダーテキスト（画像なし時） */
+  label?: string;
+}
+
 export interface CGEvent {
   id: string;
   triggerCard: string;
@@ -35,6 +56,8 @@ export interface CGEvent {
   cgColor: string;
   instantWin?: boolean;
   dialogue: CGDialogueLine[];
+  /** 画像シーケンス（段階的演出用） */
+  frames?: CGSequenceFrame[];
 }
 
 export interface CharacterTheme {
@@ -65,6 +88,18 @@ export interface DeckAI {
   defaultDeck: string[];
 }
 
+export interface AfterEvent {
+  id: string;
+  /** 解放条件: CG解放率（0~1） */
+  requiredCGRate: number;
+  /** 解放条件: 最低勝利数 */
+  requiredWins: number;
+  title: string;
+  cgColor: string;
+  emoji: string;
+  dialogue: CGDialogueLine[];
+}
+
 export interface CharacterDef {
   id: string;
   name: string;
@@ -74,9 +109,11 @@ export interface CharacterDef {
   drunkType: string;
   drunkMax: number;
   drunkLevels: DrunkLevel[];
+  costumeStates: CostumeState[];
   battleLines: BattleLines;
   deck_ai: DeckAI;
   cgEvents: CGEvent[];
+  afterEvents: AfterEvent[];
 }
 
 export type ScreenId = 'title' | 'select' | 'battle' | 'shop' | 'gallery' | 'settings';

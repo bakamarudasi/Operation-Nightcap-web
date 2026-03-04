@@ -3,11 +3,14 @@ import { useGameStore } from '../store/gameStore.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import { randomPick } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
+import { AfterEventOverlay } from './AfterEventOverlay.tsx';
 
 export function GalleryScreen() {
   const setScreen = useGameStore((s) => s.setScreen);
   const unlockedCGs = useGameStore((s) => s.unlockedCGs);
   const showCG = useGameStore((s) => s.showCG);
+  const showAfterEvent = useGameStore((s) => s.showAfterEvent);
+  const unlockedAfterEvents = useGameStore((s) => s.unlockedAfterEvents);
   const wins = useGameStore((s) => s.wins);
   const losses = useGameStore((s) => s.losses);
 
@@ -111,6 +114,43 @@ export function GalleryScreen() {
               );
             })}
           </div>
+
+          {/* 勝利後イベント */}
+          <div className="gallery-after-section">
+            <div className="gallery-after-title">
+              🌙 勝利後イベント ({characters.flatMap(c => c.afterEvents).filter(ae => unlockedAfterEvents.includes(ae.id)).length}/{characters.flatMap(c => c.afterEvents).length})
+            </div>
+            <div className="gallery-after-grid">
+              {characters.flatMap(c => c.afterEvents).map((ae) => {
+                const isUnlocked = unlockedAfterEvents.includes(ae.id);
+                return (
+                  <div
+                    key={ae.id}
+                    className={`gallery-after-item ${isUnlocked ? '' : 'locked'}`}
+                    style={{
+                      background: isUnlocked
+                        ? `linear-gradient(135deg, ${ae.cgColor}44, ${ae.cgColor}88)`
+                        : 'rgba(30, 18, 10, 0.6)',
+                    }}
+                    onClick={() => {
+                      if (isUnlocked) {
+                        showAfterEvent(ae);
+                      }
+                    }}
+                  >
+                    {isUnlocked ? (
+                      <>
+                        <span className="gallery-after-emoji">{ae.emoji}</span>
+                        <span className="gallery-after-label">{ae.title}</span>
+                      </>
+                    ) : (
+                      <div className="gallery-after-lock">🔒</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -135,9 +175,23 @@ export function GalleryScreen() {
             {char && (
               <div className="portrait-view-main">
                 <div className="portrait-sprite-area">
-                  <div className="portrait-sprite"><CharacterPortrait theme={char.theme} variant="portrait" /></div>
+                  <div className="portrait-sprite">
+                    <CharacterPortrait
+                      theme={char.theme}
+                      variant="portrait"
+                      drunkLevel={drunkLevel}
+                      costumeStates={char.costumeStates}
+                    />
+                  </div>
                   <div className="portrait-blush" style={{ opacity: blushOpacity }}></div>
                 </div>
+                {/* 衣装状態表示 */}
+                {char.costumeStates[drunkLevel] && (
+                  <div className="portrait-costume-info">
+                    <span>{char.costumeStates[drunkLevel].emoji} {char.costumeStates[drunkLevel].label}</span>
+                    <span className="portrait-costume-desc">{char.costumeStates[drunkLevel].description}</span>
+                  </div>
+                )}
                 <div className="portrait-info">
                   <h3 className="portrait-char-name">{char.name}</h3>
                   <p className="portrait-char-subtitle">{char.subtitle}</p>
@@ -168,6 +222,9 @@ export function GalleryScreen() {
           </div>
         </div>
       )}
+
+      {/* 勝利後イベントオーバーレイ */}
+      <AfterEventOverlay />
     </div>
   );
 }

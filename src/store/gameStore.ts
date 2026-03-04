@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ScreenId, BattleState, CharacterDef, CGEvent } from '../data/types.ts';
+import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent } from '../data/types.ts';
 import { DEFAULT_DECK, CARD_DATA } from '../data/cards.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import { shuffleArray, randomPick } from '../engine/utils.ts';
@@ -12,6 +12,7 @@ interface GameStore {
   money: number;
   playerDeck: string[];
   unlockedCGs: string[];
+  unlockedAfterEvents: string[];
   wins: number;
   losses: number;
 
@@ -25,6 +26,10 @@ interface GameStore {
   // CGオーバーレイ
   activeCG: CGEvent | null;
   cgDialogueIndex: number;
+
+  // 勝利後イベント
+  activeAfterEvent: AfterEvent | null;
+  afterEventDialogueIndex: number;
 
   // 画面遷移
   setScreen: (screen: ScreenId) => void;
@@ -45,6 +50,12 @@ interface GameStore {
   showCG: (cg: CGEvent) => void;
   advanceCG: () => void;
   closeCG: () => void;
+
+  // 勝利後イベント
+  checkAfterEvent: () => AfterEvent | null;
+  showAfterEvent: (event: AfterEvent) => void;
+  advanceAfterEvent: () => void;
+  closeAfterEvent: () => void;
 
   // 設定
   resetData: () => void;
@@ -77,6 +88,7 @@ export const useGameStore = create<GameStore>()(
       money: 3200,
       playerDeck: [...DEFAULT_DECK],
       unlockedCGs: [],
+      unlockedAfterEvents: [],
       wins: 0,
       losses: 0,
 
@@ -90,6 +102,10 @@ export const useGameStore = create<GameStore>()(
       // CG
       activeCG: null,
       cgDialogueIndex: 0,
+
+      // 勝利後イベント
+      activeAfterEvent: null,
+      afterEventDialogueIndex: 0,
 
       setScreen: (screen) => set({ currentScreen: screen }),
 
@@ -308,11 +324,59 @@ export const useGameStore = create<GameStore>()(
 
       closeCG: () => set({ activeCG: null, cgDialogueIndex: 0 }),
 
+      // 勝利後イベント
+      checkAfterEvent: () => {
+        const state = get();
+        if (!state.currentOpponent) return null;
+        const char = state.currentOpponent;
+        const totalCGs = char.cgEvents.length;
+        if (totalCGs === 0) return null;
+        const unlockedCount = char.cgEvents.filter(e => state.unlockedCGs.includes(e.id)).length;
+        const cgRate = unlockedCount / totalCGs;
+
+        // 条件を満たす未解放の勝利後イベントを探す（最も条件が高いものを優先）
+        const eligible = char.afterEvents
+          .filter(ae =>
+            cgRate >= ae.requiredCGRate &&
+            state.wins >= ae.requiredWins &&
+            !state.unlockedAfterEvents.includes(ae.id)
+          )
+          .sort((a, b) => b.requiredCGRate - a.requiredCGRate);
+
+        return eligible[0] ?? null;
+      },
+
+      showAfterEvent: (event) => {
+        const state = get();
+        const unlocked = [...state.unlockedAfterEvents];
+        if (!unlocked.includes(event.id)) {
+          unlocked.push(event.id);
+        }
+        set({
+          activeAfterEvent: event,
+          afterEventDialogueIndex: 0,
+          unlockedAfterEvents: unlocked,
+        });
+      },
+
+      advanceAfterEvent: () => {
+        const state = get();
+        if (!state.activeAfterEvent) return;
+        if (state.afterEventDialogueIndex < state.activeAfterEvent.dialogue.length - 1) {
+          set({ afterEventDialogueIndex: state.afterEventDialogueIndex + 1 });
+        } else {
+          set({ activeAfterEvent: null, afterEventDialogueIndex: 0 });
+        }
+      },
+
+      closeAfterEvent: () => set({ activeAfterEvent: null, afterEventDialogueIndex: 0 }),
+
       resetData: () => {
         set({
           money: 3200,
           playerDeck: [...DEFAULT_DECK],
           unlockedCGs: [],
+          unlockedAfterEvents: [],
           wins: 0,
           losses: 0,
           currentScreen: 'title',
@@ -335,6 +399,7 @@ export const useGameStore = create<GameStore>()(
         money: state.money,
         playerDeck: state.playerDeck,
         unlockedCGs: state.unlockedCGs,
+        unlockedAfterEvents: state.unlockedAfterEvents,
         wins: state.wins,
         losses: state.losses,
       }),
