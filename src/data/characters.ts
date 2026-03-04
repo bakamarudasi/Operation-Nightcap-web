@@ -153,7 +153,24 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: '……っ、ばか……酔ってるからって許されると思ってんの……？' },
           { speaker: 'ブレイズ', text: '……手、どけないの……？ ……どけなくて、いいけど……今だけだからね……っ' },
           { speaker: 'ブレイズ', text: '……ん……ドクターの手、あったかい……心臓、ばくばくしてるの……わかるでしょ……' }
-        ]
+        ],
+        frames: [
+          {
+            label: '手が伸びる',
+            dialogueStart: 0,
+            transition: 'fade',
+          },
+          {
+            label: '胸に触れる',
+            dialogueStart: 1,
+            transition: 'zoom',
+          },
+          {
+            label: '感じてる表情',
+            dialogueStart: 3,
+            transition: 'fade',
+          },
+        ],
       },
       {
         id: 'blaze_hip',
@@ -178,7 +195,24 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: '……んっ、舌……やだ、ぞくぞくする……もう、だめ……' },
           { speaker: 'ブレイズ', text: '……ドクター、最低……こんなの……もっと、して……' },
           { speaker: 'ブレイズ', text: '……もう帰さないから……今夜は覚悟してよね……' }
-        ]
+        ],
+        frames: [
+          {
+            label: '耳に顔を近づける',
+            dialogueStart: 0,
+            transition: 'slide-left',
+          },
+          {
+            label: '耳たぶを噛む',
+            dialogueStart: 1,
+            transition: 'zoom',
+          },
+          {
+            label: '蕩けた表情',
+            dialogueStart: 3,
+            transition: 'fade',
+          },
+        ],
       },
       {
         id: 'blaze_lap',
@@ -205,7 +239,30 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: '……心臓、止まりそう……ドクターの息、甘い……' },
           { speaker: 'ブレイズ', text: '………ん……っ' },
           { speaker: 'ブレイズ', text: '……ばか。もう遅いよ。……朝まで、逃がさないから' }
-        ]
+        ],
+        frames: [
+          {
+            label: '腰を引き寄せる',
+            dialogueStart: 0,
+            transition: 'fade',
+          },
+          {
+            label: '唇が近づく',
+            dialogueStart: 2,
+            transition: 'zoom',
+          },
+          {
+            label: 'キス',
+            dialogueStart: 3,
+            transition: 'fade',
+            duration: 2000,
+          },
+          {
+            label: '余韻',
+            dialogueStart: 4,
+            transition: 'fade',
+          },
+        ],
       }
     ],
     afterEvents: [

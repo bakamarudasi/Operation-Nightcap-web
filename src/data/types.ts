@@ -37,6 +37,20 @@ export interface CGDialogueLine {
   text: string;
 }
 
+/** CGシーケンスの1フレーム */
+export interface CGSequenceFrame {
+  /** 画像パス (例: '/cg/blaze_breast_1.png') — 未設定ならプレースホルダー */
+  src?: string;
+  /** フレーム表示時間(ms)。nullまたは未設定 = セリフ送りで進む */
+  duration?: number | null;
+  /** このフレームに対応するdialogue開始インデックス */
+  dialogueStart?: number;
+  /** フレーム切替時のトランジション */
+  transition?: 'fade' | 'slide-left' | 'zoom' | 'none';
+  /** プレースホルダーテキスト（画像なし時） */
+  label?: string;
+}
+
 export interface CGEvent {
   id: string;
   triggerCard: string;
@@ -44,6 +58,8 @@ export interface CGEvent {
   cgColor: string;
   instantWin?: boolean;
   dialogue: CGDialogueLine[];
+  /** 画像シーケンス（段階的演出用） */
+  frames?: CGSequenceFrame[];
 }
 
 export interface CharacterTheme {
