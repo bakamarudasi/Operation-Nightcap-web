@@ -255,7 +255,6 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
             label: 'キス',
             dialogueStart: 3,
             transition: 'fade',
-            duration: 2000,
           },
           {
             label: '余韻',
