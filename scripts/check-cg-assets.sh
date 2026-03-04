@@ -17,7 +17,7 @@ check_character() {
   local char_dir="$1"
   local char_name
   char_name="$(basename "$char_dir")"
-  local manifest="$char_dir/cg-manifest.txt"
+  local manifest="$PROJECT_ROOT/tools/manifests/${char_name}.txt"
 
   if [ ! -f "$manifest" ]; then
     echo "⚠ マニフェストが見つかりません: $manifest"

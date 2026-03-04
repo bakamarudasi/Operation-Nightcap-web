@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CG Production Pipeline - Operation Nightcap</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --accent: #e94560;
+    --accent2: #ff6b8a;
+    --text: #eee;
+    --text-dim: #999;
+    --border: #333;
+    --success: #4ecdc4;
+    --warn: #ffd93d;
+    --done: #27ae60;
+    --generating: #3498db;
+    --review: #f39c12;
+    --exists: #27ae60;
+    --missing: #c0392b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    padding: 12px 20px;
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .header h1 {
+    font-size: 1.2em;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    white-space: nowrap;
+  }
+  .header .connection {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-left: auto;
+  }
+  .header input[type="text"] {
+    padding: 5px 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 0.8em;
+    width: 200px;
+  }
+  .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #c0392b;
+    transition: background 0.3s;
+  }
+  .status-dot.connected { background: var(--success); }
+  .status-dot.checking { background: var(--warn); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+
+  /* Buttons */
+  button {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  button:hover { background: var(--accent); border-color: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button:disabled:hover { background: var(--surface2); border-color: var(--border); }
+  button.primary { background: var(--accent); border-color: var(--accent); }
+  button.primary:hover { background: var(--accent2); }
+  button.success { background: #2a7a6e; border-color: var(--success); }
+  button.success:hover { background: var(--success); color: #000; }
+  button.danger { border-color: #c0392b; }
+  button.danger:hover { background: #c0392b; }
+  button.sm { padding: 3px 8px; font-size: 0.75em; }
+
+  /* Main layout */
+  .main {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    height: calc(100vh - 90px);
+  }
+
+  /* Left panel */
+  .left-panel {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Character info bar */
+  .char-bar {
+    padding: 8px 10px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 0.75em;
+  }
+  .char-bar input {
+    padding: 3px 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-size: 1em;
+    width: 80px;
+  }
+  .char-bar label { color: var(--text-dim); }
+
+  /* Stats + toolbar */
+  .left-toolbar {
+    padding: 8px 10px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .stat { font-size: 0.72em; display: flex; gap: 3px; align-items: center; }
+  .stat-val { font-weight: 700; color: var(--accent2); }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .tab {
+    flex: 1; padding: 8px 4px; text-align: center;
+    font-size: 0.7em; cursor: pointer;
+    border-bottom: 2px solid transparent;
+    color: var(--text-dim); transition: all 0.2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+  .tab .cnt { background: var(--surface2); padding: 1px 5px; border-radius: 8px; margin-left: 3px; font-size: 0.9em; }
+
+  /* CG list */
+  .cg-list { flex: 1; overflow-y: auto; padding: 6px; }
+  .group-hdr {
+    font-size: 0.72em; color: var(--text-dim); padding: 8px 4px 3px;
+    font-weight: 600; display: flex; justify-content: space-between; align-items: center;
+  }
+  .cg-card {
+    padding: 8px 10px; margin-bottom: 4px;
+    background: var(--bg); border-radius: 5px;
+    cursor: pointer; border: 1px solid transparent;
+    transition: all 0.15s; position: relative;
+  }
+  .cg-card:hover { border-color: var(--accent); }
+  .cg-card.selected { border-color: var(--accent); background: rgba(233,69,96,0.1); }
+  .cg-card .cg-top {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.85em; font-weight: 600; margin-bottom: 2px;
+  }
+  .cg-card .cg-bot { font-size: 0.7em; color: var(--text-dim); display: flex; gap: 6px; align-items: center; }
+  .cg-card .del-btn {
+    position: absolute; top: 4px; right: 4px;
+    opacity: 0; font-size: 0.7em; padding: 2px 5px;
+    transition: opacity 0.15s;
+  }
+  .cg-card:hover .del-btn { opacity: 0.6; }
+  .cg-card .del-btn:hover { opacity: 1; }
+
+  /* File existence indicator */
+  .file-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
+  }
+  .file-dot.exists { background: var(--exists); }
+  .file-dot.missing { background: var(--missing); }
+  .file-dot.unknown { background: var(--border); }
+
+  /* Badges */
+  .badge { font-size: 0.6em; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+  .badge.pending { background: var(--surface2); color: var(--text-dim); }
+  .badge.generating { background: rgba(52,152,219,0.2); color: var(--generating); }
+  .badge.review { background: rgba(243,156,18,0.2); color: var(--review); }
+  .badge.done { background: rgba(39,174,96,0.2); color: var(--done); }
+
+  /* Right panel */
+  .right-panel { overflow-y: auto; padding: 16px; }
+  .empty-state {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; color: var(--text-dim); flex-direction: column; gap: 10px;
+  }
+  .empty-state .big { font-size: 2.5em; opacity: 0.3; }
+
+  /* Panels */
+  .panel {
+    background: var(--surface); border-radius: 8px;
+    padding: 14px; margin-bottom: 14px;
+  }
+  .panel h3 { font-size: 0.9em; margin-bottom: 10px; color: var(--accent2); }
+
+  /* Editable detail fields */
+  .field-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .field-grid.full { grid-template-columns: 1fr; }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label { font-size: 0.7em; color: var(--text-dim); }
+  .field input, .field select {
+    padding: 5px 8px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); font-size: 0.85em;
+  }
+
+  /* Prompt editor */
+  .prompt-label {
+    font-size: 0.75em; color: var(--text-dim); margin-bottom: 3px;
+    display: flex; justify-content: space-between;
+  }
+  textarea.prompt {
+    width: 100%; padding: 8px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text); font-size: 0.82em;
+    font-family: 'Consolas', 'Courier New', monospace;
+    resize: vertical; line-height: 1.5; margin-bottom: 10px;
+  }
+  textarea.prompt.pos { min-height: 80px; border-left: 3px solid var(--success); }
+  textarea.prompt.neg { min-height: 50px; border-left: 3px solid #c0392b; }
+
+  /* Params */
+  .param-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .param-item { display: flex; flex-direction: column; gap: 2px; }
+  .param-item label { font-size: 0.65em; color: var(--text-dim); }
+  .param-item input, .param-item select {
+    padding: 4px 6px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 3px;
+    color: var(--text); font-size: 0.82em; width: 90px;
+  }
+  .adv-toggle {
+    font-size: 0.75em; color: var(--text-dim); cursor: pointer;
+    margin-top: 6px; display: flex; align-items: center; gap: 4px;
+  }
+  .adv-toggle:hover { color: var(--text); }
+  .adv-toggle .arr { display: inline-block; transition: transform 0.2s; }
+  .adv-toggle .arr.open { transform: rotate(90deg); }
+  .adv-panel { margin-top: 8px; padding: 10px; background: var(--bg); border-radius: 5px; }
+  .adv-panel.hidden { display: none; }
+
+  /* Generate row */
+  .gen-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+  .prog-bar { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  .prog-bar .fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px; transition: width 0.3s; width: 0%;
+  }
+  .prog-text { font-size: 0.7em; color: var(--text-dim); min-width: 50px; text-align: right; }
+
+  /* Image preview */
+  .img-preview {
+    width: 100%; max-height: 450px; background: #0d0d1a;
+    border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; overflow: hidden; margin-bottom: 10px;
+  }
+  .img-preview img { max-width: 100%; max-height: 450px; object-fit: contain; border-radius: 8px; }
+  .img-preview .ph { color: var(--text-dim); font-size: 0.85em; padding: 30px; text-align: center; }
+
+  /* Thumbnails */
+  .hist-strip { display: flex; gap: 6px; padding: 8px 0; overflow-x: auto; }
+  .hist-thumb {
+    width: 70px; height: 70px; border-radius: 5px; overflow: hidden;
+    cursor: pointer; border: 2px solid transparent; flex-shrink: 0;
+  }
+  .hist-thumb:hover { border-color: var(--accent); }
+  .hist-thumb.sel { border-color: var(--accent2); }
+  .hist-thumb.adopted { border-color: var(--done); }
+  .hist-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  .review-btns { display: flex; gap: 8px; justify-content: center; }
+  .review-btns button { padding: 10px 20px; font-size: 0.9em; }
+
+  /* Feedback log */
+  .fb-log { background: var(--bg); border-radius: 5px; padding: 8px; margin-top: 8px; max-height: 120px; overflow-y: auto; }
+  .fb-entry { font-size: 0.7em; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; gap: 6px; }
+  .fb-entry:last-child { border-bottom: none; }
+  .fb-time { color: var(--text-dim); flex-shrink: 0; }
+  .fb-reason { color: var(--warn); }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7); display: flex;
+    align-items: center; justify-content: center; z-index: 200;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px; width: 480px; max-width: 90vw;
+  }
+  .modal h3 { font-size: 1em; margin-bottom: 10px; color: var(--accent2); }
+  .modal textarea {
+    width: 100%; padding: 8px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text); font-size: 0.82em; resize: vertical;
+    min-height: 70px; margin-bottom: 6px;
+  }
+  .modal .qr { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+  .modal .qr button { font-size: 0.7em; padding: 3px 8px; background: var(--bg); }
+  .modal .ma { display: flex; gap: 6px; justify-content: flex-end; }
+
+  /* Import/export modal */
+  .modal .import-ta {
+    width: 100%; height: 180px; padding: 10px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text); font-family: monospace; font-size: 0.8em;
+    resize: vertical; margin-bottom: 8px;
+  }
+
+  /* Workflow setup */
+  .wf-info { font-size: 0.75em; color: var(--text-dim); padding: 6px; background: var(--bg); border-radius: 4px; }
+  .wf-info.loaded { color: var(--success); }
+  .setup-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .setup-row label { font-size: 0.75em; color: var(--text-dim); min-width: 110px; }
+  .setup-row select {
+    flex: 1; padding: 4px 6px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 3px;
+    color: var(--text); font-size: 0.82em;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 20px; right: 20px;
+    padding: 10px 18px; border-radius: 7px; font-size: 0.82em;
+    opacity: 0; transform: translateY(10px);
+    transition: all 0.3s; z-index: 100; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.ok { background: var(--success); color: #000; }
+  .toast.err { background: #c0392b; color: #fff; }
+  .toast.info { background: var(--generating); color: #fff; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Character tabs */
+  .char-tabs {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 12px; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto; flex-wrap: nowrap;
+  }
+  .char-tabs label { font-size: 0.75em; color: var(--text-dim); margin-right: 4px; white-space: nowrap; }
+  .char-tab {
+    padding: 4px 12px; border-radius: 4px;
+    font-size: 0.78em; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-dim); transition: all 0.15s; white-space: nowrap;
+  }
+  .char-tab:hover { border-color: var(--accent); color: var(--text); }
+  .char-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .char-tab-add { padding: 4px 10px; border-radius: 4px; font-size: 0.78em; cursor: pointer;
+    background: transparent; border: 1px dashed var(--border); color: var(--text-dim); }
+  .char-tab-add:hover { border-color: var(--accent); color: var(--accent); }
+
+  @media (max-width: 800px) {
+    .main { grid-template-columns: 1fr; }
+    .left-panel { max-height: 40vh; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>CG Production Pipeline</h1>
+  <div class="connection">
+    <span style="font-size:0.75em;color:var(--text-dim)">ComfyUI:</span>
+    <input type="text" id="comfyUrl" value="http://127.0.0.1:8188" onchange="saveAll();checkConnection()">
+    <div class="status-dot" id="connDot" title="未接続"></div>
+    <button class="sm" onclick="checkConnection()">接続</button>
+    <input type="file" id="wfFile" accept=".json" style="display:none" onchange="loadWorkflow(event)">
+    <button class="sm" onclick="document.getElementById('wfFile').click()">WF読込</button>
+  </div>
+</div>
+
+<!-- Character tabs -->
+<div class="char-tabs" id="charTabs"></div>
+
+<!-- Main -->
+<div class="main">
+  <!-- Left panel -->
+  <div class="left-panel">
+    <!-- Character info -->
+    <div class="char-bar">
+      <label>ID:</label><input id="charId" value="blaze" onchange="onCharIdChange()" readonly style="opacity:0.6">
+      <label>名前:</label><input id="charName" value="ブレイズ" onchange="saveAll()">
+      <label>EN:</label><input id="charNameEn" value="BLAZE" onchange="saveAll()">
+    </div>
+
+    <!-- Stats + actions -->
+    <div class="left-toolbar">
+      <div class="stat">未: <span class="stat-val" id="cntP">0</span></div>
+      <div class="stat">レ: <span class="stat-val" id="cntR">0</span></div>
+      <div class="stat">済: <span class="stat-val" id="cntD">0</span></div>
+      <div style="margin-left:auto;display:flex;gap:4px">
+        <button class="sm" onclick="showImportModal()">インポート</button>
+        <button class="sm" onclick="showExportModal()">エクスポート</button>
+        <button class="sm" onclick="checkAllFiles()">ファイル確認</button>
+        <button class="sm" onclick="loadStagingManifest()" title="Claude Code生成画像の再読み込み" style="border-color:var(--generating)">staging更新</button>
+        <button class="sm" onclick="exportFeedback()" title="却下理由をClaude Codeにフィードバック" style="border-color:var(--warn)">FB出力</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" data-f="all" onclick="setFilter('all')">全て<span class="cnt" id="cntA">0</span></div>
+      <div class="tab" data-f="pending" onclick="setFilter('pending')">未作成<span class="cnt" id="cntPT">0</span></div>
+      <div class="tab" data-f="review" onclick="setFilter('review')">レビュー<span class="cnt" id="cntRT">0</span></div>
+      <div class="tab" data-f="done" onclick="setFilter('done')">採用済<span class="cnt" id="cntDT">0</span></div>
+    </div>
+
+    <!-- CG List -->
+    <div class="cg-list" id="cgList"></div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="right-panel" id="rightPanel">
+    <div class="empty-state" id="emptyState">
+      <div class="big">🎨</div>
+      <div>左のリストからCGを選択</div>
+    </div>
+
+    <!-- Workflow setup -->
+    <div class="panel" id="wfPanel">
+      <h3>ワークフロー設定</h3>
+      <div class="wf-info" id="wfInfo">未読込 — ヘッダーの「WF読込」からJSONを読み込んでください</div>
+      <div id="nodeMap" style="display:none;margin-top:10px">
+        <div class="setup-row"><label>Positive Prompt:</label><select id="posNode"></select></div>
+        <div class="setup-row"><label>Negative Prompt:</label><select id="negNode"></select></div>
+        <div class="setup-row"><label>Seed (KSampler):</label><select id="seedNode"></select></div>
+        <button class="sm success" onclick="saveNodeMap()" style="margin-top:6px">保存</button>
+      </div>
+    </div>
+
+    <!-- Detail view -->
+    <div id="detailView" style="display:none">
+      <!-- Metadata editor -->
+      <div class="panel">
+        <h3>CG情報</h3>
+        <div class="field-grid">
+          <div class="field"><label>ファイル名</label><input id="dFile" onchange="saveMeta()"></div>
+          <div class="field"><label>トリガー名</label><input id="dTrigger" onchange="saveMeta()"></div>
+          <div class="field">
+            <label>酔いLv</label>
+            <select id="dLevel" onchange="saveMeta()">
+              <option value="">-</option>
+              <option value="Lv.0">Lv.0</option><option value="Lv.1">Lv.1</option>
+              <option value="Lv.2">Lv.2</option><option value="Lv.3">Lv.3</option>
+              <option value="Lv.4">Lv.4</option>
+            </select>
+          </div>
+          <div class="field"><label>備考</label><input id="dNote" onchange="saveMeta()"></div>
+        </div>
+        <div id="fileStatus" style="font-size:0.75em;color:var(--text-dim)"></div>
+      </div>
+
+      <!-- Prompt editor -->
+      <div class="panel">
+        <h3>プロンプト</h3>
+        <div class="prompt-label">
+          <span>Positive</span>
+          <button class="sm" onclick="resetSuggestion('pos')">提案に戻す</button>
+        </div>
+        <textarea class="prompt pos" id="posPrompt" rows="3" oninput="savePrompt()"></textarea>
+
+        <div class="prompt-label">
+          <span>Negative</span>
+          <button class="sm" onclick="resetSuggestion('neg')">提案に戻す</button>
+        </div>
+        <textarea class="prompt neg" id="negPrompt" rows="2" oninput="savePrompt()"></textarea>
+
+        <div class="param-row">
+          <div class="param-item"><label>Seed (-1=random)</label><input type="number" id="pSeed" value="-1" onchange="savePrompt()"></div>
+          <div class="param-item"><label>Batch</label><input type="number" id="pBatch" value="1" min="1" max="4" onchange="savePrompt()"></div>
+        </div>
+
+        <div class="adv-toggle" onclick="toggleAdv()">
+          <span class="arr" id="advArr">▶</span> 詳細パラメータ
+        </div>
+        <div class="adv-panel hidden" id="advPanel">
+          <div class="param-row">
+            <div class="param-item"><label>Steps</label><input type="number" id="pSteps" placeholder="WFデフォ" min="1" max="150" onchange="savePrompt()"></div>
+            <div class="param-item"><label>CFG</label><input type="number" id="pCfg" placeholder="WFデフォ" step="0.5" min="1" max="30" onchange="savePrompt()"></div>
+            <div class="param-item"><label>Denoise</label><input type="number" id="pDenoise" placeholder="WFデフォ" step="0.05" min="0" max="1" onchange="savePrompt()"></div>
+          </div>
+          <div class="param-row" style="margin-top:6px">
+            <div class="param-item"><label>Width</label><input type="number" id="pW" placeholder="WFデフォ" step="64" min="256" max="2048" onchange="savePrompt()"></div>
+            <div class="param-item"><label>Height</label><input type="number" id="pH" placeholder="WFデフォ" step="64" min="256" max="2048" onchange="savePrompt()"></div>
+            <div class="param-item"><label>Sampler</label>
+              <select id="pSampler" onchange="savePrompt()">
+                <option value="">WFデフォ</option>
+                <option>euler</option><option>euler_ancestral</option>
+                <option>dpmpp_2m</option><option>dpmpp_2m_sde</option>
+                <option>dpmpp_sde</option><option>ddim</option><option>uni_pc</option>
+              </select>
+            </div>
+          </div>
+          <p style="font-size:0.65em;color:var(--text-dim);margin-top:6px">空欄 = WFデフォルト値</p>
+        </div>
+
+        <!-- Feedback log -->
+        <div id="fbSection" style="display:none;margin-top:10px">
+          <div class="prompt-label"><span>フィードバック履歴</span></div>
+          <div class="fb-log" id="fbLog"></div>
+        </div>
+
+        <div class="gen-row">
+          <button class="primary" id="btnGen" onclick="generate()">🎨 生成</button>
+          <div class="prog-bar" id="progBar" style="display:none"><div class="fill" id="progFill"></div></div>
+          <span class="prog-text" id="progText" style="display:none"></span>
+        </div>
+      </div>
+
+      <!-- Review -->
+      <div class="panel" id="reviewPanel">
+        <h3>生成結果</h3>
+        <div class="img-preview" id="imgPreview"><div class="ph">まだ生成されていません</div></div>
+        <div class="hist-strip" id="histStrip"></div>
+        <div class="review-btns" id="reviewBtns" style="display:none">
+          <button class="success" onclick="adopt()" style="padding:10px 28px">✅ 採用</button>
+          <button class="danger" onclick="reject()">❌ 却下</button>
+          <button onclick="generate()">🔄 再生成</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reject modal -->
+<div class="modal-overlay hidden" id="rejectModal">
+  <div class="modal">
+    <h3>却下理由</h3>
+    <p style="font-size:0.75em;color:var(--text-dim);margin-bottom:8px">何がダメだったか教えてください（次の生成に活かします）</p>
+    <div class="qr">
+      <button onclick="qr('構図が違う')">構図が違う</button>
+      <button onclick="qr('表情が違う')">表情が違う</button>
+      <button onclick="qr('ポーズが違う')">ポーズが違う</button>
+      <button onclick="qr('色味が違う')">色味が違う</button>
+      <button onclick="qr('服装が違う')">服装が違う</button>
+      <button onclick="qr('背景が違う')">背景が違う</button>
+      <button onclick="qr('品質が低い')">品質が低い</button>
+      <button onclick="qr('キャラが似てない')">キャラ似てない</button>
+      <button onclick="qr('エロすぎ')">エロすぎ</button>
+      <button onclick="qr('エロが足りない')">エロ足りない</button>
+    </div>
+    <textarea id="rejectReason" placeholder="例:「もっと恥ずかしがってる表情にしたい」"></textarea>
+    <div class="ma">
+      <button onclick="closeReject()">キャンセル</button>
+      <button class="danger" onclick="doReject(false)">却下</button>
+      <button class="primary" onclick="doReject(true)">却下→再生成</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import modal -->
+<div class="modal-overlay hidden" id="importModal">
+  <div class="modal">
+    <h3>マニフェスト インポート</h3>
+    <textarea class="import-ta" id="importText" placeholder="マニフェストの内容を貼り付け..."></textarea>
+    <div class="ma">
+      <button onclick="closeModal('importModal')">キャンセル</button>
+      <button class="primary" onclick="doImport()">読み込み</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export modal -->
+<div class="modal-overlay hidden" id="exportModal">
+  <div class="modal">
+    <h3>マニフェスト エクスポート</h3>
+    <textarea class="import-ta" id="exportText" readonly style="height:250px"></textarea>
+    <div class="ma">
+      <button onclick="closeModal('exportModal')">閉じる</button>
+      <button onclick="copyManifest()">コピー</button>
+      <button class="primary" onclick="downloadManifest()">ダウンロード</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+const STORAGE_PREFIX = 'nightcap_cg_pipeline_';
+const CHARLIST_KEY = 'nightcap_cg_charlist';    // shared with inventory editor
+const LASTCHAR_KEY = 'nightcap_cg_gen_lastchar';
+const OLD_STORAGE_KEY = 'nightcap_cg_pipeline_v2'; // for migration
+
+let currentCharId = 'blaze';
+let comfyUrl = 'http://127.0.0.1:8188';
+let workflow = null;
+let nodeMapping = { pos: null, neg: null, seed: null };
+let clientId = crypto.randomUUID();
+
+let items = [];       // All CG/portrait/icon items
+let selectedId = null;
+let filter = 'all';
+let generating = false;
+let ws = null;
+let fileExistence = {}; // id → true/false/undefined
+
+// ============================================================
+// Character presets (defaults + suggestions per character)
+// ============================================================
+const CHAR_PRESETS = {
+  blaze: {
+    id: 'blaze', name: 'ブレイズ', nameEn: 'BLAZE',
+    defaults: [
+      { id: 'shoulder_lean', file: 'shoulder_lean.webp', trigger: '耳元でささやく', level: 'Lv.1', type: 'cg', note: '' },
+      { id: 'headpat', file: 'headpat.webp', trigger: 'うなじを撫でる', level: 'Lv.2', type: 'cg', note: '' },
+      { id: 'gaze', file: 'gaze.webp', trigger: '唇を見つめる', level: 'Lv.2', type: 'cg', note: '' },
+      { id: 'breast_touch', file: 'breast_touch.webp', trigger: '胸に触れる', level: 'Lv.2', type: 'cg', note: '' },
+      { id: 'hip_touch', file: 'hip_touch.webp', trigger: 'お尻をなでる', level: 'Lv.2', type: 'cg', note: '' },
+      { id: 'ear_bite', file: 'ear_bite.webp', trigger: '耳を甘噛み', level: 'Lv.3', type: 'cg', note: '' },
+      { id: 'lap_pillow', file: 'lap_pillow.webp', trigger: '太ももに誘う', level: 'Lv.3', type: 'cg', note: '' },
+      { id: 'kiss', file: 'kiss.webp', trigger: 'ディープキス', level: 'Lv.3', type: 'cg', note: 'instant_win' },
+      { id: 'portrait', file: 'portrait.webp', trigger: '基本立ち絵', level: '', type: 'portrait', note: '' },
+      { id: 'portrait-drunk-0', file: 'portrait-drunk-0.webp', trigger: '素面', level: 'Lv.0', type: 'portrait', note: '' },
+      { id: 'portrait-drunk-1', file: 'portrait-drunk-1.webp', trigger: 'ほろ酔い', level: 'Lv.1', type: 'portrait', note: '' },
+      { id: 'portrait-drunk-2', file: 'portrait-drunk-2.webp', trigger: '酔い', level: 'Lv.2', type: 'portrait', note: '' },
+      { id: 'portrait-drunk-3', file: 'portrait-drunk-3.webp', trigger: 'べろべろ', level: 'Lv.3', type: 'portrait', note: '' },
+      { id: 'portrait-drunk-4', file: 'portrait-drunk-4.webp', trigger: '潰れ', level: 'Lv.4', type: 'portrait', note: '' },
+      { id: 'select-icon', file: 'select-icon.webp', trigger: 'キャラ選択画面用', level: '', type: 'icon', note: '' },
+    ],
+    suggestions: {
+      _basePos: '(blaze arknights:1.3), feline girl, orange hair, long hair, red eyes, cat ears, athletic build, large breasts',
+      _baseSetting: 'bar interior, dim lighting, warm amber light, bottles in background, bar counter, night, cozy atmosphere',
+      _baseNeg: '(worst quality:1.4), (low quality:1.4), blurry, deformed, extra fingers, extra limbs, bad anatomy, bad hands, text, watermark, username, signature, jpeg artifacts, cropped, poorly drawn',
+      shoulder_lean: { pos: 'leaning close, whispering in ear, faces very close, slight blush, shy expression, looking away, intimate proximity, from side', neg: '' },
+      headpat: { pos: 'hand on nape of neck, fingers in hair, trembling, blushing heavily, eyes half-closed, sensitive reaction, goosebumps', neg: '' },
+      gaze: { pos: 'chin lift, staring at lips, intense eye contact, wet lips, parted lips, blushing, romantic tension, close-up face', neg: '' },
+      breast_touch: { pos: 'hand on chest, surprised expression, deep blush, looking down at hand, heart racing, embarrassed but accepting, open shirt', neg: '' },
+      hip_touch: { pos: 'hand on hip, seated together, surprised gasp, blushing ears, squirming slightly, flustered expression, side view', neg: '' },
+      ear_bite: { pos: 'ear nibbling, lips on ear, trembling body, intense blush, eyes tearing up, melting expression, heavy breathing, extremely sensitive', neg: '' },
+      lap_pillow: { pos: 'lap pillow, head on thighs, hair spread out, drowsy expression, peaceful smile, hand in hair, relaxed pose, lying down', neg: '' },
+      kiss: { pos: '(kiss:1.3), lips touching, pulled close by waist, eyes closed, deep blush, passionate, intimate moment, tears of joy, from side close-up', neg: '' },
+      portrait: { pos: 'standing pose, confident smile, hands on hips, full body, formal uniform, clean outfit, looking at viewer', neg: '' },
+      'portrait-drunk-0': { pos: 'standing pose, neutral expression, formal uniform, neat appearance, sober, composed, full body, looking at viewer', neg: 'blush, disheveled' },
+      'portrait-drunk-1': { pos: 'standing pose, slight blush, happy smile, slightly loosened collar, relaxed pose, tipsy, cheerful, full body', neg: '' },
+      'portrait-drunk-2': { pos: 'standing pose, moderate blush, open collar, exposed collarbone, cleavage peek, fanning self, drunk, swaying slightly, full body', neg: '' },
+      'portrait-drunk-3': { pos: 'standing pose, heavy blush, clothes falling off shoulder, visible bra strap, exposed thigh, very drunk, unfocused eyes, leaning forward, full body', neg: '' },
+      'portrait-drunk-4': { pos: 'slumped over, passed out, nearly undressed, underwear visible, red cheeks, sleeping, peaceful face, collapsed on counter, full body', neg: '' },
+      'select-icon': { pos: 'portrait icon, head and shoulders, confident wink, one eye closed, cheerful, simple background, circular crop', neg: '' },
+    },
+  },
+};
+
+// Fallback suggestions for unknown characters
+const DEFAULT_SUGGESTIONS = {
+  _basePos: '',
+  _baseSetting: 'bar interior, dim lighting, warm amber light, bottles in background, bar counter, night, cozy atmosphere',
+  _baseNeg: '(worst quality:1.4), (low quality:1.4), blurry, deformed, extra fingers, extra limbs, bad anatomy, bad hands, text, watermark, username, signature, jpeg artifacts, cropped, poorly drawn',
+};
+
+function getSuggestions() {
+  return CHAR_PRESETS[currentCharId]?.suggestions || DEFAULT_SUGGESTIONS;
+}
+
+function getDefaults() {
+  const preset = CHAR_PRESETS[currentCharId];
+  if (preset) return preset.defaults;
+  return [
+    { id: 'portrait', file: 'portrait.webp', trigger: '基本立ち絵', level: '', type: 'portrait', note: '' },
+    { id: 'select-icon', file: 'select-icon.webp', trigger: 'キャラ選択画面用', level: '', type: 'icon', note: '' },
+  ];
+}
+
+// ============================================================
+// Character list management (shared with inventory editor)
+// ============================================================
+function getCharList() {
+  const raw = localStorage.getItem(CHARLIST_KEY);
+  if (raw) { try { return JSON.parse(raw); } catch {} }
+  return ['blaze'];
+}
+
+function saveCharList(list) {
+  localStorage.setItem(CHARLIST_KEY, JSON.stringify(list));
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderCharTabs() {
+  const el = document.getElementById('charTabs');
+  const list = getCharList();
+  let html = '<label>キャラ:</label>';
+  list.forEach(id => {
+    const data = loadCharData(id);
+    const label = data?.charName || CHAR_PRESETS[id]?.name || id;
+    const active = id === currentCharId ? ' active' : '';
+    html += `<button class="char-tab${active}" onclick="switchChar('${esc(id)}')">${esc(label)}</button>`;
+  });
+  html += `<button class="char-tab-add" onclick="addNewChar()">+ 追加</button>`;
+  if (list.length > 1) {
+    html += `<button class="sm danger" onclick="deleteChar()" style="margin-left:auto;font-size:0.72em">このキャラ削除</button>`;
+  }
+  el.innerHTML = html;
+}
+
+function switchChar(id) {
+  saveAll();
+  currentCharId = id;
+  localStorage.setItem(LASTCHAR_KEY, id);
+  selectedId = null;
+  fileExistence = {};
+  load();
+  renderCharTabs();
+  renderList();
+  updateCounts();
+  showEmpty();
+  checkAllFiles();
+  loadStagingManifest();
+}
+
+function addNewChar() {
+  const id = prompt('新キャラのID (英字小文字)', '');
+  if (!id || !/^[a-z][a-z0-9_]*$/.test(id)) {
+    if (id !== null) toast('IDは英字小文字で入力してください', 'err');
+    return;
+  }
+  const list = getCharList();
+  if (list.includes(id)) { toast('このIDは既に存在します', 'err'); return; }
+  list.push(id);
+  saveCharList(list);
+  saveAll();
+  currentCharId = id;
+  localStorage.setItem(LASTCHAR_KEY, id);
+  document.getElementById('charId').value = id;
+  document.getElementById('charName').value = '';
+  document.getElementById('charNameEn').value = id.toUpperCase();
+  items = getDefaults().map(makeItem);
+  selectedId = null;
+  fileExistence = {};
+  saveAll();
+  renderCharTabs();
+  renderList();
+  updateCounts();
+  showEmpty();
+  toast(`キャラ「${id}」を追加しました`, 'ok');
+}
+
+function deleteChar() {
+  const list = getCharList();
+  if (list.length <= 1) { toast('最後のキャラは削除できません', 'err'); return; }
+  if (!confirm(`「${currentCharId}」を削除しますか？`)) return;
+  localStorage.removeItem(STORAGE_PREFIX + currentCharId);
+  const idx = list.indexOf(currentCharId);
+  list.splice(idx, 1);
+  saveCharList(list);
+  switchChar(list[0]);
+  toast('削除しました', 'ok');
+}
+
+function loadCharData(id) {
+  const raw = localStorage.getItem(STORAGE_PREFIX + id);
+  if (raw) { try { return JSON.parse(raw); } catch {} }
+  return null;
+}
+
+// ============================================================
+// Init
+// ============================================================
+function init() {
+  migrateOldData();
+  // Restore last character
+  const lastChar = localStorage.getItem(LASTCHAR_KEY);
+  const list = getCharList();
+  if (lastChar && list.includes(lastChar)) currentCharId = lastChar;
+  else currentCharId = list[0] || 'blaze';
+
+  load();
+  renderCharTabs();
+  renderList();
+  updateCounts();
+  checkConnection();
+  checkAllFiles();
+  loadStagingManifest();
+}
+
+// Migrate old single-key storage to per-character
+function migrateOldData() {
+  const raw = localStorage.getItem(OLD_STORAGE_KEY);
+  if (!raw) return;
+  try {
+    const d = JSON.parse(raw);
+    const charId = d.charId || 'blaze';
+    // Only migrate if new key doesn't exist yet
+    if (!localStorage.getItem(STORAGE_PREFIX + charId)) {
+      localStorage.setItem(STORAGE_PREFIX + charId, raw);
+    }
+    // Ensure char is in list
+    const list = getCharList();
+    if (!list.includes(charId)) {
+      list.push(charId);
+      saveCharList(list);
+    }
+    localStorage.removeItem(OLD_STORAGE_KEY);
+  } catch {}
+}
+
+// ============================================================
+// Persistence
+// ============================================================
+function makeItem(def) {
+  return {
+    ...def,
+    status: 'pending',
+    posPrompt: '', negPrompt: '',
+    seed: -1, batch: 1,
+    steps: null, cfg: null, denoise: null, w: null, h: null, sampler: '',
+    history: [], feedback: [], adoptedImage: null,
+  };
+}
+
+function saveAll() {
+  const charId = document.getElementById('charId').value;
+  const charName = document.getElementById('charName').value;
+  const charNameEn = document.getElementById('charNameEn').value;
+  comfyUrl = document.getElementById('comfyUrl').value.replace(/\/$/, '');
+
+  const data = {
+    charId, charName, charNameEn, comfyUrl,
+    workflow, nodeMapping,
+    items: items.map(it => ({
+      id: it.id, file: it.file, trigger: it.trigger, level: it.level,
+      type: it.type, note: it.note,
+      status: it.status, posPrompt: it.posPrompt, negPrompt: it.negPrompt,
+      seed: it.seed, batch: it.batch,
+      steps: it.steps, cfg: it.cfg, denoise: it.denoise, w: it.w, h: it.h, sampler: it.sampler,
+      history: it.history, feedback: it.feedback, adoptedImage: it.adoptedImage,
+    })),
+  };
+  localStorage.setItem(STORAGE_PREFIX + currentCharId, JSON.stringify(data));
+}
+
+function load() {
+  const raw = localStorage.getItem(STORAGE_PREFIX + currentCharId);
+  if (!raw) {
+    // Load from preset or generic defaults
+    const preset = CHAR_PRESETS[currentCharId];
+    if (preset) {
+      document.getElementById('charId').value = preset.id;
+      document.getElementById('charName').value = preset.name;
+      document.getElementById('charNameEn').value = preset.nameEn;
+    } else {
+      document.getElementById('charId').value = currentCharId;
+      document.getElementById('charName').value = '';
+      document.getElementById('charNameEn').value = currentCharId.toUpperCase();
+    }
+    items = getDefaults().map(makeItem);
+    return;
+  }
+  try {
+    const d = JSON.parse(raw);
+    if (d.comfyUrl) { comfyUrl = d.comfyUrl; document.getElementById('comfyUrl').value = comfyUrl; }
+    if (d.charId) document.getElementById('charId').value = d.charId;
+    if (d.charName) document.getElementById('charName').value = d.charName;
+    if (d.charNameEn) document.getElementById('charNameEn').value = d.charNameEn;
+    if (d.workflow) { workflow = d.workflow; updateWfUI(); }
+    if (d.nodeMapping) nodeMapping = d.nodeMapping;
+    if (d.items && d.items.length > 0) {
+      items = d.items.map(s => ({ ...makeItem(s), ...s }));
+    } else {
+      items = getDefaults().map(makeItem);
+    }
+  } catch (e) { items = getDefaults().map(makeItem); }
+}
+
+// ============================================================
+// File existence check
+// ============================================================
+function getAssetPath(item) {
+  const charId = document.getElementById('charId').value || 'blaze';
+  if (item.type === 'cg') return `../assets/characters/${charId}/cg/${item.file}`;
+  return `../assets/characters/${charId}/${item.file}`;
+}
+
+function checkFileExists(item) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => { fileExistence[item.id] = true; resolve(true); };
+    img.onerror = () => { fileExistence[item.id] = false; resolve(false); };
+    img.src = getAssetPath(item) + '?t=' + Date.now();
+  });
+}
+
+async function checkAllFiles() {
+  await Promise.all(items.map(it => checkFileExists(it)));
+  renderList();
+  // Update detail if selected
+  if (selectedId) updateFileStatus(items.find(i => i.id === selectedId));
+}
+
+function updateFileStatus(item) {
+  const el = document.getElementById('fileStatus');
+  if (!item) { el.textContent = ''; return; }
+  const exists = fileExistence[item.id];
+  const path = getAssetPath(item);
+  const staged = stagingImages[item.id];
+  let html = '';
+  if (exists === true) {
+    html = `<span style="color:var(--exists)">● アセット配置済み:</span> ${path}`;
+  } else if (exists === false) {
+    html = `<span style="color:var(--missing)">● アセット未配置:</span> ${path}`;
+  } else {
+    html = `<span>● 未確認:</span> ${path}`;
+  }
+  if (staged) {
+    html += `<br><span style="color:var(--generating)">● Claude生成画像あり</span> (staging/)`;
+  }
+  el.innerHTML = html;
+}
+
+// ============================================================
+// Claude Code Integration — staging/manifest.json
+// ============================================================
+//
+// Claude Code (with comfyui-mcp) writes:
+//   tools/staging/manifest.json — list of generated images
+//   tools/staging/<id>.webp     — generated image files
+//
+// Format of manifest.json:
+// {
+//   "items": {
+//     "shoulder_lean": { "image": "shoulder_lean.webp", "prompt": "...", "negPrompt": "...", "seed": 123 },
+//     "headpat": { ... }
+//   }
+// }
+//
+// This tool reads the manifest and shows staged images for review.
+// On reject/approve, results are exported to staging/feedback.json.
+
+let stagingImages = {}; // id → { image, prompt, negPrompt, seed }
+
+async function loadStagingManifest() {
+  try {
+    const res = await fetch('staging/manifest.json?t=' + Date.now());
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.items) return;
+
+    stagingImages = data.items;
+    let newCount = 0;
+
+    for (const [id, staged] of Object.entries(stagingImages)) {
+      const item = items.find(i => i.id === id);
+      if (!item) continue;
+
+      // Skip if already loaded this staged image
+      if (item.history.some(h => h.fromStaging && h.stagedFile === staged.image)) continue;
+
+      // Try to load the actual image from staging/
+      try {
+        const imgRes = await fetch(`staging/${staged.image}?t=${Date.now()}`);
+        if (!imgRes.ok) continue;
+        const blob = await imgRes.blob();
+        const dataUrl = await new Promise((ok, ng) => {
+          const r = new FileReader();
+          r.onload = () => ok(r.result);
+          r.onerror = ng;
+          r.readAsDataURL(blob);
+        });
+        item.history.push({
+          url: dataUrl,
+          ts: new Date().toISOString(),
+          adopted: false,
+          fromStaging: true,
+          stagedFile: staged.image,
+        });
+        if (item.status === 'pending') item.status = 'review';
+        // Apply Claude's prompts if user hasn't edited yet
+        if (staged.prompt && !item.posPrompt) item.posPrompt = staged.prompt;
+        if (staged.negPrompt && !item.negPrompt) item.negPrompt = staged.negPrompt;
+        newCount++;
+      } catch (e) { /* image not ready yet */ }
+    }
+
+    if (newCount > 0) {
+      saveAll(); renderList(); updateCounts();
+      toast(`Claude生成画像 ${newCount}件を読み込み`, 'ok');
+      if (selectedId) selectItem(selectedId);
+    }
+  } catch (e) { /* No manifest — normal */ }
+}
+
+function exportFeedback() {
+  const feedback = {};
+  for (const item of items) {
+    feedback[item.id] = {
+      file: item.file,
+      trigger: item.trigger,
+      level: item.level,
+      type: item.type,
+      status: item.status,
+      posPrompt: item.posPrompt || '',
+      negPrompt: item.negPrompt || '',
+      rejectionReasons: item.feedback.map(f => f.reason),
+      adopted: item.status === 'done',
+    };
+  }
+
+  const json = JSON.stringify({
+    timestamp: new Date().toISOString(),
+    charId: document.getElementById('charId').value,
+    items: feedback,
+  }, null, 2);
+
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'feedback.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('feedback.json をダウンロードしました → staging/ に配置してClaude Codeに読ませてください', 'ok');
+}
+
+// ============================================================
+// CG List
+// ============================================================
+function renderList() {
+  const list = document.getElementById('cgList');
+  list.innerHTML = '';
+  const filtered = items.filter(i => {
+    if (filter === 'all') return true;
+    if (filter === 'pending') return i.status === 'pending';
+    if (filter === 'review') return i.status === 'review' || i.status === 'generating';
+    if (filter === 'done') return i.status === 'done';
+    return true;
+  });
+
+  const groups = { cg: [], portrait: [], icon: [] };
+  for (const i of filtered) (groups[i.type] || groups.cg).push(i);
+
+  const labels = { cg: 'イベントCG', portrait: '立ち絵', icon: 'アイコン' };
+  for (const [type, arr] of Object.entries(groups)) {
+    if (arr.length === 0 && filter !== 'all') continue;
+    const hdr = document.createElement('div');
+    hdr.className = 'group-hdr';
+    hdr.innerHTML = `<span>${labels[type]} (${arr.length})</span><button class="sm" onclick="addItem('${type}')">+ 追加</button>`;
+    list.appendChild(hdr);
+
+    for (const item of arr) {
+      const card = document.createElement('div');
+      card.className = 'cg-card' + (item.id === selectedId ? ' selected' : '');
+      card.onclick = () => selectItem(item.id);
+
+      const badgeCls = { pending: 'pending', generating: 'generating', review: 'review', done: 'done' }[item.status];
+      const badgeText = { pending: '未作成', generating: '生成中', review: 'レビュー', done: '採用済み' }[item.status];
+      const feDot = fileExistence[item.id] === true ? 'exists' : fileExistence[item.id] === false ? 'missing' : 'unknown';
+
+      card.innerHTML = `
+        <div class="cg-top">
+          <span>${item.trigger}</span>
+          <span class="badge ${badgeCls}">${badgeText}</span>
+        </div>
+        <div class="cg-bot">
+          <span class="file-dot ${feDot}" title="${feDot === 'exists' ? 'ファイル有' : feDot === 'missing' ? 'ファイル無' : '未確認'}"></span>
+          ${item.file} ${item.level ? '/ ' + item.level : ''}
+        </div>
+        <button class="sm danger del-btn" onclick="event.stopPropagation();removeItem('${item.id}')">✕</button>
+      `;
+      list.appendChild(card);
+    }
+  }
+}
+
+function updateCounts() {
+  const p = items.filter(i => i.status === 'pending').length;
+  const r = items.filter(i => i.status === 'review' || i.status === 'generating').length;
+  const d = items.filter(i => i.status === 'done').length;
+  document.getElementById('cntP').textContent = p;
+  document.getElementById('cntR').textContent = r;
+  document.getElementById('cntD').textContent = d;
+  document.getElementById('cntA').textContent = items.length;
+  document.getElementById('cntPT').textContent = p;
+  document.getElementById('cntRT').textContent = r;
+  document.getElementById('cntDT').textContent = d;
+}
+
+function setFilter(f) {
+  filter = f;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.f === f));
+  renderList();
+}
+
+// ============================================================
+// Item CRUD
+// ============================================================
+function addItem(type) {
+  const id = type + '_' + Date.now();
+  const file = type === 'cg' ? 'new_cg.webp' : type === 'portrait' ? 'portrait-new.webp' : 'new-icon.webp';
+  const item = makeItem({ id, file, trigger: '新規' + (type === 'cg' ? 'CG' : type === 'portrait' ? '立ち絵' : 'アイコン'), level: '', type, note: '' });
+  items.push(item);
+  saveAll(); renderList(); updateCounts();
+  selectItem(id);
+  toast('追加しました', 'ok');
+}
+
+function removeItem(id) {
+  if (!confirm('削除しますか？')) return;
+  items = items.filter(i => i.id !== id);
+  if (selectedId === id) { selectedId = null; showEmpty(); }
+  saveAll(); renderList(); updateCounts();
+}
+
+// ============================================================
+// Selection & Detail
+// ============================================================
+function selectItem(id) {
+  selectedId = id;
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('detailView').style.display = 'block';
+
+  // Metadata fields
+  document.getElementById('dFile').value = item.file;
+  document.getElementById('dTrigger').value = item.trigger;
+  document.getElementById('dLevel').value = item.level || '';
+  document.getElementById('dNote').value = item.note || '';
+  updateFileStatus(item);
+
+  // Prompts
+  const S = getSuggestions();
+  const sug = S[item.id] || {};
+  const defPos = `${S._basePos || ''}, ${S._baseSetting || ''}, ${sug.pos || item.trigger}`.replace(/^, /, '');
+  const defNeg = `${S._baseNeg || ''}${sug.neg ? ', ' + sug.neg : ''}`;
+  document.getElementById('posPrompt').value = item.posPrompt || defPos;
+  document.getElementById('negPrompt').value = item.negPrompt || defNeg;
+  document.getElementById('pSeed').value = item.seed ?? -1;
+  document.getElementById('pBatch').value = item.batch ?? 1;
+  document.getElementById('pSteps').value = item.steps ?? '';
+  document.getElementById('pCfg').value = item.cfg ?? '';
+  document.getElementById('pDenoise').value = item.denoise ?? '';
+  document.getElementById('pW').value = item.w ?? '';
+  document.getElementById('pH').value = item.h ?? '';
+  document.getElementById('pSampler').value = item.sampler || '';
+
+  renderFeedback(item);
+  renderPreview(item);
+  renderHistory(item);
+  document.getElementById('reviewBtns').style.display =
+    (item.status === 'review' || item.history.length > 0) ? 'flex' : 'none';
+  renderList();
+}
+
+function showEmpty() {
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('detailView').style.display = 'none';
+}
+
+function saveMeta() {
+  const item = items.find(i => i.id === selectedId);
+  if (!item) return;
+  const newFile = document.getElementById('dFile').value.trim();
+  // Update id if file changed
+  const newId = newFile.replace(/\.\w+$/, '');
+  if (newId !== item.id) {
+    item.id = newId;
+    selectedId = newId;
+  }
+  item.file = newFile;
+  item.trigger = document.getElementById('dTrigger').value.trim();
+  item.level = document.getElementById('dLevel').value;
+  item.note = document.getElementById('dNote').value.trim();
+  saveAll(); renderList(); updateCounts();
+  checkFileExists(item).then(() => { updateFileStatus(item); renderList(); });
+}
+
+function savePrompt() {
+  const item = items.find(i => i.id === selectedId);
+  if (!item) return;
+  item.posPrompt = document.getElementById('posPrompt').value;
+  item.negPrompt = document.getElementById('negPrompt').value;
+  item.seed = parseInt(document.getElementById('pSeed').value) || -1;
+  item.batch = parseInt(document.getElementById('pBatch').value) || 1;
+  const v = (id) => { const x = document.getElementById(id).value; return x ? parseFloat(x) : null; };
+  item.steps = v('pSteps'); item.cfg = v('pCfg'); item.denoise = v('pDenoise');
+  item.w = v('pW'); item.h = v('pH');
+  item.sampler = document.getElementById('pSampler').value || '';
+  saveAll();
+}
+
+function resetSuggestion(type) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item) return;
+  const S = getSuggestions();
+  const sug = S[item.id] || {};
+  if (type === 'pos') {
+    const val = `${S._basePos || ''}, ${S._baseSetting || ''}, ${sug.pos || item.trigger}`.replace(/^, /, '');
+    document.getElementById('posPrompt').value = val;
+    item.posPrompt = val;
+  } else {
+    const val = `${S._baseNeg || ''}${sug.neg ? ', ' + sug.neg : ''}`;
+    document.getElementById('negPrompt').value = val;
+    item.negPrompt = val;
+  }
+  saveAll();
+}
+
+function renderPreview(item) {
+  const el = document.getElementById('imgPreview');
+  if (item.adoptedImage) {
+    el.innerHTML = `<img src="${item.adoptedImage}" alt="${item.trigger}">`;
+  } else if (item.history.length > 0) {
+    el.innerHTML = `<img src="${item.history[item.history.length - 1].url}" alt="${item.trigger}">`;
+  } else if (fileExistence[item.id] === true) {
+    el.innerHTML = `<img src="${getAssetPath(item)}" alt="${item.trigger}"><div style="position:absolute;bottom:8px;right:8px;background:var(--done);color:#000;padding:2px 8px;border-radius:4px;font-size:0.7em">ローカルファイル</div>`;
+    el.style.position = 'relative';
+  } else {
+    el.innerHTML = `<div class="ph">まだ生成されていません</div>`;
+    el.style.position = '';
+  }
+}
+
+function renderHistory(item) {
+  const strip = document.getElementById('histStrip');
+  strip.innerHTML = '';
+  for (let i = 0; i < item.history.length; i++) {
+    const h = item.history[i];
+    const t = document.createElement('div');
+    t.className = 'hist-thumb' + (h.adopted ? ' adopted' : '');
+    t.innerHTML = `<img src="${h.url}" alt="${i + 1}">`;
+    t.onclick = () => {
+      document.getElementById('imgPreview').innerHTML = `<img src="${h.url}" alt="${item.trigger}">`;
+      strip.querySelectorAll('.hist-thumb').forEach(x => x.classList.remove('sel'));
+      t.classList.add('sel');
+    };
+    strip.appendChild(t);
+  }
+}
+
+function renderFeedback(item) {
+  const sec = document.getElementById('fbSection');
+  const log = document.getElementById('fbLog');
+  if (!item.feedback?.length) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  log.innerHTML = '';
+  for (const fb of item.feedback) {
+    const time = new Date(fb.ts).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const e = document.createElement('div');
+    e.className = 'fb-entry';
+    e.innerHTML = `<span class="fb-time">${time}</span><span class="fb-reason">${fb.reason}</span>`;
+    log.appendChild(e);
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
+function toggleAdv() {
+  const p = document.getElementById('advPanel');
+  const a = document.getElementById('advArr');
+  p.classList.toggle('hidden');
+  a.classList.toggle('open', !p.classList.contains('hidden'));
+}
+
+// ============================================================
+// ComfyUI Connection
+// ============================================================
+async function checkConnection() {
+  const dot = document.getElementById('connDot');
+  dot.className = 'status-dot checking';
+  comfyUrl = document.getElementById('comfyUrl').value.replace(/\/$/, '');
+  try {
+    const r = await fetch(`${comfyUrl}/system_stats`, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) { dot.className = 'status-dot connected'; toast('ComfyUI接続OK', 'ok'); connectWs(); }
+    else throw 0;
+  } catch { dot.className = 'status-dot'; toast('ComfyUI接続失敗', 'err'); }
+}
+
+function connectWs() {
+  if (ws?.readyState === WebSocket.OPEN) return;
+  try {
+    ws = new WebSocket(comfyUrl.replace(/^http/, 'ws') + '/ws?clientId=' + clientId);
+    ws.onmessage = (e) => {
+      try {
+        const m = JSON.parse(e.data);
+        if (m.type === 'progress') setProgress(Math.round(m.data.value / m.data.max * 100), `${m.data.value}/${m.data.max}`);
+        else if (m.type === 'executing' && m.data.node === null) setProgress(100, '完了');
+      } catch {}
+    };
+    ws.onclose = () => ws = null;
+  } catch {}
+}
+
+// ============================================================
+// Workflow
+// ============================================================
+function loadWorkflow(event) {
+  const f = event.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      workflow = JSON.parse(e.target.result);
+      updateWfUI();
+      populateNodes();
+      saveAll();
+      toast('ワークフロー読み込み完了', 'ok');
+    } catch { toast('JSON解析失敗', 'err'); }
+  };
+  reader.readAsText(f);
+  event.target.value = '';
+}
+
+function updateWfUI() {
+  const el = document.getElementById('wfInfo');
+  if (workflow) {
+    el.textContent = `読込済み (${Object.keys(workflow).length} ノード)`;
+    el.className = 'wf-info loaded';
+    document.getElementById('nodeMap').style.display = 'block';
+    populateNodes();
+  }
+}
+
+function populateNodes() {
+  if (!workflow) return;
+  const textNodes = [], samplerNodes = [];
+  let autoPos = null, autoNeg = null, autoSeed = null;
+
+  for (const [id, node] of Object.entries(workflow)) {
+    const cls = node.class_type || '';
+    const title = node._meta?.title || cls;
+    if (cls.includes('CLIPTextEncode') || cls.includes('Text') || cls.includes('String'))
+      textNodes.push({ id, title, inputs: node.inputs });
+    if (cls.includes('KSampler') || cls.includes('Sampler')) {
+      samplerNodes.push({ id, title, inputs: node.inputs });
+      if (Array.isArray(node.inputs?.positive)) autoPos = node.inputs.positive[0];
+      if (Array.isArray(node.inputs?.negative)) autoNeg = node.inputs.negative[0];
+      autoSeed = id;
+    }
+  }
+
+  const fill = (selId, nodes, autoVal) => {
+    const sel = document.getElementById(selId);
+    sel.innerHTML = '<option value="">-- 選択 --</option>';
+    for (const n of nodes) {
+      const o = document.createElement('option');
+      o.value = n.id; o.textContent = `[${n.id}] ${n.title}`;
+      if (String(n.id) === String(autoVal)) o.selected = true;
+      sel.appendChild(o);
+    }
+  };
+  fill('posNode', textNodes, nodeMapping.pos || autoPos);
+  fill('negNode', textNodes, nodeMapping.neg || autoNeg);
+  fill('seedNode', samplerNodes, nodeMapping.seed || autoSeed);
+
+  if (!nodeMapping.pos && autoPos) nodeMapping.pos = String(autoPos);
+  if (!nodeMapping.neg && autoNeg) nodeMapping.neg = String(autoNeg);
+  if (!nodeMapping.seed && autoSeed) nodeMapping.seed = String(autoSeed);
+}
+
+function saveNodeMap() {
+  nodeMapping.pos = document.getElementById('posNode').value;
+  nodeMapping.neg = document.getElementById('negNode').value;
+  nodeMapping.seed = document.getElementById('seedNode').value;
+  saveAll();
+  toast('ノードマッピング保存', 'ok');
+}
+
+// ============================================================
+// Image Generation
+// ============================================================
+async function generate() {
+  if (!workflow) { toast('先にワークフローを読み込んで', 'err'); return; }
+  if (!nodeMapping.pos || !nodeMapping.neg) { toast('ノードマッピングして', 'err'); return; }
+  if (generating) return;
+
+  const item = items.find(i => i.id === selectedId);
+  if (!item) return;
+
+  generating = true;
+  item.status = 'generating';
+  updateCounts(); renderList();
+
+  const btn = document.getElementById('btnGen');
+  btn.disabled = true; btn.textContent = '⏳ 生成中...';
+  document.getElementById('progBar').style.display = 'block';
+  document.getElementById('progText').style.display = 'block';
+  setProgress(0, '送信中...');
+
+  try {
+    const payload = JSON.parse(JSON.stringify(workflow));
+    if (payload[nodeMapping.pos]) payload[nodeMapping.pos].inputs.text = document.getElementById('posPrompt').value;
+    if (payload[nodeMapping.neg]) payload[nodeMapping.neg].inputs.text = document.getElementById('negPrompt').value;
+
+    const seed = parseInt(document.getElementById('pSeed').value);
+    if (nodeMapping.seed && payload[nodeMapping.seed]) {
+      payload[nodeMapping.seed].inputs.seed = seed >= 0 ? seed : Math.floor(Math.random() * 2**32);
+    }
+
+    const batch = parseInt(document.getElementById('pBatch').value) || 1;
+    for (const [, node] of Object.entries(payload)) {
+      if (!node.inputs) continue;
+      const cls = node.class_type || '';
+      if (cls === 'EmptyLatentImage') {
+        node.inputs.batch_size = batch;
+        if (item.w) node.inputs.width = item.w;
+        if (item.h) node.inputs.height = item.h;
+      }
+      if (cls.includes('KSampler') || cls.includes('Sampler')) {
+        if (item.steps) node.inputs.steps = item.steps;
+        if (item.cfg) node.inputs.cfg = item.cfg;
+        if (item.denoise != null && 'denoise' in node.inputs) node.inputs.denoise = item.denoise;
+        if (item.sampler) node.inputs.sampler_name = item.sampler;
+      }
+    }
+
+    const res = await fetch(`${comfyUrl}/prompt`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: payload, client_id: clientId }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { prompt_id } = await res.json();
+    setProgress(5, 'キュー登録');
+
+    // Poll
+    const t0 = Date.now();
+    while (Date.now() - t0 < 300000) {
+      await sleep(1000);
+      try {
+        const hr = await fetch(`${comfyUrl}/history/${prompt_id}`);
+        if (!hr.ok) continue;
+        const hist = await hr.json();
+        const entry = hist[prompt_id];
+        if (!entry) continue;
+        if (entry.status?.completed) {
+          for (const [, out] of Object.entries(entry.outputs || {})) {
+            if (!out.images) continue;
+            for (const img of out.images) {
+              const url = `${comfyUrl}/view?filename=${encodeURIComponent(img.filename)}&subfolder=${encodeURIComponent(img.subfolder || '')}&type=${img.type || 'output'}`;
+              try {
+                const blob = await (await fetch(url)).blob();
+                const dataUrl = await new Promise((ok, ng) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ng; r.readAsDataURL(blob); });
+                item.history.push({ url: dataUrl, ts: new Date().toISOString(), adopted: false, comfyFile: img.filename });
+              } catch {
+                item.history.push({ url, ts: new Date().toISOString(), adopted: false, comfyFile: img.filename });
+              }
+            }
+          }
+          item.status = 'review';
+          setProgress(100, '完了！');
+          if (selectedId === item.id) selectItem(item.id);
+          toast('画像生成完了！', 'ok');
+          return;
+        }
+        if (entry.status?.status_str === 'error') throw new Error('ComfyUIエラー');
+      } catch (e) { if (e.message === 'ComfyUIエラー') throw e; }
+    }
+    throw new Error('タイムアウト');
+  } catch (e) {
+    toast(`エラー: ${e.message}`, 'err');
+    item.status = item.history.length > 0 ? 'review' : 'pending';
+  } finally {
+    generating = false;
+    btn.disabled = false; btn.textContent = '🎨 生成';
+    document.getElementById('progBar').style.display = 'none';
+    document.getElementById('progText').style.display = 'none';
+    updateCounts(); renderList(); saveAll();
+  }
+}
+
+function setProgress(pct, text) {
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progText').textContent = text;
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ============================================================
+// Review
+// ============================================================
+function adopt() {
+  const item = items.find(i => i.id === selectedId);
+  if (!item || !item.history.length) return;
+  const img = document.querySelector('#imgPreview img');
+  const url = img ? img.src : item.history[item.history.length - 1].url;
+  for (const h of item.history) h.adopted = (h.url === url);
+  item.adoptedImage = url;
+  item.status = 'done';
+
+  // Auto-download with correct filename
+  const a = document.createElement('a');
+  a.href = url; a.download = item.file;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+
+  saveAll(); updateCounts(); selectItem(item.id);
+  toast(`「${item.trigger}」採用！ → ${item.file}`, 'ok');
+
+  // Auto-advance
+  const next = items.find(i => i.status === 'pending');
+  if (next) setTimeout(() => selectItem(next.id), 300);
+}
+
+function reject() {
+  document.getElementById('rejectModal').classList.remove('hidden');
+  document.getElementById('rejectReason').value = '';
+}
+
+function qr(text) {
+  const ta = document.getElementById('rejectReason');
+  if (ta.value) ta.value += '、';
+  ta.value += text;
+}
+
+function closeReject() { document.getElementById('rejectModal').classList.add('hidden'); }
+
+function doReject(regen) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item) return;
+  const reason = document.getElementById('rejectReason').value.trim();
+  if (reason) item.feedback.push({ reason, ts: new Date().toISOString(), idx: item.history.length - 1 });
+  if (item.history.length > 1) { item.history.pop(); item.status = 'review'; }
+  else { item.history = []; item.status = 'pending'; }
+  closeReject();
+  saveAll(); updateCounts(); selectItem(item.id);
+  toast(reason ? `却下: ${reason}` : '却下', 'info');
+  if (regen) setTimeout(() => generate(), 100);
+}
+
+// ============================================================
+// Import/Export manifest
+// ============================================================
+function showImportModal() { document.getElementById('importModal').classList.remove('hidden'); document.getElementById('importText').value = ''; }
+function showExportModal() { document.getElementById('exportText').value = generateManifest(); document.getElementById('exportModal').classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function generateManifest() {
+  const charId = document.getElementById('charId').value || 'unknown';
+  const charName = document.getElementById('charName').value;
+  const charNameEn = document.getElementById('charNameEn').value;
+  const pad = (s, n) => s + ' '.repeat(Math.max(0, n - s.length));
+
+  const cgs = items.filter(i => i.type === 'cg');
+  const portraits = items.filter(i => i.type === 'portrait');
+  const icons = items.filter(i => i.type === 'icon');
+  const total = items.length;
+
+  const doneCount = items.filter(i => i.status === 'done').length;
+  const statusLine = doneCount === total ? '全て作成済み' :
+    doneCount > 0 ? `${doneCount}/${total}枚 作成済み` : '全て未作成';
+
+  let o = '';
+  o += '# ============================================\n';
+  o += `# Operation Nightcap - CG Manifest\n`;
+  o += `# Character: ${charNameEn} (${charName})\n`;
+  o += '# ============================================\n';
+  o += '#\n# フォーマット: ファイル名 | トリガー | 酔いLv | 備考\n';
+  o += '# ============================================\n\n';
+
+  o += `# --- イベントCG (${cgs.length}枚) ---\n`;
+  o += `# 配置先: assets/characters/${charId}/cg/\n\n`;
+  for (const r of cgs) o += `${pad(r.file, 26)}| ${pad(r.trigger, 18)}| ${pad(r.level || '', 6)}| ${r.note || ''}\n`.replace(/\s+$/, '') + '\n';
+
+  o += `\n# --- 立ち絵 (${portraits.length}枚) ---\n`;
+  o += `# 配置先: assets/characters/${charId}/\n\n`;
+  for (const r of portraits) o += `${pad(r.file, 26)}| ${pad(r.trigger, 18)}| ${pad(r.level || '', 6)}| ${r.note || ''}\n`.replace(/\s+$/, '') + '\n';
+
+  o += `\n# --- アイコン (${icons.length}枚) ---\n`;
+  o += `# 配置先: assets/characters/${charId}/\n\n`;
+  for (const r of icons) o += `${pad(r.file, 26)}| ${pad(r.trigger, 18)}| ${r.note || ''}\n`.replace(/\s+$/, '') + '\n';
+
+  o += `\n# ============================================\n`;
+  o += `# 合計: ${total}枚\n`;
+  o += `# ステータス: ${statusLine}\n`;
+  o += '# ============================================\n';
+  return o;
+}
+
+function copyManifest() {
+  navigator.clipboard.writeText(document.getElementById('exportText').value)
+    .then(() => toast('コピーしました', 'ok'))
+    .catch(() => toast('コピー失敗', 'err'));
+}
+
+function downloadManifest() {
+  const blob = new Blob([generateManifest()], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const en = document.getElementById('charNameEn')?.value?.trim().toLowerCase() || 'character';
+  a.download = `${en}.txt`;
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('ダウンロード完了', 'ok');
+}
+
+function doImport() {
+  const text = document.getElementById('importText').value;
+  if (!text.trim()) { toast('空です', 'err'); return; }
+
+  // Parse character info
+  const cm = text.match(/# Character:\s*(.+?)\s*\((.+?)\)/);
+  if (cm) { document.getElementById('charNameEn').value = cm[1].trim(); document.getElementById('charName').value = cm[2].trim(); }
+  const pm = text.match(/assets\/characters\/([a-z_]+)\//);
+  if (pm) document.getElementById('charId').value = pm[1];
+
+  // Parse items
+  const lines = text.split('\n');
+  let section = null;
+  const newItems = [];
+
+  for (const line of lines) {
+    const t = line.trim();
+    if (t.startsWith('#') || t === '') {
+      if (t.includes('イベントCG')) section = 'cg';
+      else if (t.includes('立ち絵') || t.includes('ポートレート')) section = 'portrait';
+      else if (t.includes('アイコン')) section = 'icon';
+      else if (t.includes('合計')) section = null;
+      continue;
+    }
+    if (!section) continue;
+    const parts = t.split('|').map(s => s.trim());
+    if (parts.length < 2) continue;
+    const file = parts[0], trigger = parts[1], level = parts[2] || '', note = parts[3] || '';
+    const id = file.replace(/\.\w+$/, '');
+
+    // Preserve existing progress if item exists
+    const existing = items.find(i => i.id === id);
+    if (existing) {
+      existing.file = file; existing.trigger = trigger;
+      existing.level = level; existing.note = note; existing.type = section;
+      newItems.push(existing);
+    } else {
+      newItems.push(makeItem({ id, file, trigger, level, type: section, note }));
+    }
+  }
+
+  if (newItems.length > 0) {
+    items = newItems;
+    saveAll(); renderList(); updateCounts();
+    closeModal('importModal');
+    toast(`インポート: ${newItems.length}件`, 'ok');
+    checkAllFiles();
+  } else {
+    toast('パースできませんでした', 'err');
+  }
+}
+
+// ============================================================
+// Toast
+// ============================================================
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (type || 'ok');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = 'toast', 3000);
+}
+
+// ============================================================
+// Init
+// ============================================================
+init();
+</script>
+</body>
+</html>
