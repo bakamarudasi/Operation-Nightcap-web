@@ -2,3 +2,12 @@ node_modules
 dist
 *.local
 .DS_Store
+
+# 画像の実体はリポジトリに含めない (マニフェストのみ追跡)
+assets/**/*.png
+assets/**/*.webp
+assets/**/*.jpg
+assets/**/*.jpeg
+
+# マニフェストは追跡する
+!assets/**/cg-manifest.txt
