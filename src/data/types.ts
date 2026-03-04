@@ -16,6 +16,15 @@ export interface CardDef {
   price: number;
 }
 
+export interface CostumeState {
+  level: number;
+  label: string;
+  description: string;
+  emoji: string;
+  /** CSS用: 衣装崩れの度合い 0.0~1.0 */
+  dishevelAmount: number;
+}
+
 export interface DrunkLevel {
   level: number;
   name: string;
@@ -65,6 +74,18 @@ export interface DeckAI {
   defaultDeck: string[];
 }
 
+export interface AfterEvent {
+  id: string;
+  /** 解放条件: CG解放率（0~1） */
+  requiredCGRate: number;
+  /** 解放条件: 最低勝利数 */
+  requiredWins: number;
+  title: string;
+  cgColor: string;
+  emoji: string;
+  dialogue: CGDialogueLine[];
+}
+
 export interface CharacterDef {
   id: string;
   name: string;
@@ -74,9 +95,11 @@ export interface CharacterDef {
   drunkType: string;
   drunkMax: number;
   drunkLevels: DrunkLevel[];
+  costumeStates: CostumeState[];
   battleLines: BattleLines;
   deck_ai: DeckAI;
   cgEvents: CGEvent[];
+  afterEvents: AfterEvent[];
 }
 
 export type ScreenId = 'title' | 'select' | 'battle' | 'shop' | 'gallery' | 'settings';

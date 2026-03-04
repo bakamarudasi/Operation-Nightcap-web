@@ -3,6 +3,7 @@ import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import { randomPick } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
+import { AfterEventOverlay } from './AfterEventOverlay.tsx';
 
 // 酔い段階
 const DRUNK_STAGES = [
@@ -82,6 +83,9 @@ export function BattleScreen() {
   const setScreen = useGameStore((s) => s.setScreen);
   const showCG = useGameStore((s) => s.showCG);
   const getDrunkLevel = useGameStore((s) => s.getDrunkLevel);
+  const checkAfterEvent = useGameStore((s) => s.checkAfterEvent);
+  const showAfterEvent = useGameStore((s) => s.showAfterEvent);
+  const activeAfterEvent = useGameStore((s) => s.activeAfterEvent);
 
   const [dialogue, setDialogue] = useState({ speaker: '', text: '' });
   const [displayText, setDisplayText] = useState('');
@@ -93,6 +97,7 @@ export function BattleScreen() {
   const [oppFlipped, setOppFlipped] = useState(false);
   const [gameResult, setGameResult] = useState<'player_win' | 'opponent_win' | 'draw' | null>(null);
   const [resultReward, setResultReward] = useState(0);
+  const [pendingAfterEvent, setPendingAfterEvent] = useState<ReturnType<typeof checkAfterEvent>>(null);
   const [reaction, setReaction] = useState<string | null>(null);
   const [fieldShaking, setFieldShaking] = useState(false);
   const [slamPlayer, setSlamPlayer] = useState(false);
@@ -268,6 +273,8 @@ export function BattleScreen() {
               const reward = endBattle('player_win');
               setResultReward(reward);
               setGameResult('player_win');
+              const afterEvt = checkAfterEvent();
+              if (afterEvt) setPendingAfterEvent(afterEvt);
             }, result.cgEvent ? 5000 : 2000);
             return;
           }
@@ -279,6 +286,10 @@ export function BattleScreen() {
               const reward = endBattle(end);
               setResultReward(reward);
               setGameResult(end);
+              if (end === 'player_win') {
+                const afterEvt = checkAfterEvent();
+                if (afterEvt) setPendingAfterEvent(afterEvt);
+              }
             } else {
               // 直前のラウンド記録
               const pc = pCard;
@@ -372,7 +383,12 @@ export function BattleScreen() {
             <div className={`char-portrait ${drunkClassName(opponentDrunkLevel)}`}>
               <div className="char-portrait-flush" style={{ background: oppFlush }} />
               <div className="char-portrait-icon">
-                <CharacterPortrait theme={currentOpponent.theme} variant="portrait" />
+                <CharacterPortrait
+                  theme={currentOpponent.theme}
+                  variant="portrait"
+                  drunkLevel={opponentDrunkLevel}
+                  costumeStates={currentOpponent.costumeStates}
+                />
               </div>
               <div className={`char-reaction ${reaction ? 'show' : ''}`}>{reaction}</div>
             </div>
@@ -595,7 +611,7 @@ export function BattleScreen() {
       </div>
 
       {/* 勝敗リザルト */}
-      {gameResult && (
+      {gameResult && !activeAfterEvent && (
         <div className="battle-result">
           <div className="result-content">
             <h2>
@@ -610,12 +626,27 @@ export function BattleScreen() {
                 : 'いい勝負だった…'}
             </p>
             <div className="result-reward">+{resultReward} 龍門幣</div>
+            {gameResult === 'player_win' && pendingAfterEvent && (
+              <button
+                className="menu-btn after-event-btn"
+                onClick={() => showAfterEvent(pendingAfterEvent)}
+                style={{
+                  background: `linear-gradient(135deg, ${pendingAfterEvent.cgColor}cc, ${pendingAfterEvent.cgColor}88)`,
+                  border: `1px solid ${pendingAfterEvent.cgColor}`,
+                }}
+              >
+                {pendingAfterEvent.emoji} {pendingAfterEvent.title}
+              </button>
+            )}
             <button className="menu-btn" onClick={() => setScreen('title')}>
               店に戻る
             </button>
           </div>
         </div>
       )}
+
+      {/* 勝利後イベントオーバーレイ */}
+      <AfterEventOverlay />
     </div>
   );
 }

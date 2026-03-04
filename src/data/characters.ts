@@ -14,6 +14,33 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
     },
     drunkType: 'aggressive',
     drunkMax: 10,
+    costumeStates: [
+      {
+        level: 0, label: '通常', emoji: '👔',
+        description: 'ロドスの制服をきっちり着ている',
+        dishevelAmount: 0,
+      },
+      {
+        level: 1, label: '少し緩む', emoji: '👕',
+        description: '首元のボタンを外し、肩のラインが少し崩れている',
+        dishevelAmount: 0.2,
+      },
+      {
+        level: 2, label: '前はだけ', emoji: '💫',
+        description: '「暑い」と言いながら前をはだけ、鎖骨と谷間がちらりと見える',
+        dishevelAmount: 0.5,
+      },
+      {
+        level: 3, label: '大胆に着崩れ', emoji: '🔥',
+        description: '肩から服がずり落ち、下着の肩紐が見えている。太ももも露わに',
+        dishevelAmount: 0.8,
+      },
+      {
+        level: 4, label: 'ほぼ脱げ', emoji: '💋',
+        description: '服が完全にはだけて下着姿同然。赤い頬で寝落ちしている',
+        dishevelAmount: 1.0,
+      },
+    ],
     drunkLevels: [
       {
         level: 0, name: 'シラフ', threshold: 0,
@@ -180,6 +207,80 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: '……ばか。もう遅いよ。……朝まで、逃がさないから' }
         ]
       }
+    ],
+    afterEvents: [
+      {
+        id: 'blaze_after_tipsy',
+        requiredCGRate: 0.25,
+        requiredWins: 1,
+        title: 'ほろ酔いお持ち帰り',
+        cgColor: '#e85d3a',
+        emoji: '🌙',
+        dialogue: [
+          { speaker: '', text: '――バーを出ると、夜風が二人の頬を撫でた。' },
+          { speaker: 'ブレイズ', text: 'んー……外、涼しい……ドクター、肩貸して……ちょっとだけ' },
+          { speaker: 'ドクター', text: '（ブレイズの肩を抱き寄せる）' },
+          { speaker: 'ブレイズ', text: '……えへへ。ドクターの肩、ちょうどいい高さ……' },
+          { speaker: 'ブレイズ', text: '……ねぇ、このまま帰るの？ ……もうちょっとだけ、このままでいたい' },
+          { speaker: 'ブレイズ', text: '……ドクターの匂い、好き……お酒と混ざって……ずるい匂い……' },
+        ]
+      },
+      {
+        id: 'blaze_after_drunk',
+        requiredCGRate: 0.5,
+        requiredWins: 3,
+        title: 'ドクターの部屋で',
+        cgColor: '#ff6b8a',
+        emoji: '🛏️',
+        dialogue: [
+          { speaker: '', text: '――ドクターの部屋。ブレイズをベッドに座らせた。' },
+          { speaker: 'ブレイズ', text: 'ん……ドクターの部屋、いい匂いする……なんか安心する……' },
+          { speaker: 'ブレイズ', text: 'ねぇ……水、ちょうだい……あと、隣に座って……寒い……' },
+          { speaker: 'ドクター', text: '（水を渡し、隣に腰を下ろす）' },
+          { speaker: 'ブレイズ', text: '……ドクター。私さ、酔ってなくても……こうしたかったかも。' },
+          { speaker: 'ブレイズ', text: '……嘘じゃないよ。……信じて。' },
+          { speaker: 'ブレイズ', text: '……もっと近くに来て……ここ、空いてるから……ね？' },
+          { speaker: 'ブレイズ', text: '（ブレイズがドクターの腕を掴み、ベッドに引き倒す）' },
+          { speaker: 'ブレイズ', text: '……逃がさないって、言ったでしょ……？ ……ばか' },
+        ]
+      },
+      {
+        id: 'blaze_after_morning',
+        requiredCGRate: 0.75,
+        requiredWins: 5,
+        title: '翌朝',
+        cgColor: '#ffaa66',
+        emoji: '🌅',
+        dialogue: [
+          { speaker: '', text: '――朝日がカーテンの隙間から差し込む。隣には温もりが残っている。' },
+          { speaker: 'ブレイズ', text: '……ん……んん……まぶしい……' },
+          { speaker: 'ブレイズ', text: '……あれ……ここ、ドクターの部屋……？ え、私なんで……' },
+          { speaker: 'ブレイズ', text: '……っ！！ やっ、なんで私こんな格好……！ ドクター見ないでっ！！' },
+          { speaker: 'ブレイズ', text: '……うそ、昨日のこと……覚えてる……全部……っ' },
+          { speaker: 'ブレイズ', text: '……っ……ばか……私があんなこと言ったの……ドクターのせいだから……' },
+          { speaker: 'ブレイズ', text: '…………でも。' },
+          { speaker: 'ブレイズ', text: '……後悔は、してないよ。……またクロージャの店、行こ。……二人で。' },
+        ]
+      },
+      {
+        id: 'blaze_after_complete',
+        requiredCGRate: 1.0,
+        requiredWins: 8,
+        title: '今夜は帰さない',
+        cgColor: '#ff3355',
+        emoji: '💕',
+        dialogue: [
+          { speaker: '', text: '――いつものバーで。クロージャが気を利かせて個室を用意してくれた。' },
+          { speaker: 'ブレイズ', text: 'ドクター。……今日はさ、飲み比べとかいいよ。' },
+          { speaker: 'ブレイズ', text: '……ただ、一緒に飲みたい。……ドクターと。' },
+          { speaker: 'ドクター', text: '（グラスを合わせる。カチン、と澄んだ音が響く）' },
+          { speaker: 'ブレイズ', text: '……ねぇ。私のこと、どう思ってる？ ……酔ってないよ、今は。' },
+          { speaker: 'ブレイズ', text: '……そっか。……えへへ、やっぱドクターってずるいよね。' },
+          { speaker: 'ブレイズ', text: '……今夜はさ。……帰さないから。覚悟、してね？' },
+          { speaker: 'ブレイズ', text: '……嘘じゃないよ。……こうやって隣にいられるの、私は……すごく、嬉しい。' },
+          { speaker: 'ブレイズ', text: '……ずっと、こうしてたいな。……ドクターと。' },
+        ]
+      },
     ]
   }
 };
