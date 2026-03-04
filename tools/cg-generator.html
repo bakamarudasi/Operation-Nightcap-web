@@ -801,7 +801,8 @@ function init() {
   renderCharTabs();
   renderList();
   updateCounts();
-  checkConnection();
+  checkConnection(true); // silent on init
+  startAutoReconnect();
   checkAllFiles();
   loadStagingManifest();
 }
@@ -1286,15 +1287,22 @@ function toggleAdv() {
 // ============================================================
 // ComfyUI Connection
 // ============================================================
-async function checkConnection() {
+async function checkConnection(silent) {
   const dot = document.getElementById('connDot');
   dot.className = 'status-dot checking';
   comfyUrl = document.getElementById('comfyUrl').value.replace(/\/$/, '');
   try {
     const r = await fetch(`${comfyUrl}/system_stats`, { signal: AbortSignal.timeout(5000) });
     if (r.ok) { dot.className = 'status-dot connected'; toast('ComfyUI接続OK', 'ok'); connectWs(); }
-    else throw 0;
-  } catch { dot.className = 'status-dot'; toast('ComfyUI接続失敗', 'err'); }
+    else throw new Error(`HTTP ${r.status}`);
+  } catch (e) {
+    dot.className = 'status-dot';
+    if (silent) return;
+    const msg = e instanceof TypeError ? 'ネットワークエラー (CORS？ ComfyUIに --enable-cors-header を付けて起動してください)'
+      : e?.message?.includes('timeout') ? 'タイムアウト (ComfyUI起動中？)'
+      : `接続失敗: ${e?.message || '不明'}`;
+    toast(msg, 'err');
+  }
 }
 
 function connectWs() {
@@ -1310,6 +1318,23 @@ function connectWs() {
     };
     ws.onclose = () => ws = null;
   } catch {}
+}
+
+let reconnectTimer = null;
+function startAutoReconnect() {
+  if (reconnectTimer) return;
+  reconnectTimer = setInterval(async () => {
+    const dot = document.getElementById('connDot');
+    if (dot.classList.contains('connected')) return; // already connected
+    try {
+      const r = await fetch(`${comfyUrl}/system_stats`, { signal: AbortSignal.timeout(3000) });
+      if (r.ok) {
+        dot.className = 'status-dot connected';
+        toast('ComfyUI接続OK', 'ok');
+        connectWs();
+      }
+    } catch { /* still not available */ }
+  }, 10000); // retry every 10s
 }
 
 // ============================================================
