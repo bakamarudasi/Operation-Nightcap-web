@@ -19,6 +19,8 @@
     --done: #27ae60;
     --generating: #3498db;
     --review: #f39c12;
+    --exists: #27ae60;
+    --missing: #c0392b;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -30,15 +32,16 @@
 
   /* Header */
   .header {
-    padding: 16px 24px;
+    padding: 12px 20px;
     background: var(--surface);
     border-bottom: 2px solid var(--accent);
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
+    flex-wrap: wrap;
   }
   .header h1 {
-    font-size: 1.3em;
+    font-size: 1.2em;
     background: linear-gradient(90deg, var(--accent), var(--accent2));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -46,22 +49,21 @@
   }
   .header .connection {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
     margin-left: auto;
   }
-  .header input {
-    padding: 6px 10px;
+  .header input[type="text"] {
+    padding: 5px 8px;
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 4px;
     color: var(--text);
-    font-size: 0.85em;
-    width: 240px;
+    font-size: 0.8em;
+    width: 200px;
   }
   .status-dot {
-    width: 10px;
-    height: 10px;
+    width: 10px; height: 10px;
     border-radius: 50%;
     background: #c0392b;
     transition: background 0.3s;
@@ -72,13 +74,13 @@
 
   /* Buttons */
   button {
-    padding: 7px 14px;
+    padding: 6px 12px;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 5px;
     background: var(--surface2);
     color: var(--text);
     cursor: pointer;
-    font-size: 0.85em;
+    font-size: 0.8em;
     transition: all 0.15s;
     white-space: nowrap;
   }
@@ -91,16 +93,16 @@
   button.success:hover { background: var(--success); color: #000; }
   button.danger { border-color: #c0392b; }
   button.danger:hover { background: #c0392b; }
-  button.small { padding: 4px 10px; font-size: 0.8em; }
+  button.sm { padding: 3px 8px; font-size: 0.75em; }
 
   /* Main layout */
   .main {
     display: grid;
-    grid-template-columns: 320px 1fr;
-    height: calc(100vh - 58px);
+    grid-template-columns: 340px 1fr;
+    height: calc(100vh - 54px);
   }
 
-  /* Left panel - CG list */
+  /* Left panel */
   .left-panel {
     background: var(--surface);
     border-right: 1px solid var(--border);
@@ -108,451 +110,254 @@
     flex-direction: column;
     overflow: hidden;
   }
-  .tabs {
-    display: flex;
+
+  /* Character info bar */
+  .char-bar {
+    padding: 8px 10px;
+    background: var(--bg);
     border-bottom: 1px solid var(--border);
-  }
-  .tab {
-    flex: 1;
-    padding: 10px 6px;
-    text-align: center;
+    display: flex;
+    gap: 6px;
+    align-items: center;
     font-size: 0.75em;
-    cursor: pointer;
+  }
+  .char-bar input {
+    padding: 3px 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-size: 1em;
+    width: 80px;
+  }
+  .char-bar label { color: var(--text-dim); }
+
+  /* Stats + toolbar */
+  .left-toolbar {
+    padding: 8px 10px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .stat { font-size: 0.72em; display: flex; gap: 3px; align-items: center; }
+  .stat-val { font-weight: 700; color: var(--accent2); }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .tab {
+    flex: 1; padding: 8px 4px; text-align: center;
+    font-size: 0.7em; cursor: pointer;
     border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-    color: var(--text-dim);
+    color: var(--text-dim); transition: all 0.2s;
   }
-  .tab:hover { color: var(--text); background: rgba(233,69,96,0.05); }
+  .tab:hover { color: var(--text); }
   .tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
-  .tab .count {
-    display: inline-block;
-    min-width: 18px;
-    padding: 1px 5px;
-    border-radius: 9px;
-    background: var(--surface2);
-    font-size: 0.9em;
-    margin-left: 4px;
-  }
-  .cg-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px;
+  .tab .cnt { background: var(--surface2); padding: 1px 5px; border-radius: 8px; margin-left: 3px; font-size: 0.9em; }
+
+  /* CG list */
+  .cg-list { flex: 1; overflow-y: auto; padding: 6px; }
+  .group-hdr {
+    font-size: 0.72em; color: var(--text-dim); padding: 8px 4px 3px;
+    font-weight: 600; display: flex; justify-content: space-between; align-items: center;
   }
   .cg-card {
-    padding: 10px 12px;
-    margin-bottom: 6px;
-    background: var(--bg);
-    border-radius: 6px;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: all 0.15s;
+    padding: 8px 10px; margin-bottom: 4px;
+    background: var(--bg); border-radius: 5px;
+    cursor: pointer; border: 1px solid transparent;
+    transition: all 0.15s; position: relative;
   }
   .cg-card:hover { border-color: var(--accent); }
   .cg-card.selected { border-color: var(--accent); background: rgba(233,69,96,0.1); }
-  .cg-card .cg-name {
-    font-size: 0.9em;
-    font-weight: 600;
-    margin-bottom: 3px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  .cg-card .cg-top {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.85em; font-weight: 600; margin-bottom: 2px;
   }
-  .cg-card .cg-meta {
-    font-size: 0.75em;
-    color: var(--text-dim);
+  .cg-card .cg-bot { font-size: 0.7em; color: var(--text-dim); display: flex; gap: 6px; align-items: center; }
+  .cg-card .del-btn {
+    position: absolute; top: 4px; right: 4px;
+    opacity: 0; font-size: 0.7em; padding: 2px 5px;
+    transition: opacity 0.15s;
   }
-  .badge {
-    font-size: 0.65em;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-weight: 600;
+  .cg-card:hover .del-btn { opacity: 0.6; }
+  .cg-card .del-btn:hover { opacity: 1; }
+
+  /* File existence indicator */
+  .file-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
   }
+  .file-dot.exists { background: var(--exists); }
+  .file-dot.missing { background: var(--missing); }
+  .file-dot.unknown { background: var(--border); }
+
+  /* Badges */
+  .badge { font-size: 0.6em; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
   .badge.pending { background: var(--surface2); color: var(--text-dim); }
   .badge.generating { background: rgba(52,152,219,0.2); color: var(--generating); }
   .badge.review { background: rgba(243,156,18,0.2); color: var(--review); }
   .badge.done { background: rgba(39,174,96,0.2); color: var(--done); }
 
-  /* Right panel - Work area */
-  .right-panel {
-    overflow-y: auto;
-    padding: 20px;
-  }
+  /* Right panel */
+  .right-panel { overflow-y: auto; padding: 16px; }
   .empty-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--text-dim);
-    font-size: 0.95em;
-    flex-direction: column;
-    gap: 12px;
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; color: var(--text-dim); flex-direction: column; gap: 10px;
   }
-  .empty-state .big-icon { font-size: 3em; opacity: 0.3; }
+  .empty-state .big { font-size: 2.5em; opacity: 0.3; }
 
-  /* Setup panel */
-  .setup-panel {
-    background: var(--surface);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
+  /* Panels */
+  .panel {
+    background: var(--surface); border-radius: 8px;
+    padding: 14px; margin-bottom: 14px;
   }
-  .setup-panel h3 {
-    font-size: 0.95em;
-    margin-bottom: 12px;
-    color: var(--accent2);
-  }
-  .setup-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
+  .panel h3 { font-size: 0.9em; margin-bottom: 10px; color: var(--accent2); }
+
+  /* Editable detail fields */
+  .field-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
     margin-bottom: 10px;
   }
-  .setup-row label {
-    font-size: 0.8em;
-    color: var(--text-dim);
-    min-width: 120px;
-  }
-  .setup-row select, .setup-row input {
-    flex: 1;
-    padding: 6px 10px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--text);
-    font-size: 0.85em;
-  }
-  .workflow-info {
-    font-size: 0.8em;
-    color: var(--text-dim);
-    padding: 8px;
-    background: var(--bg);
-    border-radius: 4px;
-    margin-top: 8px;
-  }
-  .workflow-info.loaded { color: var(--success); }
-
-  /* CG detail header */
-  .detail-header {
-    background: var(--surface);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-  }
-  .detail-header h2 {
-    font-size: 1.1em;
-    margin-bottom: 4px;
-  }
-  .detail-header .meta {
-    font-size: 0.8em;
-    color: var(--text-dim);
+  .field-grid.full { grid-template-columns: 1fr; }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label { font-size: 0.7em; color: var(--text-dim); }
+  .field input, .field select {
+    padding: 5px 8px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); font-size: 0.85em;
   }
 
   /* Prompt editor */
-  .prompt-section {
-    background: var(--surface);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
-  }
-  .prompt-section h3 {
-    font-size: 0.9em;
-    margin-bottom: 10px;
-    color: var(--accent2);
-  }
   .prompt-label {
-    font-size: 0.8em;
-    color: var(--text-dim);
-    margin-bottom: 4px;
-    display: flex;
-    justify-content: space-between;
+    font-size: 0.75em; color: var(--text-dim); margin-bottom: 3px;
+    display: flex; justify-content: space-between;
   }
-  .prompt-label button { font-size: 0.75em; padding: 2px 8px; }
   textarea.prompt {
-    width: 100%;
-    padding: 10px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    font-size: 0.85em;
+    width: 100%; padding: 8px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text); font-size: 0.82em;
     font-family: 'Consolas', 'Courier New', monospace;
-    resize: vertical;
-    line-height: 1.5;
-    margin-bottom: 12px;
+    resize: vertical; line-height: 1.5; margin-bottom: 10px;
   }
-  textarea.prompt.positive { min-height: 100px; border-left: 3px solid var(--success); }
-  textarea.prompt.negative { min-height: 60px; border-left: 3px solid #c0392b; }
-  .param-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 8px;
-  }
-  .param-item {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-  .param-item label {
-    font-size: 0.7em;
-    color: var(--text-dim);
-  }
+  textarea.prompt.pos { min-height: 80px; border-left: 3px solid var(--success); }
+  textarea.prompt.neg { min-height: 50px; border-left: 3px solid #c0392b; }
+
+  /* Params */
+  .param-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .param-item { display: flex; flex-direction: column; gap: 2px; }
+  .param-item label { font-size: 0.65em; color: var(--text-dim); }
   .param-item input, .param-item select {
-    padding: 5px 8px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--text);
-    font-size: 0.85em;
-    width: 100px;
+    padding: 4px 6px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 3px;
+    color: var(--text); font-size: 0.82em; width: 90px;
   }
-  .generate-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    margin-top: 14px;
+  .adv-toggle {
+    font-size: 0.75em; color: var(--text-dim); cursor: pointer;
+    margin-top: 6px; display: flex; align-items: center; gap: 4px;
   }
-  .progress-bar {
-    flex: 1;
-    height: 6px;
-    background: var(--bg);
-    border-radius: 3px;
-    overflow: hidden;
+  .adv-toggle:hover { color: var(--text); }
+  .adv-toggle .arr { display: inline-block; transition: transform 0.2s; }
+  .adv-toggle .arr.open { transform: rotate(90deg); }
+  .adv-panel { margin-top: 8px; padding: 10px; background: var(--bg); border-radius: 5px; }
+  .adv-panel.hidden { display: none; }
+
+  /* Generate row */
+  .gen-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+  .prog-bar { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  .prog-bar .fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px; transition: width 0.3s; width: 0%;
   }
-  .progress-bar .fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 3px;
-    transition: width 0.3s;
-    width: 0%;
+  .prog-text { font-size: 0.7em; color: var(--text-dim); min-width: 50px; text-align: right; }
+
+  /* Image preview */
+  .img-preview {
+    width: 100%; max-height: 450px; background: #0d0d1a;
+    border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; overflow: hidden; margin-bottom: 10px;
   }
-  .progress-text {
-    font-size: 0.75em;
-    color: var(--text-dim);
-    min-width: 60px;
-    text-align: right;
+  .img-preview img { max-width: 100%; max-height: 450px; object-fit: contain; border-radius: 8px; }
+  .img-preview .ph { color: var(--text-dim); font-size: 0.85em; padding: 30px; text-align: center; }
+
+  /* Thumbnails */
+  .hist-strip { display: flex; gap: 6px; padding: 8px 0; overflow-x: auto; }
+  .hist-thumb {
+    width: 70px; height: 70px; border-radius: 5px; overflow: hidden;
+    cursor: pointer; border: 2px solid transparent; flex-shrink: 0;
+  }
+  .hist-thumb:hover { border-color: var(--accent); }
+  .hist-thumb.sel { border-color: var(--accent2); }
+  .hist-thumb.adopted { border-color: var(--done); }
+  .hist-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  .review-btns { display: flex; gap: 8px; justify-content: center; }
+  .review-btns button { padding: 10px 20px; font-size: 0.9em; }
+
+  /* Feedback log */
+  .fb-log { background: var(--bg); border-radius: 5px; padding: 8px; margin-top: 8px; max-height: 120px; overflow-y: auto; }
+  .fb-entry { font-size: 0.7em; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; gap: 6px; }
+  .fb-entry:last-child { border-bottom: none; }
+  .fb-time { color: var(--text-dim); flex-shrink: 0; }
+  .fb-reason { color: var(--warn); }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7); display: flex;
+    align-items: center; justify-content: center; z-index: 200;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px; width: 480px; max-width: 90vw;
+  }
+  .modal h3 { font-size: 1em; margin-bottom: 10px; color: var(--accent2); }
+  .modal textarea {
+    width: 100%; padding: 8px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text); font-size: 0.82em; resize: vertical;
+    min-height: 70px; margin-bottom: 6px;
+  }
+  .modal .qr { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+  .modal .qr button { font-size: 0.7em; padding: 3px 8px; background: var(--bg); }
+  .modal .ma { display: flex; gap: 6px; justify-content: flex-end; }
+
+  /* Import/export modal */
+  .modal .import-ta {
+    width: 100%; height: 180px; padding: 10px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text); font-family: monospace; font-size: 0.8em;
+    resize: vertical; margin-bottom: 8px;
   }
 
-  /* Review area */
-  .review-section {
-    background: var(--surface);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
-  }
-  .review-section h3 {
-    font-size: 0.9em;
-    margin-bottom: 10px;
-    color: var(--accent2);
-  }
-  .image-preview {
-    width: 100%;
-    max-height: 500px;
-    background: #0d0d1a;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    margin-bottom: 12px;
-    position: relative;
-  }
-  .image-preview img {
-    max-width: 100%;
-    max-height: 500px;
-    object-fit: contain;
-    border-radius: 8px;
-  }
-  .image-preview .placeholder {
-    color: var(--text-dim);
-    font-size: 0.9em;
-    padding: 40px;
-    text-align: center;
-  }
-  .review-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-  }
-  .review-actions button { padding: 10px 24px; font-size: 0.95em; }
-
-  /* History thumbnails */
-  .history-strip {
-    display: flex;
-    gap: 8px;
-    padding: 10px 0;
-    overflow-x: auto;
-  }
-  .history-thumb {
-    width: 80px;
-    height: 80px;
-    border-radius: 6px;
-    overflow: hidden;
-    cursor: pointer;
-    border: 2px solid transparent;
-    flex-shrink: 0;
-    transition: border-color 0.2s;
-  }
-  .history-thumb:hover { border-color: var(--accent); }
-  .history-thumb.selected { border-color: var(--accent2); }
-  .history-thumb.adopted { border-color: var(--done); }
-  .history-thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  /* Workflow setup */
+  .wf-info { font-size: 0.75em; color: var(--text-dim); padding: 6px; background: var(--bg); border-radius: 4px; }
+  .wf-info.loaded { color: var(--success); }
+  .setup-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .setup-row label { font-size: 0.75em; color: var(--text-dim); min-width: 110px; }
+  .setup-row select {
+    flex: 1; padding: 4px 6px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 3px;
+    color: var(--text); font-size: 0.82em;
   }
 
   /* Toast */
   .toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 0.85em;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.3s;
-    z-index: 100;
-    pointer-events: none;
+    position: fixed; bottom: 20px; right: 20px;
+    padding: 10px 18px; border-radius: 7px; font-size: 0.82em;
+    opacity: 0; transform: translateY(10px);
+    transition: all 0.3s; z-index: 100; pointer-events: none;
   }
   .toast.show { opacity: 1; transform: translateY(0); }
   .toast.ok { background: var(--success); color: #000; }
   .toast.err { background: #c0392b; color: #fff; }
   .toast.info { background: var(--generating); color: #fff; }
 
-  /* Rejection modal */
-  .modal-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 200;
-  }
-  .modal-overlay.hidden { display: none; }
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
-    width: 500px;
-    max-width: 90vw;
-  }
-  .modal h3 {
-    font-size: 1em;
-    margin-bottom: 12px;
-    color: var(--accent2);
-  }
-  .modal textarea {
-    width: 100%;
-    padding: 10px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    font-size: 0.85em;
-    resize: vertical;
-    min-height: 80px;
-    margin-bottom: 8px;
-  }
-  .modal .quick-reasons {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-  .modal .quick-reasons button {
-    font-size: 0.75em;
-    padding: 4px 10px;
-    background: var(--bg);
-  }
-  .modal .modal-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-
-  /* Feedback log */
-  .feedback-log {
-    background: var(--bg);
-    border-radius: 6px;
-    padding: 10px;
-    margin-top: 10px;
-    max-height: 150px;
-    overflow-y: auto;
-  }
-  .feedback-entry {
-    font-size: 0.75em;
-    padding: 6px 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    display: flex;
-    gap: 8px;
-  }
-  .feedback-entry:last-child { border-bottom: none; }
-  .feedback-entry .fb-time {
-    color: var(--text-dim);
-    flex-shrink: 0;
-    min-width: 50px;
-  }
-  .feedback-entry .fb-reason { color: var(--warn); }
-  .feedback-entry .fb-adopted { color: var(--done); }
-
-  /* Advanced params panel */
-  .advanced-toggle {
-    font-size: 0.8em;
-    color: var(--text-dim);
-    cursor: pointer;
-    margin-top: 8px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .advanced-toggle:hover { color: var(--text); }
-  .advanced-toggle .arrow { display: inline-block; transition: transform 0.2s; }
-  .advanced-toggle .arrow.open { transform: rotate(90deg); }
-  .advanced-params {
-    margin-top: 10px;
-    padding: 12px;
-    background: var(--bg);
-    border-radius: 6px;
-  }
-  .advanced-params.hidden { display: none; }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #555; }
-
-  /* Section toggle */
-  .section-toggle {
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .section-toggle .arrow {
-    transition: transform 0.2s;
-    font-size: 0.8em;
-  }
-  .section-toggle .arrow.open { transform: rotate(90deg); }
-
-  /* Stats bar at top of left panel */
-  .stats-bar {
-    padding: 10px 12px;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    gap: 12px;
-    font-size: 0.75em;
-  }
-  .stats-bar .stat { display: flex; gap: 4px; align-items: center; }
-  .stats-bar .stat-val { font-weight: 700; color: var(--accent2); }
 
   @media (max-width: 800px) {
     .main { grid-template-columns: 1fr; }
@@ -565,234 +370,211 @@
 <!-- Header -->
 <div class="header">
   <h1>CG Production Pipeline</h1>
-  <a href="cg-inventory-editor.html" style="font-size:0.75em;color:var(--text-dim);text-decoration:none;border:1px solid var(--border);padding:4px 10px;border-radius:4px" title="CG一覧の追加・編集はこちら">
-    インベントリ編集
-  </a>
   <div class="connection">
-    <span style="font-size:0.8em;color:var(--text-dim)">ComfyUI:</span>
-    <input id="comfyUrl" value="http://127.0.0.1:8188" onchange="saveSettings();checkConnection()">
-    <div class="status-dot" id="connStatus" title="未接続"></div>
-    <button class="small" onclick="checkConnection()">接続テスト</button>
-    <input type="file" id="wfFileInput" accept=".json" style="display:none" onchange="handleWorkflowUpload(event)">
-    <button class="small" onclick="document.getElementById('wfFileInput').click()">
-      ワークフロー読込
-    </button>
+    <span style="font-size:0.75em;color:var(--text-dim)">ComfyUI:</span>
+    <input type="text" id="comfyUrl" value="http://127.0.0.1:8188" onchange="saveAll();checkConnection()">
+    <div class="status-dot" id="connDot" title="未接続"></div>
+    <button class="sm" onclick="checkConnection()">接続</button>
+    <input type="file" id="wfFile" accept=".json" style="display:none" onchange="loadWorkflow(event)">
+    <button class="sm" onclick="document.getElementById('wfFile').click()">WF読込</button>
   </div>
 </div>
 
-<!-- Main layout -->
+<!-- Main -->
 <div class="main">
   <!-- Left panel -->
   <div class="left-panel">
-    <div class="stats-bar" style="flex-wrap:wrap">
-      <div class="stat" id="dataSource" style="width:100%;margin-bottom:4px;font-size:0.9em">
-        データソース: <span id="dataSourceLabel" style="color:var(--text-dim)">読込中...</span>
-        <button class="small" onclick="syncFromInventory()" style="margin-left:auto;font-size:0.7em;padding:2px 8px">
-          インベントリ同期
-        </button>
-      </div>
-      <div class="stat">未作成: <span class="stat-val" id="countPending">0</span></div>
-      <div class="stat">レビュー: <span class="stat-val" id="countReview">0</span></div>
-      <div class="stat">採用済み: <span class="stat-val" id="countDone">0</span></div>
+    <!-- Character info -->
+    <div class="char-bar">
+      <label>ID:</label><input id="charId" value="blaze" onchange="saveAll()">
+      <label>名前:</label><input id="charName" value="ブレイズ" onchange="saveAll()">
+      <label>EN:</label><input id="charNameEn" value="BLAZE" onchange="saveAll()">
     </div>
+
+    <!-- Stats + actions -->
+    <div class="left-toolbar">
+      <div class="stat">未: <span class="stat-val" id="cntP">0</span></div>
+      <div class="stat">レ: <span class="stat-val" id="cntR">0</span></div>
+      <div class="stat">済: <span class="stat-val" id="cntD">0</span></div>
+      <div style="margin-left:auto;display:flex;gap:4px">
+        <button class="sm" onclick="showImportModal()">インポート</button>
+        <button class="sm" onclick="showExportModal()">エクスポート</button>
+        <button class="sm" onclick="checkAllFiles()">ファイル確認</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
     <div class="tabs">
-      <div class="tab active" data-filter="all" onclick="setFilter('all')">
-        全て <span class="count" id="countAll">0</span>
-      </div>
-      <div class="tab" data-filter="pending" onclick="setFilter('pending')">
-        未作成 <span class="count" id="countPendingTab">0</span>
-      </div>
-      <div class="tab" data-filter="review" onclick="setFilter('review')">
-        レビュー <span class="count" id="countReviewTab">0</span>
-      </div>
-      <div class="tab" data-filter="done" onclick="setFilter('done')">
-        採用済み <span class="count" id="countDoneTab">0</span>
-      </div>
+      <div class="tab active" data-f="all" onclick="setFilter('all')">全て<span class="cnt" id="cntA">0</span></div>
+      <div class="tab" data-f="pending" onclick="setFilter('pending')">未作成<span class="cnt" id="cntPT">0</span></div>
+      <div class="tab" data-f="review" onclick="setFilter('review')">レビュー<span class="cnt" id="cntRT">0</span></div>
+      <div class="tab" data-f="done" onclick="setFilter('done')">採用済<span class="cnt" id="cntDT">0</span></div>
     </div>
+
+    <!-- CG List -->
     <div class="cg-list" id="cgList"></div>
   </div>
 
   <!-- Right panel -->
   <div class="right-panel" id="rightPanel">
-    <!-- Empty state / Setup shown initially -->
     <div class="empty-state" id="emptyState">
-      <div class="big-icon">🎨</div>
-      <div>左のリストからCGを選択してください</div>
-      <div style="font-size:0.8em">ワークフローを先に読み込んでください</div>
+      <div class="big">🎨</div>
+      <div>左のリストからCGを選択</div>
     </div>
 
-    <!-- Workflow setup (shown when no workflow loaded) -->
-    <div class="setup-panel" id="setupPanel">
+    <!-- Workflow setup -->
+    <div class="panel" id="wfPanel">
       <h3>ワークフロー設定</h3>
-      <div class="workflow-info" id="wfInfo">
-        ワークフロー未読込 — 右上の「ワークフロー読込」からComfyUIワークフローのJSONを読み込んでください
-      </div>
-      <div id="nodeMapping" style="display:none; margin-top:12px;">
-        <div class="setup-row">
-          <label>Positive Prompt ノード:</label>
-          <select id="positiveNode"></select>
-        </div>
-        <div class="setup-row">
-          <label>Negative Prompt ノード:</label>
-          <select id="negativeNode"></select>
-        </div>
-        <div class="setup-row">
-          <label>Seed ノード (任意):</label>
-          <select id="seedNode"></select>
-        </div>
-        <button class="small success" onclick="saveNodeMapping()" style="margin-top:8px">設定を保存</button>
+      <div class="wf-info" id="wfInfo">未読込 — ヘッダーの「WF読込」からJSONを読み込んでください</div>
+      <div id="nodeMap" style="display:none;margin-top:10px">
+        <div class="setup-row"><label>Positive Prompt:</label><select id="posNode"></select></div>
+        <div class="setup-row"><label>Negative Prompt:</label><select id="negNode"></select></div>
+        <div class="setup-row"><label>Seed (KSampler):</label><select id="seedNode"></select></div>
+        <button class="sm success" onclick="saveNodeMap()" style="margin-top:6px">保存</button>
       </div>
     </div>
 
-    <!-- Detail view (hidden initially) -->
+    <!-- Detail view -->
     <div id="detailView" style="display:none">
-      <!-- CG info header -->
-      <div class="detail-header">
-        <div>
-          <h2 id="detailName"></h2>
-          <div class="meta" id="detailMeta"></div>
+      <!-- Metadata editor -->
+      <div class="panel">
+        <h3>CG情報</h3>
+        <div class="field-grid">
+          <div class="field"><label>ファイル名</label><input id="dFile" onchange="saveMeta()"></div>
+          <div class="field"><label>トリガー名</label><input id="dTrigger" onchange="saveMeta()"></div>
+          <div class="field">
+            <label>酔いLv</label>
+            <select id="dLevel" onchange="saveMeta()">
+              <option value="">-</option>
+              <option value="Lv.0">Lv.0</option><option value="Lv.1">Lv.1</option>
+              <option value="Lv.2">Lv.2</option><option value="Lv.3">Lv.3</option>
+              <option value="Lv.4">Lv.4</option>
+            </select>
+          </div>
+          <div class="field"><label>備考</label><input id="dNote" onchange="saveMeta()"></div>
         </div>
-        <span class="badge" id="detailBadge"></span>
+        <div id="fileStatus" style="font-size:0.75em;color:var(--text-dim)"></div>
       </div>
 
       <!-- Prompt editor -->
-      <div class="prompt-section">
-        <h3>プロンプト設定</h3>
+      <div class="panel">
+        <h3>プロンプト</h3>
         <div class="prompt-label">
-          <span>Positive Prompt</span>
-          <button class="small" onclick="resetPromptSuggestion('positive')">提案に戻す</button>
+          <span>Positive</span>
+          <button class="sm" onclick="resetSuggestion('pos')">提案に戻す</button>
         </div>
-        <textarea class="prompt positive" id="positivePrompt" rows="4"
-          oninput="savePromptEdit()"></textarea>
+        <textarea class="prompt pos" id="posPrompt" rows="3" oninput="savePrompt()"></textarea>
 
         <div class="prompt-label">
-          <span>Negative Prompt</span>
-          <button class="small" onclick="resetPromptSuggestion('negative')">提案に戻す</button>
+          <span>Negative</span>
+          <button class="sm" onclick="resetSuggestion('neg')">提案に戻す</button>
         </div>
-        <textarea class="prompt negative" id="negativePrompt" rows="2"
-          oninput="savePromptEdit()"></textarea>
+        <textarea class="prompt neg" id="negPrompt" rows="2" oninput="savePrompt()"></textarea>
 
         <div class="param-row">
-          <div class="param-item">
-            <label>Seed (-1=random)</label>
-            <input type="number" id="paramSeed" value="-1" onchange="savePromptEdit()">
-          </div>
-          <div class="param-item">
-            <label>Batch Size</label>
-            <input type="number" id="paramBatch" value="1" min="1" max="4" onchange="savePromptEdit()">
-          </div>
+          <div class="param-item"><label>Seed (-1=random)</label><input type="number" id="pSeed" value="-1" onchange="savePrompt()"></div>
+          <div class="param-item"><label>Batch</label><input type="number" id="pBatch" value="1" min="1" max="4" onchange="savePrompt()"></div>
         </div>
 
-        <div class="advanced-toggle" onclick="toggleAdvanced()">
-          <span class="arrow" id="advArrow">▶</span> ワークフロー詳細パラメータ
+        <div class="adv-toggle" onclick="toggleAdv()">
+          <span class="arr" id="advArr">▶</span> 詳細パラメータ
         </div>
-        <div class="advanced-params hidden" id="advancedParams">
+        <div class="adv-panel hidden" id="advPanel">
           <div class="param-row">
-            <div class="param-item">
-              <label>Steps</label>
-              <input type="number" id="paramSteps" value="" placeholder="WFデフォ" min="1" max="150" onchange="savePromptEdit()">
-            </div>
-            <div class="param-item">
-              <label>CFG Scale</label>
-              <input type="number" id="paramCfg" value="" placeholder="WFデフォ" step="0.5" min="1" max="30" onchange="savePromptEdit()">
-            </div>
-            <div class="param-item">
-              <label>Denoise</label>
-              <input type="number" id="paramDenoise" value="" placeholder="WFデフォ" step="0.05" min="0" max="1" onchange="savePromptEdit()">
-            </div>
+            <div class="param-item"><label>Steps</label><input type="number" id="pSteps" placeholder="WFデフォ" min="1" max="150" onchange="savePrompt()"></div>
+            <div class="param-item"><label>CFG</label><input type="number" id="pCfg" placeholder="WFデフォ" step="0.5" min="1" max="30" onchange="savePrompt()"></div>
+            <div class="param-item"><label>Denoise</label><input type="number" id="pDenoise" placeholder="WFデフォ" step="0.05" min="0" max="1" onchange="savePrompt()"></div>
           </div>
-          <div class="param-row" style="margin-top:8px">
-            <div class="param-item">
-              <label>Width</label>
-              <input type="number" id="paramWidth" value="" placeholder="WFデフォ" step="64" min="256" max="2048" onchange="savePromptEdit()">
-            </div>
-            <div class="param-item">
-              <label>Height</label>
-              <input type="number" id="paramHeight" value="" placeholder="WFデフォ" step="64" min="256" max="2048" onchange="savePromptEdit()">
-            </div>
-            <div class="param-item">
-              <label>Sampler</label>
-              <select id="paramSampler" onchange="savePromptEdit()">
-                <option value="">WFデフォルト</option>
-                <option value="euler">euler</option>
-                <option value="euler_ancestral">euler_ancestral</option>
-                <option value="dpmpp_2m">dpmpp_2m</option>
-                <option value="dpmpp_2m_sde">dpmpp_2m_sde</option>
-                <option value="dpmpp_sde">dpmpp_sde</option>
-                <option value="ddim">ddim</option>
-                <option value="uni_pc">uni_pc</option>
+          <div class="param-row" style="margin-top:6px">
+            <div class="param-item"><label>Width</label><input type="number" id="pW" placeholder="WFデフォ" step="64" min="256" max="2048" onchange="savePrompt()"></div>
+            <div class="param-item"><label>Height</label><input type="number" id="pH" placeholder="WFデフォ" step="64" min="256" max="2048" onchange="savePrompt()"></div>
+            <div class="param-item"><label>Sampler</label>
+              <select id="pSampler" onchange="savePrompt()">
+                <option value="">WFデフォ</option>
+                <option>euler</option><option>euler_ancestral</option>
+                <option>dpmpp_2m</option><option>dpmpp_2m_sde</option>
+                <option>dpmpp_sde</option><option>ddim</option><option>uni_pc</option>
               </select>
             </div>
           </div>
-          <p style="font-size:0.7em;color:var(--text-dim);margin-top:8px">
-            空欄 = ワークフローのデフォルト値を使用。値を入れるとそのCGだけ上書きします。
-          </p>
+          <p style="font-size:0.65em;color:var(--text-dim);margin-top:6px">空欄 = WFデフォルト値</p>
         </div>
 
-        <!-- Feedback log for this CG -->
-        <div id="feedbackSection" style="display:none;margin-top:12px">
+        <!-- Feedback log -->
+        <div id="fbSection" style="display:none;margin-top:10px">
           <div class="prompt-label"><span>フィードバック履歴</span></div>
-          <div class="feedback-log" id="feedbackLog"></div>
+          <div class="fb-log" id="fbLog"></div>
         </div>
 
-        <div class="generate-row">
-          <button class="primary" id="btnGenerate" onclick="generateImage()">
-            🎨 生成する
-          </button>
-          <div class="progress-bar" id="progressBar" style="display:none">
-            <div class="fill" id="progressFill"></div>
-          </div>
-          <span class="progress-text" id="progressText" style="display:none"></span>
+        <div class="gen-row">
+          <button class="primary" id="btnGen" onclick="generate()">🎨 生成</button>
+          <div class="prog-bar" id="progBar" style="display:none"><div class="fill" id="progFill"></div></div>
+          <span class="prog-text" id="progText" style="display:none"></span>
         </div>
       </div>
 
-      <!-- Review area -->
-      <div class="review-section" id="reviewSection">
+      <!-- Review -->
+      <div class="panel" id="reviewPanel">
         <h3>生成結果</h3>
-        <div class="image-preview" id="imagePreview">
-          <div class="placeholder">まだ生成されていません</div>
-        </div>
-        <div class="history-strip" id="historyStrip"></div>
-        <div class="review-actions" id="reviewActions" style="display:none">
-          <button class="success" onclick="adoptImage()" style="font-size:1em;padding:12px 32px">
-            ✅ 採用する
-          </button>
-          <button class="danger" onclick="rejectImage()">
-            ❌ 却下
-          </button>
-          <button onclick="generateImage()">
-            🔄 再生成
-          </button>
+        <div class="img-preview" id="imgPreview"><div class="ph">まだ生成されていません</div></div>
+        <div class="hist-strip" id="histStrip"></div>
+        <div class="review-btns" id="reviewBtns" style="display:none">
+          <button class="success" onclick="adopt()" style="padding:10px 28px">✅ 採用</button>
+          <button class="danger" onclick="reject()">❌ 却下</button>
+          <button onclick="generate()">🔄 再生成</button>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Rejection reason modal -->
+<!-- Reject modal -->
 <div class="modal-overlay hidden" id="rejectModal">
   <div class="modal">
-    <h3>却下理由を入力</h3>
-    <p style="font-size:0.8em;color:var(--text-dim);margin-bottom:10px">
-      次の生成でプロンプトを改善するために、何がダメだったか教えてください
-    </p>
-    <div class="quick-reasons">
-      <button onclick="addQuickReason('構図が違う')">構図が違う</button>
-      <button onclick="addQuickReason('表情が違う')">表情が違う</button>
-      <button onclick="addQuickReason('ポーズが違う')">ポーズが違う</button>
-      <button onclick="addQuickReason('色味が違う')">色味が違う</button>
-      <button onclick="addQuickReason('服装が違う')">服装が違う</button>
-      <button onclick="addQuickReason('背景が違う')">背景が違う</button>
-      <button onclick="addQuickReason('品質が低い')">品質が低い</button>
-      <button onclick="addQuickReason('キャラが似てない')">キャラが似てない</button>
-      <button onclick="addQuickReason('エロすぎ')">エロすぎ</button>
-      <button onclick="addQuickReason('エロが足りない')">エロが足りない</button>
+    <h3>却下理由</h3>
+    <p style="font-size:0.75em;color:var(--text-dim);margin-bottom:8px">何がダメだったか教えてください（次の生成に活かします）</p>
+    <div class="qr">
+      <button onclick="qr('構図が違う')">構図が違う</button>
+      <button onclick="qr('表情が違う')">表情が違う</button>
+      <button onclick="qr('ポーズが違う')">ポーズが違う</button>
+      <button onclick="qr('色味が違う')">色味が違う</button>
+      <button onclick="qr('服装が違う')">服装が違う</button>
+      <button onclick="qr('背景が違う')">背景が違う</button>
+      <button onclick="qr('品質が低い')">品質が低い</button>
+      <button onclick="qr('キャラが似てない')">キャラ似てない</button>
+      <button onclick="qr('エロすぎ')">エロすぎ</button>
+      <button onclick="qr('エロが足りない')">エロ足りない</button>
     </div>
-    <textarea id="rejectReason" placeholder="詳しい理由を入力（任意）。例:「もっと恥ずかしがってる表情にしたい」「手の位置を左にしたい」"></textarea>
-    <div class="modal-actions">
-      <button onclick="closeRejectModal()">キャンセル</button>
-      <button class="danger" onclick="confirmReject()">却下して次へ</button>
-      <button class="primary" onclick="confirmRejectAndRegenerate()">却下して再生成</button>
+    <textarea id="rejectReason" placeholder="例:「もっと恥ずかしがってる表情にしたい」"></textarea>
+    <div class="ma">
+      <button onclick="closeReject()">キャンセル</button>
+      <button class="danger" onclick="doReject(false)">却下</button>
+      <button class="primary" onclick="doReject(true)">却下→再生成</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import modal -->
+<div class="modal-overlay hidden" id="importModal">
+  <div class="modal">
+    <h3>マニフェスト インポート</h3>
+    <textarea class="import-ta" id="importText" placeholder="cg-manifest.txt の内容を貼り付け..."></textarea>
+    <div class="ma">
+      <button onclick="closeModal('importModal')">キャンセル</button>
+      <button class="primary" onclick="doImport()">読み込み</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export modal -->
+<div class="modal-overlay hidden" id="exportModal">
+  <div class="modal">
+    <h3>マニフェスト エクスポート</h3>
+    <textarea class="import-ta" id="exportText" readonly style="height:250px"></textarea>
+    <div class="ma">
+      <button onclick="closeModal('exportModal')">閉じる</button>
+      <button onclick="copyManifest()">コピー</button>
+      <button class="primary" onclick="downloadManifest()">ダウンロード</button>
     </div>
   </div>
 </div>
@@ -803,89 +585,23 @@
 // ============================================================
 // State
 // ============================================================
+const STORAGE_KEY = 'nightcap_cg_pipeline_v2';
 let comfyUrl = 'http://127.0.0.1:8188';
-let workflow = null;          // Full ComfyUI workflow JSON
-let nodeMap = { positive: null, negative: null, seed: null };
+let workflow = null;
+let nodeMapping = { pos: null, neg: null, seed: null };
 let clientId = crypto.randomUUID();
 
-// CG items with production status
-let cgItems = [];
+let items = [];       // All CG/portrait/icon items
 let selectedId = null;
-let currentFilter = 'all';
-let isGenerating = false;
-let wsConnection = null;
+let filter = 'all';
+let generating = false;
+let ws = null;
+let fileExistence = {}; // id → true/false/undefined
 
 // ============================================================
-// CG data — read from Inventory Editor's localStorage
+// Default items
 // ============================================================
-// Key shared with cg-inventory-editor.html
-const INVENTORY_STORAGE_KEY = 'nightcap_cg_editor';
-
-/**
- * Read CG list from the Inventory Editor's localStorage.
- * Returns { charId, charName, items[] } or null if not found.
- */
-function readInventoryData() {
-  const raw = localStorage.getItem(INVENTORY_STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    const data = JSON.parse(raw);
-    const charId = data.charId || 'blaze';
-    const charName = data.charName || '';
-    const items = [];
-
-    // Convert inventory rows → pipeline items
-    if (data.cgRows) {
-      for (const row of data.cgRows) {
-        const id = row.file.replace(/\.\w+$/, ''); // shoulder_lean.webp → shoulder_lean
-        items.push({
-          id,
-          file: row.file,
-          trigger: row.trigger,
-          level: row.level || '',
-          type: 'cg',
-          note: row.note || '',
-          charId,
-        });
-      }
-    }
-    if (data.portraitRows) {
-      for (const row of data.portraitRows) {
-        const id = row.file.replace(/\.\w+$/, '');
-        items.push({
-          id,
-          file: row.file,
-          trigger: row.trigger,
-          level: row.level || '',
-          type: 'portrait',
-          note: row.note || '',
-          charId,
-        });
-      }
-    }
-    if (data.iconRows) {
-      for (const row of data.iconRows) {
-        const id = row.file.replace(/\.\w+$/, '');
-        items.push({
-          id,
-          file: row.file,
-          trigger: row.trigger,
-          level: '',
-          type: 'icon',
-          note: row.note || '',
-          charId,
-        });
-      }
-    }
-    return { charId, charName, charNameEn: data.charNameEn || '', items };
-  } catch (e) {
-    console.error('Failed to read inventory data:', e);
-    return null;
-  }
-}
-
-// Hardcoded fallback (used only when inventory editor has no data)
-const FALLBACK_CG_ITEMS = [
+const DEFAULTS = [
   { id: 'shoulder_lean', file: 'shoulder_lean.webp', trigger: '耳元でささやく', level: 'Lv.1', type: 'cg', note: '' },
   { id: 'headpat', file: 'headpat.webp', trigger: 'うなじを撫でる', level: 'Lv.2', type: 'cg', note: '' },
   { id: 'gaze', file: 'gaze.webp', trigger: '唇を見つめる', level: 'Lv.2', type: 'cg', note: '' },
@@ -903,495 +619,179 @@ const FALLBACK_CG_ITEMS = [
   { id: 'select-icon', file: 'select-icon.webp', trigger: 'キャラ選択画面用', level: '', type: 'icon', note: '' },
 ];
 
-// Prompt suggestions per CG
-const PROMPT_SUGGESTIONS = {
-  // Base character tags
-  _base_positive: '(blaze arknights:1.3), feline girl, orange hair, long hair, red eyes, cat ears, athletic build, large breasts',
-  _base_setting: 'bar interior, dim lighting, warm amber light, bottles in background, bar counter, night, cozy atmosphere',
-  _base_negative: '(worst quality:1.4), (low quality:1.4), blurry, deformed, extra fingers, extra limbs, bad anatomy, bad hands, text, watermark, username, signature, jpeg artifacts, cropped, poorly drawn',
-
-  // Event CGs
-  shoulder_lean: {
-    positive: 'leaning close, whispering in ear, faces very close, slight blush, shy expression, looking away, intimate proximity, from side',
-    negative: '',
-    note: '肩に寄りかかり耳元でささやくシーン。親密な距離感を強調'
-  },
-  headpat: {
-    positive: 'hand on nape of neck, fingers in hair, trembling, blushing heavily, eyes half-closed, sensitive reaction, goosebumps',
-    negative: '',
-    note: 'うなじを撫でられて感じているシーン。敏感な反応を強調'
-  },
-  gaze: {
-    positive: 'chin lift, staring at lips, intense eye contact, wet lips, parted lips, blushing, romantic tension, close-up face',
-    negative: '',
-    note: '顎を持ち上げて唇を見つめるシーン。緊張感のある距離'
-  },
-  breast_touch: {
-    positive: 'hand on chest, surprised expression, deep blush, looking down at hand, heart racing, embarrassed but accepting, open shirt',
-    negative: '',
-    note: '胸に触れられて驚きつつも受け入れるシーン'
-  },
-  hip_touch: {
-    positive: 'hand on hip, seated together, surprised gasp, blushing ears, squirming slightly, flustered expression, side view',
-    negative: '',
-    note: 'お尻に手を滑らせるシーン。隣に座った状態で'
-  },
-  ear_bite: {
-    positive: 'ear nibbling, lips on ear, trembling body, intense blush, eyes tearing up, melting expression, heavy breathing, extremely sensitive',
-    negative: '',
-    note: '耳を甘噛みされて蕩けるシーン。Lv.3の高い親密度'
-  },
-  lap_pillow: {
-    positive: 'lap pillow, head on thighs, hair spread out, drowsy expression, peaceful smile, hand in hair, relaxed pose, lying down',
-    negative: '',
-    note: '膝枕シーン。安心した甘え顔'
-  },
-  kiss: {
-    positive: '(kiss:1.3), lips touching, pulled close by waist, eyes closed, deep blush, passionate, intimate moment, tears of joy, from side close-up',
-    negative: '',
-    note: 'ディープキスシーン。ゲームのクライマックスCG'
-  },
-
-  // Portraits
-  portrait: {
-    positive: 'standing pose, confident smile, hands on hips, full body, formal uniform, clean outfit, looking at viewer',
-    negative: '',
-    note: '基本の立ち絵。制服をきちんと着た状態'
-  },
-  'portrait-drunk-0': {
-    positive: 'standing pose, neutral expression, formal uniform, neat appearance, sober, composed, full body, looking at viewer',
-    negative: 'blush, disheveled',
-    note: '素面状態の立ち絵'
-  },
-  'portrait-drunk-1': {
-    positive: 'standing pose, slight blush, happy smile, slightly loosened collar, relaxed pose, tipsy, cheerful, full body',
-    negative: '',
-    note: 'ほろ酔い。少しだけ崩れた服装'
-  },
-  'portrait-drunk-2': {
-    positive: 'standing pose, moderate blush, open collar, exposed collarbone, cleavage peek, saying hot, fanning self, drunk, swaying slightly, full body',
-    negative: '',
-    note: '酔い状態。「暑い」と前をはだけている'
-  },
-  'portrait-drunk-3': {
-    positive: 'standing pose, heavy blush, clothes falling off shoulder, visible bra strap, exposed thigh, very drunk, unfocused eyes, leaning forward, full body',
-    negative: '',
-    note: 'べろべろ状態。大胆に着崩れ'
-  },
-  'portrait-drunk-4': {
-    positive: 'slumped over, passed out, nearly undressed, underwear visible, red cheeks, sleeping, peaceful face, collapsed on counter, full body',
-    negative: '',
-    note: '潰れ状態。ほぼ下着姿で寝落ち'
-  },
-  'select-icon': {
-    positive: 'portrait icon, head and shoulders, confident wink, one eye closed, cheerful, simple background, circular crop',
-    negative: '',
-    note: 'キャラ選択画面用アイコン。胸上で明るい表情'
-  },
+// Prompt suggestions
+const SUGGESTIONS = {
+  _basePos: '(blaze arknights:1.3), feline girl, orange hair, long hair, red eyes, cat ears, athletic build, large breasts',
+  _baseSetting: 'bar interior, dim lighting, warm amber light, bottles in background, bar counter, night, cozy atmosphere',
+  _baseNeg: '(worst quality:1.4), (low quality:1.4), blurry, deformed, extra fingers, extra limbs, bad anatomy, bad hands, text, watermark, username, signature, jpeg artifacts, cropped, poorly drawn',
+  shoulder_lean: { pos: 'leaning close, whispering in ear, faces very close, slight blush, shy expression, looking away, intimate proximity, from side', neg: '' },
+  headpat: { pos: 'hand on nape of neck, fingers in hair, trembling, blushing heavily, eyes half-closed, sensitive reaction, goosebumps', neg: '' },
+  gaze: { pos: 'chin lift, staring at lips, intense eye contact, wet lips, parted lips, blushing, romantic tension, close-up face', neg: '' },
+  breast_touch: { pos: 'hand on chest, surprised expression, deep blush, looking down at hand, heart racing, embarrassed but accepting, open shirt', neg: '' },
+  hip_touch: { pos: 'hand on hip, seated together, surprised gasp, blushing ears, squirming slightly, flustered expression, side view', neg: '' },
+  ear_bite: { pos: 'ear nibbling, lips on ear, trembling body, intense blush, eyes tearing up, melting expression, heavy breathing, extremely sensitive', neg: '' },
+  lap_pillow: { pos: 'lap pillow, head on thighs, hair spread out, drowsy expression, peaceful smile, hand in hair, relaxed pose, lying down', neg: '' },
+  kiss: { pos: '(kiss:1.3), lips touching, pulled close by waist, eyes closed, deep blush, passionate, intimate moment, tears of joy, from side close-up', neg: '' },
+  portrait: { pos: 'standing pose, confident smile, hands on hips, full body, formal uniform, clean outfit, looking at viewer', neg: '' },
+  'portrait-drunk-0': { pos: 'standing pose, neutral expression, formal uniform, neat appearance, sober, composed, full body, looking at viewer', neg: 'blush, disheveled' },
+  'portrait-drunk-1': { pos: 'standing pose, slight blush, happy smile, slightly loosened collar, relaxed pose, tipsy, cheerful, full body', neg: '' },
+  'portrait-drunk-2': { pos: 'standing pose, moderate blush, open collar, exposed collarbone, cleavage peek, fanning self, drunk, swaying slightly, full body', neg: '' },
+  'portrait-drunk-3': { pos: 'standing pose, heavy blush, clothes falling off shoulder, visible bra strap, exposed thigh, very drunk, unfocused eyes, leaning forward, full body', neg: '' },
+  'portrait-drunk-4': { pos: 'slumped over, passed out, nearly undressed, underwear visible, red cheeks, sleeping, peaceful face, collapsed on counter, full body', neg: '' },
+  'select-icon': { pos: 'portrait icon, head and shoulders, confident wink, one eye closed, cheerful, simple background, circular crop', neg: '' },
 };
 
 // ============================================================
 // Init
 // ============================================================
 function init() {
-  loadSettings();
-  loadCgState();
-  renderCgList();
+  load();
+  renderList();
   updateCounts();
   checkConnection();
+  checkAllFiles();
 }
 
 // ============================================================
-// Settings persistence
+// Persistence
 // ============================================================
-function saveSettings() {
-  comfyUrl = document.getElementById('comfyUrl').value.replace(/\/$/, '');
-  const data = {
-    comfyUrl,
-    workflow,
-    nodeMap,
-    cgItems: cgItems.map(item => ({
-      id: item.id,
-      status: item.status,
-      positivePrompt: item.positivePrompt,
-      negativePrompt: item.negativePrompt,
-      seed: item.seed,
-      batchSize: item.batchSize,
-      steps: item.steps,
-      cfg: item.cfg,
-      denoise: item.denoise,
-      width: item.width,
-      height: item.height,
-      sampler: item.sampler,
-      history: item.history || [],
-      feedback: item.feedback || [],
-      adoptedImage: item.adoptedImage || null,
-    })),
-  };
-  localStorage.setItem('nightcap_cg_pipeline', JSON.stringify(data));
-}
-
-function loadSettings() {
-  const raw = localStorage.getItem('nightcap_cg_pipeline');
-  if (!raw) return;
-  try {
-    const data = JSON.parse(raw);
-    if (data.comfyUrl) {
-      comfyUrl = data.comfyUrl;
-      document.getElementById('comfyUrl').value = comfyUrl;
-    }
-    if (data.workflow) {
-      workflow = data.workflow;
-      updateWorkflowUI();
-    }
-    if (data.nodeMap) nodeMap = data.nodeMap;
-  } catch (e) { console.error('Failed to load settings:', e); }
-}
-
-function loadCgState() {
-  // 1. Try to read from Inventory Editor (shared localStorage)
-  const inventory = readInventoryData();
-  let sourceItems;
-
-  if (inventory && inventory.items.length > 0) {
-    sourceItems = inventory.items;
-    updateDataSourceUI(true, inventory.charName, inventory.items.length);
-  } else {
-    sourceItems = FALLBACK_CG_ITEMS;
-    updateDataSourceUI(false);
-  }
-
-  // 2. Build cgItems with production state defaults
-  cgItems = sourceItems.map(def => ({
+function makeItem(def) {
+  return {
     ...def,
     status: 'pending',
-    positivePrompt: '',
-    negativePrompt: '',
-    seed: -1,
-    batchSize: 1,
-    steps: null,
-    cfg: null,
-    denoise: null,
-    width: null,
-    height: null,
-    sampler: '',
-    history: [],
-    feedback: [],
-    adoptedImage: null,
-  }));
-
-  // 3. Merge saved pipeline state (progress, prompts, history, etc.)
-  const raw = localStorage.getItem('nightcap_cg_pipeline');
-  if (!raw) return;
-  try {
-    const data = JSON.parse(raw);
-    if (data.cgItems) {
-      for (const saved of data.cgItems) {
-        const item = cgItems.find(c => c.id === saved.id);
-        if (item) {
-          item.status = saved.status || 'pending';
-          item.positivePrompt = saved.positivePrompt || '';
-          item.negativePrompt = saved.negativePrompt || '';
-          item.seed = saved.seed ?? -1;
-          item.batchSize = saved.batchSize ?? 1;
-          item.steps = saved.steps ?? null;
-          item.cfg = saved.cfg ?? null;
-          item.denoise = saved.denoise ?? null;
-          item.width = saved.width ?? null;
-          item.height = saved.height ?? null;
-          item.sampler = saved.sampler || '';
-          item.history = saved.history || [];
-          item.feedback = saved.feedback || [];
-          item.adoptedImage = saved.adoptedImage || null;
-        }
-      }
-    }
-  } catch (e) { console.error('Failed to load CG state:', e); }
+    posPrompt: '', negPrompt: '',
+    seed: -1, batch: 1,
+    steps: null, cfg: null, denoise: null, w: null, h: null, sampler: '',
+    history: [], feedback: [], adoptedImage: null,
+  };
 }
 
-/** Update the data source label in the left panel */
-function updateDataSourceUI(fromInventory, charName, count) {
-  const label = document.getElementById('dataSourceLabel');
-  if (fromInventory) {
-    label.textContent = `インベントリ (${charName || '?'}, ${count}件)`;
-    label.style.color = 'var(--success)';
-  } else {
-    label.textContent = 'フォールバック (インベントリ未設定)';
-    label.style.color = 'var(--warn)';
-  }
-}
-
-/** Sync: re-read from inventory editor, merge new items, keep existing progress */
-function syncFromInventory() {
-  const inventory = readInventoryData();
-  if (!inventory || inventory.items.length === 0) {
-    toast('インベントリエディタにデータがありません。先にインベントリエディタでCG一覧を作成してください。', 'err');
-    return;
-  }
-
-  // Keep a map of existing progress
-  const existingMap = {};
-  for (const item of cgItems) {
-    existingMap[item.id] = item;
-  }
-
-  // Rebuild from inventory, preserving progress
-  const newItems = inventory.items.map(def => {
-    const existing = existingMap[def.id];
-    if (existing) {
-      // Update metadata from inventory but keep production state
-      return {
-        ...existing,
-        file: def.file,
-        trigger: def.trigger,
-        level: def.level,
-        type: def.type,
-        note: def.note,
-        charId: def.charId,
-      };
-    } else {
-      // New item from inventory
-      return {
-        ...def,
-        status: 'pending',
-        positivePrompt: '',
-        negativePrompt: '',
-        seed: -1,
-        batchSize: 1,
-        steps: null, cfg: null, denoise: null, width: null, height: null, sampler: '',
-        history: [],
-        feedback: [],
-        adoptedImage: null,
-      };
-    }
-  });
-
-  cgItems = newItems;
-  updateDataSourceUI(true, inventory.charName, inventory.items.length);
-  saveSettings();
-  renderCgList();
-  updateCounts();
-
-  const newCount = newItems.filter(i => !existingMap[i.id]).length;
-  const msg = newCount > 0
-    ? `同期完了: ${inventory.items.length}件 (新規${newCount}件追加)`
-    : `同期完了: ${inventory.items.length}件 (変更なし)`;
-  toast(msg, 'ok');
-}
-
-// ============================================================
-// ComfyUI Connection
-// ============================================================
-async function checkConnection() {
-  const dot = document.getElementById('connStatus');
-  dot.className = 'status-dot checking';
-  dot.title = '確認中...';
+function saveAll() {
+  const charId = document.getElementById('charId').value;
+  const charName = document.getElementById('charName').value;
+  const charNameEn = document.getElementById('charNameEn').value;
   comfyUrl = document.getElementById('comfyUrl').value.replace(/\/$/, '');
 
+  const data = {
+    charId, charName, charNameEn, comfyUrl,
+    workflow, nodeMapping,
+    items: items.map(it => ({
+      id: it.id, file: it.file, trigger: it.trigger, level: it.level,
+      type: it.type, note: it.note,
+      status: it.status, posPrompt: it.posPrompt, negPrompt: it.negPrompt,
+      seed: it.seed, batch: it.batch,
+      steps: it.steps, cfg: it.cfg, denoise: it.denoise, w: it.w, h: it.h, sampler: it.sampler,
+      history: it.history, feedback: it.feedback, adoptedImage: it.adoptedImage,
+    })),
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function load() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    items = DEFAULTS.map(makeItem);
+    return;
+  }
   try {
-    const res = await fetch(`${comfyUrl}/system_stats`, { signal: AbortSignal.timeout(5000) });
-    if (res.ok) {
-      dot.className = 'status-dot connected';
-      dot.title = '接続済み';
-      toast('ComfyUI に接続しました', 'ok');
-      connectWebSocket();
+    const d = JSON.parse(raw);
+    if (d.comfyUrl) { comfyUrl = d.comfyUrl; document.getElementById('comfyUrl').value = comfyUrl; }
+    if (d.charId) document.getElementById('charId').value = d.charId;
+    if (d.charName) document.getElementById('charName').value = d.charName;
+    if (d.charNameEn) document.getElementById('charNameEn').value = d.charNameEn;
+    if (d.workflow) { workflow = d.workflow; updateWfUI(); }
+    if (d.nodeMapping) nodeMapping = d.nodeMapping;
+    if (d.items && d.items.length > 0) {
+      items = d.items.map(s => ({ ...makeItem(s), ...s }));
     } else {
-      throw new Error('Bad response');
+      items = DEFAULTS.map(makeItem);
     }
-  } catch (e) {
-    dot.className = 'status-dot';
-    dot.title = '接続失敗';
-    toast('ComfyUI に接続できません', 'err');
-  }
-}
-
-function connectWebSocket() {
-  if (wsConnection && wsConnection.readyState === WebSocket.OPEN) return;
-  try {
-    const wsUrl = comfyUrl.replace(/^http/, 'ws') + '/ws?clientId=' + clientId;
-    wsConnection = new WebSocket(wsUrl);
-    wsConnection.onmessage = handleWsMessage;
-    wsConnection.onclose = () => { wsConnection = null; };
-    wsConnection.onerror = () => { wsConnection = null; };
-  } catch (e) { console.error('WebSocket error:', e); }
-}
-
-function handleWsMessage(event) {
-  try {
-    const msg = JSON.parse(event.data);
-    if (msg.type === 'progress') {
-      const pct = Math.round((msg.data.value / msg.data.max) * 100);
-      updateProgress(pct, `${msg.data.value}/${msg.data.max} steps`);
-    } else if (msg.type === 'executing' && msg.data.node === null) {
-      // Execution complete
-      updateProgress(100, '完了');
-    }
-  } catch (e) { /* ignore non-JSON messages */ }
+  } catch (e) { items = DEFAULTS.map(makeItem); }
 }
 
 // ============================================================
-// Workflow management
+// File existence check
 // ============================================================
-function handleWorkflowUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      workflow = JSON.parse(e.target.result);
-      updateWorkflowUI();
-      populateNodeSelectors();
-      saveSettings();
-      toast('ワークフロー読み込み完了', 'ok');
-    } catch (err) {
-      toast('JSONの解析に失敗しました', 'err');
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
+function getAssetPath(item) {
+  const charId = document.getElementById('charId').value || 'blaze';
+  if (item.type === 'cg') return `../assets/characters/${charId}/cg/${item.file}`;
+  return `../assets/characters/${charId}/${item.file}`;
 }
 
-function updateWorkflowUI() {
-  const info = document.getElementById('wfInfo');
-  if (workflow) {
-    const nodeCount = Object.keys(workflow).length;
-    info.textContent = `ワークフロー読込済み (${nodeCount} ノード)`;
-    info.className = 'workflow-info loaded';
-    document.getElementById('nodeMapping').style.display = 'block';
-    populateNodeSelectors();
-  }
+function checkFileExists(item) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => { fileExistence[item.id] = true; resolve(true); };
+    img.onerror = () => { fileExistence[item.id] = false; resolve(false); };
+    img.src = getAssetPath(item) + '?t=' + Date.now();
+  });
 }
 
-function populateNodeSelectors() {
-  if (!workflow) return;
-  const posSelect = document.getElementById('positiveNode');
-  const negSelect = document.getElementById('negativeNode');
-  const seedSelect = document.getElementById('seedNode');
-
-  // Find text encode and sampler nodes
-  const textNodes = [];
-  const samplerNodes = [];
-  const allNodes = [];
-
-  for (const [id, node] of Object.entries(workflow)) {
-    const cls = node.class_type || '';
-    const title = node._meta?.title || cls;
-    allNodes.push({ id, cls, title });
-    if (cls.includes('CLIPTextEncode') || cls.includes('Text') || cls.includes('String')) {
-      textNodes.push({ id, cls, title, inputs: node.inputs });
-    }
-    if (cls.includes('KSampler') || cls.includes('Sampler')) {
-      samplerNodes.push({ id, cls, title, inputs: node.inputs });
-    }
-  }
-
-  // Auto-detect positive/negative by tracing sampler connections
-  let autoPositive = null, autoNegative = null, autoSeed = null;
-  for (const sampler of samplerNodes) {
-    const posConn = sampler.inputs?.positive;
-    const negConn = sampler.inputs?.negative;
-    if (Array.isArray(posConn)) autoPositive = posConn[0];
-    if (Array.isArray(negConn)) autoNegative = negConn[0];
-    autoSeed = sampler.id;
-  }
-
-  // Populate selects
-  const makeOptions = (nodes, autoId, select) => {
-    select.innerHTML = '<option value="">-- 選択 --</option>';
-    for (const n of textNodes) {
-      const opt = document.createElement('option');
-      opt.value = n.id;
-      opt.textContent = `[${n.id}] ${n.title}`;
-      if (n.id === String(autoId)) opt.selected = true;
-      select.appendChild(opt);
-    }
-  };
-
-  makeOptions(textNodes, autoPositive, posSelect);
-  makeOptions(textNodes, autoNegative, negSelect);
-
-  // Seed node — usually KSampler
-  seedSelect.innerHTML = '<option value="">-- なし --</option>';
-  for (const n of samplerNodes) {
-    const opt = document.createElement('option');
-    opt.value = n.id;
-    opt.textContent = `[${n.id}] ${n.title}`;
-    if (n.id === String(autoSeed)) opt.selected = true;
-    seedSelect.appendChild(opt);
-  }
-
-  // Apply auto-detected
-  if (autoPositive) nodeMap.positive = String(autoPositive);
-  if (autoNegative) nodeMap.negative = String(autoNegative);
-  if (autoSeed) nodeMap.seed = String(autoSeed);
-
-  // If saved mapping exists, apply it
-  if (nodeMap.positive) posSelect.value = nodeMap.positive;
-  if (nodeMap.negative) negSelect.value = nodeMap.negative;
-  if (nodeMap.seed) seedSelect.value = nodeMap.seed;
+async function checkAllFiles() {
+  await Promise.all(items.map(it => checkFileExists(it)));
+  renderList();
+  // Update detail if selected
+  if (selectedId) updateFileStatus(items.find(i => i.id === selectedId));
 }
 
-function saveNodeMapping() {
-  nodeMap.positive = document.getElementById('positiveNode').value;
-  nodeMap.negative = document.getElementById('negativeNode').value;
-  nodeMap.seed = document.getElementById('seedNode').value;
-  saveSettings();
-  toast('ノードマッピングを保存しました', 'ok');
+function updateFileStatus(item) {
+  const el = document.getElementById('fileStatus');
+  if (!item) { el.textContent = ''; return; }
+  const exists = fileExistence[item.id];
+  const path = getAssetPath(item);
+  if (exists === true) {
+    el.innerHTML = `<span style="color:var(--exists)">● ファイル存在:</span> ${path}`;
+  } else if (exists === false) {
+    el.innerHTML = `<span style="color:var(--missing)">● ファイル未検出:</span> ${path}`;
+  } else {
+    el.innerHTML = `<span>● 未確認:</span> ${path}`;
+  }
 }
 
 // ============================================================
-// CG List rendering
+// CG List
 // ============================================================
-function renderCgList() {
+function renderList() {
   const list = document.getElementById('cgList');
   list.innerHTML = '';
-
-  const filtered = cgItems.filter(item => {
-    if (currentFilter === 'all') return true;
-    if (currentFilter === 'pending') return item.status === 'pending';
-    if (currentFilter === 'review') return item.status === 'review' || item.status === 'generating';
-    if (currentFilter === 'done') return item.status === 'done';
+  const filtered = items.filter(i => {
+    if (filter === 'all') return true;
+    if (filter === 'pending') return i.status === 'pending';
+    if (filter === 'review') return i.status === 'review' || i.status === 'generating';
+    if (filter === 'done') return i.status === 'done';
     return true;
   });
 
-  if (filtered.length === 0) {
-    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-dim);font-size:0.85em">該当するCGはありません</div>';
-    return;
-  }
-
-  // Group by type
   const groups = { cg: [], portrait: [], icon: [] };
-  for (const item of filtered) {
-    groups[item.type].push(item);
-  }
+  for (const i of filtered) (groups[i.type] || groups.cg).push(i);
 
-  const groupLabels = { cg: '🎭 イベントCG', portrait: '🖼 立ち絵', icon: '✨ アイコン' };
-  for (const [type, items] of Object.entries(groups)) {
-    if (items.length === 0) continue;
+  const labels = { cg: 'イベントCG', portrait: '立ち絵', icon: 'アイコン' };
+  for (const [type, arr] of Object.entries(groups)) {
+    if (arr.length === 0 && filter !== 'all') continue;
+    const hdr = document.createElement('div');
+    hdr.className = 'group-hdr';
+    hdr.innerHTML = `<span>${labels[type]} (${arr.length})</span><button class="sm" onclick="addItem('${type}')">+ 追加</button>`;
+    list.appendChild(hdr);
 
-    const header = document.createElement('div');
-    header.style.cssText = 'font-size:0.75em;color:var(--text-dim);padding:8px 4px 4px;font-weight:600';
-    header.textContent = groupLabels[type];
-    list.appendChild(header);
-
-    for (const item of items) {
+    for (const item of arr) {
       const card = document.createElement('div');
       card.className = 'cg-card' + (item.id === selectedId ? ' selected' : '');
-      card.onclick = () => selectCg(item.id);
+      card.onclick = () => selectItem(item.id);
 
-      const statusBadge = {
-        pending: '<span class="badge pending">未作成</span>',
-        generating: '<span class="badge generating">生成中</span>',
-        review: '<span class="badge review">レビュー</span>',
-        done: '<span class="badge done">採用済み</span>',
-      }[item.status];
+      const badgeCls = { pending: 'pending', generating: 'generating', review: 'review', done: 'done' }[item.status];
+      const badgeText = { pending: '未作成', generating: '生成中', review: 'レビュー', done: '採用済み' }[item.status];
+      const feDot = fileExistence[item.id] === true ? 'exists' : fileExistence[item.id] === false ? 'missing' : 'unknown';
 
       card.innerHTML = `
-        <div class="cg-name">
+        <div class="cg-top">
           <span>${item.trigger}</span>
-          ${statusBadge}
+          <span class="badge ${badgeCls}">${badgeText}</span>
         </div>
-        <div class="cg-meta">${item.file} ${item.level ? '/ ' + item.level : ''}</div>
+        <div class="cg-bot">
+          <span class="file-dot ${feDot}" title="${feDot === 'exists' ? 'ファイル有' : feDot === 'missing' ? 'ファイル無' : '未確認'}"></span>
+          ${item.file} ${item.level ? '/ ' + item.level : ''}
+        </div>
+        <button class="sm danger del-btn" onclick="event.stopPropagation();removeItem('${item.id}')">✕</button>
       `;
       list.appendChild(card);
     }
@@ -1399,529 +799,569 @@ function renderCgList() {
 }
 
 function updateCounts() {
-  const pending = cgItems.filter(i => i.status === 'pending').length;
-  const review = cgItems.filter(i => i.status === 'review' || i.status === 'generating').length;
-  const done = cgItems.filter(i => i.status === 'done').length;
-
-  document.getElementById('countPending').textContent = pending;
-  document.getElementById('countReview').textContent = review;
-  document.getElementById('countDone').textContent = done;
-  document.getElementById('countAll').textContent = cgItems.length;
-  document.getElementById('countPendingTab').textContent = pending;
-  document.getElementById('countReviewTab').textContent = review;
-  document.getElementById('countDoneTab').textContent = done;
+  const p = items.filter(i => i.status === 'pending').length;
+  const r = items.filter(i => i.status === 'review' || i.status === 'generating').length;
+  const d = items.filter(i => i.status === 'done').length;
+  document.getElementById('cntP').textContent = p;
+  document.getElementById('cntR').textContent = r;
+  document.getElementById('cntD').textContent = d;
+  document.getElementById('cntA').textContent = items.length;
+  document.getElementById('cntPT').textContent = p;
+  document.getElementById('cntRT').textContent = r;
+  document.getElementById('cntDT').textContent = d;
 }
 
-function setFilter(filter) {
-  currentFilter = filter;
-  document.querySelectorAll('.tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.filter === filter);
-  });
-  renderCgList();
+function setFilter(f) {
+  filter = f;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.f === f));
+  renderList();
 }
 
 // ============================================================
-// CG Selection & Detail view
+// Item CRUD
 // ============================================================
-function selectCg(id) {
+function addItem(type) {
+  const id = type + '_' + Date.now();
+  const file = type === 'cg' ? 'new_cg.webp' : type === 'portrait' ? 'portrait-new.webp' : 'new-icon.webp';
+  const item = makeItem({ id, file, trigger: '新規' + (type === 'cg' ? 'CG' : type === 'portrait' ? '立ち絵' : 'アイコン'), level: '', type, note: '' });
+  items.push(item);
+  saveAll(); renderList(); updateCounts();
+  selectItem(id);
+  toast('追加しました', 'ok');
+}
+
+function removeItem(id) {
+  if (!confirm('削除しますか？')) return;
+  items = items.filter(i => i.id !== id);
+  if (selectedId === id) { selectedId = null; showEmpty(); }
+  saveAll(); renderList(); updateCounts();
+}
+
+// ============================================================
+// Selection & Detail
+// ============================================================
+function selectItem(id) {
   selectedId = id;
-  const item = cgItems.find(c => c.id === id);
+  const item = items.find(i => i.id === id);
   if (!item) return;
 
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('detailView').style.display = 'block';
 
-  // Header
-  document.getElementById('detailName').textContent = `${item.trigger} (${item.file})`;
-  document.getElementById('detailMeta').textContent =
-    `タイプ: ${item.type === 'cg' ? 'イベントCG' : item.type === 'portrait' ? '立ち絵' : 'アイコン'}` +
-    (item.level ? ` / ${item.level}` : '') +
-    (item.note ? ` / ${item.note}` : '');
+  // Metadata fields
+  document.getElementById('dFile').value = item.file;
+  document.getElementById('dTrigger').value = item.trigger;
+  document.getElementById('dLevel').value = item.level || '';
+  document.getElementById('dNote').value = item.note || '';
+  updateFileStatus(item);
 
-  const badge = document.getElementById('detailBadge');
-  const badgeConfig = {
-    pending: ['未作成', 'pending'],
-    generating: ['生成中', 'generating'],
-    review: ['レビュー', 'review'],
-    done: ['採用済み', 'done'],
-  }[item.status];
-  badge.textContent = badgeConfig[0];
-  badge.className = 'badge ' + badgeConfig[1];
+  // Prompts
+  const sug = SUGGESTIONS[item.id] || {};
+  const defPos = `${SUGGESTIONS._basePos}, ${SUGGESTIONS._baseSetting}, ${sug.pos || item.trigger}`;
+  const defNeg = `${SUGGESTIONS._baseNeg}${sug.neg ? ', ' + sug.neg : ''}`;
+  document.getElementById('posPrompt').value = item.posPrompt || defPos;
+  document.getElementById('negPrompt').value = item.negPrompt || defNeg;
+  document.getElementById('pSeed').value = item.seed ?? -1;
+  document.getElementById('pBatch').value = item.batch ?? 1;
+  document.getElementById('pSteps').value = item.steps ?? '';
+  document.getElementById('pCfg').value = item.cfg ?? '';
+  document.getElementById('pDenoise').value = item.denoise ?? '';
+  document.getElementById('pW').value = item.w ?? '';
+  document.getElementById('pH').value = item.h ?? '';
+  document.getElementById('pSampler').value = item.sampler || '';
 
-  // Prompts — load saved or default suggestion
-  const suggestion = PROMPT_SUGGESTIONS[item.id] || {};
-  const basePos = PROMPT_SUGGESTIONS._base_positive;
-  const baseSetting = PROMPT_SUGGESTIONS._base_setting;
-  const baseNeg = PROMPT_SUGGESTIONS._base_negative;
-
-  const defaultPositive = `${basePos}, ${baseSetting}, ${suggestion.positive || item.trigger}`;
-  const defaultNegative = `${baseNeg}${suggestion.negative ? ', ' + suggestion.negative : ''}`;
-
-  document.getElementById('positivePrompt').value = item.positivePrompt || defaultPositive;
-  document.getElementById('negativePrompt').value = item.negativePrompt || defaultNegative;
-  document.getElementById('paramSeed').value = item.seed ?? -1;
-  document.getElementById('paramBatch').value = item.batchSize ?? 1;
-
-  // Advanced params
-  document.getElementById('paramSteps').value = item.steps ?? '';
-  document.getElementById('paramCfg').value = item.cfg ?? '';
-  document.getElementById('paramDenoise').value = item.denoise ?? '';
-  document.getElementById('paramWidth').value = item.width ?? '';
-  document.getElementById('paramHeight').value = item.height ?? '';
-  document.getElementById('paramSampler').value = item.sampler || '';
-
-  // Feedback log
   renderFeedback(item);
-
-  // Update image preview
   renderPreview(item);
   renderHistory(item);
-
-  // Show/hide review actions
-  document.getElementById('reviewActions').style.display =
+  document.getElementById('reviewBtns').style.display =
     (item.status === 'review' || item.history.length > 0) ? 'flex' : 'none';
+  renderList();
+}
 
-  renderCgList();
+function showEmpty() {
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('detailView').style.display = 'none';
+}
+
+function saveMeta() {
+  const item = items.find(i => i.id === selectedId);
+  if (!item) return;
+  const newFile = document.getElementById('dFile').value.trim();
+  // Update id if file changed
+  const newId = newFile.replace(/\.\w+$/, '');
+  if (newId !== item.id) {
+    item.id = newId;
+    selectedId = newId;
+  }
+  item.file = newFile;
+  item.trigger = document.getElementById('dTrigger').value.trim();
+  item.level = document.getElementById('dLevel').value;
+  item.note = document.getElementById('dNote').value.trim();
+  saveAll(); renderList(); updateCounts();
+  checkFileExists(item).then(() => { updateFileStatus(item); renderList(); });
+}
+
+function savePrompt() {
+  const item = items.find(i => i.id === selectedId);
+  if (!item) return;
+  item.posPrompt = document.getElementById('posPrompt').value;
+  item.negPrompt = document.getElementById('negPrompt').value;
+  item.seed = parseInt(document.getElementById('pSeed').value) || -1;
+  item.batch = parseInt(document.getElementById('pBatch').value) || 1;
+  const v = (id) => { const x = document.getElementById(id).value; return x ? parseFloat(x) : null; };
+  item.steps = v('pSteps'); item.cfg = v('pCfg'); item.denoise = v('pDenoise');
+  item.w = v('pW'); item.h = v('pH');
+  item.sampler = document.getElementById('pSampler').value || '';
+  saveAll();
+}
+
+function resetSuggestion(type) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item) return;
+  const sug = SUGGESTIONS[item.id] || {};
+  if (type === 'pos') {
+    const val = `${SUGGESTIONS._basePos}, ${SUGGESTIONS._baseSetting}, ${sug.pos || item.trigger}`;
+    document.getElementById('posPrompt').value = val;
+    item.posPrompt = val;
+  } else {
+    const val = `${SUGGESTIONS._baseNeg}${sug.neg ? ', ' + sug.neg : ''}`;
+    document.getElementById('negPrompt').value = val;
+    item.negPrompt = val;
+  }
+  saveAll();
 }
 
 function renderPreview(item) {
-  const preview = document.getElementById('imagePreview');
+  const el = document.getElementById('imgPreview');
   if (item.adoptedImage) {
-    preview.innerHTML = `<img src="${item.adoptedImage}" alt="${item.trigger}">`;
+    el.innerHTML = `<img src="${item.adoptedImage}" alt="${item.trigger}">`;
   } else if (item.history.length > 0) {
-    const latest = item.history[item.history.length - 1];
-    preview.innerHTML = `<img src="${latest.imageUrl}" alt="${item.trigger}">`;
+    el.innerHTML = `<img src="${item.history[item.history.length - 1].url}" alt="${item.trigger}">`;
+  } else if (fileExistence[item.id] === true) {
+    el.innerHTML = `<img src="${getAssetPath(item)}" alt="${item.trigger}"><div style="position:absolute;bottom:8px;right:8px;background:var(--done);color:#000;padding:2px 8px;border-radius:4px;font-size:0.7em">ローカルファイル</div>`;
+    el.style.position = 'relative';
   } else {
-    const sug = PROMPT_SUGGESTIONS[item.id];
-    preview.innerHTML = `<div class="placeholder">
-      ${sug?.note ? `<div style="margin-bottom:8px">${sug.note}</div>` : ''}
-      まだ生成されていません<br>
-      <span style="font-size:0.85em">「生成する」ボタンを押してComfyUIで画像を生成します</span>
-    </div>`;
+    el.innerHTML = `<div class="ph">まだ生成されていません</div>`;
+    el.style.position = '';
   }
 }
 
 function renderHistory(item) {
-  const strip = document.getElementById('historyStrip');
+  const strip = document.getElementById('histStrip');
   strip.innerHTML = '';
-  if (item.history.length === 0) return;
-
   for (let i = 0; i < item.history.length; i++) {
     const h = item.history[i];
-    const thumb = document.createElement('div');
-    thumb.className = 'history-thumb' + (h.adopted ? ' adopted' : '');
-    thumb.innerHTML = `<img src="${h.imageUrl}" alt="生成${i + 1}">`;
-    thumb.onclick = () => {
-      document.getElementById('imagePreview').innerHTML =
-        `<img src="${h.imageUrl}" alt="${item.trigger}">`;
-      // Update selection
-      strip.querySelectorAll('.history-thumb').forEach(t => t.classList.remove('selected'));
-      thumb.classList.add('selected');
+    const t = document.createElement('div');
+    t.className = 'hist-thumb' + (h.adopted ? ' adopted' : '');
+    t.innerHTML = `<img src="${h.url}" alt="${i + 1}">`;
+    t.onclick = () => {
+      document.getElementById('imgPreview').innerHTML = `<img src="${h.url}" alt="${item.trigger}">`;
+      strip.querySelectorAll('.hist-thumb').forEach(x => x.classList.remove('sel'));
+      t.classList.add('sel');
     };
-    strip.appendChild(thumb);
+    strip.appendChild(t);
   }
 }
 
-function savePromptEdit() {
-  if (!selectedId) return;
-  const item = cgItems.find(c => c.id === selectedId);
-  if (!item) return;
-  item.positivePrompt = document.getElementById('positivePrompt').value;
-  item.negativePrompt = document.getElementById('negativePrompt').value;
-  item.seed = parseInt(document.getElementById('paramSeed').value) || -1;
-  item.batchSize = parseInt(document.getElementById('paramBatch').value) || 1;
-  // Advanced params (empty string → null = use workflow default)
-  const stepsVal = document.getElementById('paramSteps').value;
-  item.steps = stepsVal ? parseInt(stepsVal) : null;
-  const cfgVal = document.getElementById('paramCfg').value;
-  item.cfg = cfgVal ? parseFloat(cfgVal) : null;
-  const denoiseVal = document.getElementById('paramDenoise').value;
-  item.denoise = denoiseVal ? parseFloat(denoiseVal) : null;
-  const widthVal = document.getElementById('paramWidth').value;
-  item.width = widthVal ? parseInt(widthVal) : null;
-  const heightVal = document.getElementById('paramHeight').value;
-  item.height = heightVal ? parseInt(heightVal) : null;
-  item.sampler = document.getElementById('paramSampler').value || '';
-  saveSettings();
+function renderFeedback(item) {
+  const sec = document.getElementById('fbSection');
+  const log = document.getElementById('fbLog');
+  if (!item.feedback?.length) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  log.innerHTML = '';
+  for (const fb of item.feedback) {
+    const time = new Date(fb.ts).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const e = document.createElement('div');
+    e.className = 'fb-entry';
+    e.innerHTML = `<span class="fb-time">${time}</span><span class="fb-reason">${fb.reason}</span>`;
+    log.appendChild(e);
+  }
+  log.scrollTop = log.scrollHeight;
 }
 
-function resetPromptSuggestion(type) {
-  if (!selectedId) return;
-  const item = cgItems.find(c => c.id === selectedId);
-  const suggestion = PROMPT_SUGGESTIONS[item.id] || {};
-  const basePos = PROMPT_SUGGESTIONS._base_positive;
-  const baseSetting = PROMPT_SUGGESTIONS._base_setting;
-  const baseNeg = PROMPT_SUGGESTIONS._base_negative;
-
-  if (type === 'positive') {
-    const val = `${basePos}, ${baseSetting}, ${suggestion.positive || item.trigger}`;
-    document.getElementById('positivePrompt').value = val;
-    item.positivePrompt = val;
-  } else {
-    const val = `${baseNeg}${suggestion.negative ? ', ' + suggestion.negative : ''}`;
-    document.getElementById('negativePrompt').value = val;
-    item.negativePrompt = val;
-  }
-  saveSettings();
+function toggleAdv() {
+  const p = document.getElementById('advPanel');
+  const a = document.getElementById('advArr');
+  p.classList.toggle('hidden');
+  a.classList.toggle('open', !p.classList.contains('hidden'));
 }
 
 // ============================================================
-// Image Generation via ComfyUI API
+// ComfyUI Connection
 // ============================================================
-async function generateImage() {
-  if (!workflow) {
-    toast('先にワークフローを読み込んでください', 'err');
-    return;
+async function checkConnection() {
+  const dot = document.getElementById('connDot');
+  dot.className = 'status-dot checking';
+  comfyUrl = document.getElementById('comfyUrl').value.replace(/\/$/, '');
+  try {
+    const r = await fetch(`${comfyUrl}/system_stats`, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) { dot.className = 'status-dot connected'; toast('ComfyUI接続OK', 'ok'); connectWs(); }
+    else throw 0;
+  } catch { dot.className = 'status-dot'; toast('ComfyUI接続失敗', 'err'); }
+}
+
+function connectWs() {
+  if (ws?.readyState === WebSocket.OPEN) return;
+  try {
+    ws = new WebSocket(comfyUrl.replace(/^http/, 'ws') + '/ws?clientId=' + clientId);
+    ws.onmessage = (e) => {
+      try {
+        const m = JSON.parse(e.data);
+        if (m.type === 'progress') setProgress(Math.round(m.data.value / m.data.max * 100), `${m.data.value}/${m.data.max}`);
+        else if (m.type === 'executing' && m.data.node === null) setProgress(100, '完了');
+      } catch {}
+    };
+    ws.onclose = () => ws = null;
+  } catch {}
+}
+
+// ============================================================
+// Workflow
+// ============================================================
+function loadWorkflow(event) {
+  const f = event.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      workflow = JSON.parse(e.target.result);
+      updateWfUI();
+      populateNodes();
+      saveAll();
+      toast('ワークフロー読み込み完了', 'ok');
+    } catch { toast('JSON解析失敗', 'err'); }
+  };
+  reader.readAsText(f);
+  event.target.value = '';
+}
+
+function updateWfUI() {
+  const el = document.getElementById('wfInfo');
+  if (workflow) {
+    el.textContent = `読込済み (${Object.keys(workflow).length} ノード)`;
+    el.className = 'wf-info loaded';
+    document.getElementById('nodeMap').style.display = 'block';
+    populateNodes();
   }
-  if (!nodeMap.positive || !nodeMap.negative) {
-    toast('Promptノードのマッピングをしてください', 'err');
-    return;
-  }
-  if (isGenerating) {
-    toast('生成中です...', 'info');
-    return;
+}
+
+function populateNodes() {
+  if (!workflow) return;
+  const textNodes = [], samplerNodes = [];
+  let autoPos = null, autoNeg = null, autoSeed = null;
+
+  for (const [id, node] of Object.entries(workflow)) {
+    const cls = node.class_type || '';
+    const title = node._meta?.title || cls;
+    if (cls.includes('CLIPTextEncode') || cls.includes('Text') || cls.includes('String'))
+      textNodes.push({ id, title, inputs: node.inputs });
+    if (cls.includes('KSampler') || cls.includes('Sampler')) {
+      samplerNodes.push({ id, title, inputs: node.inputs });
+      if (Array.isArray(node.inputs?.positive)) autoPos = node.inputs.positive[0];
+      if (Array.isArray(node.inputs?.negative)) autoNeg = node.inputs.negative[0];
+      autoSeed = id;
+    }
   }
 
-  const item = cgItems.find(c => c.id === selectedId);
+  const fill = (selId, nodes, autoVal) => {
+    const sel = document.getElementById(selId);
+    sel.innerHTML = '<option value="">-- 選択 --</option>';
+    for (const n of nodes) {
+      const o = document.createElement('option');
+      o.value = n.id; o.textContent = `[${n.id}] ${n.title}`;
+      if (String(n.id) === String(autoVal)) o.selected = true;
+      sel.appendChild(o);
+    }
+  };
+  fill('posNode', textNodes, nodeMapping.pos || autoPos);
+  fill('negNode', textNodes, nodeMapping.neg || autoNeg);
+  fill('seedNode', samplerNodes, nodeMapping.seed || autoSeed);
+
+  if (!nodeMapping.pos && autoPos) nodeMapping.pos = String(autoPos);
+  if (!nodeMapping.neg && autoNeg) nodeMapping.neg = String(autoNeg);
+  if (!nodeMapping.seed && autoSeed) nodeMapping.seed = String(autoSeed);
+}
+
+function saveNodeMap() {
+  nodeMapping.pos = document.getElementById('posNode').value;
+  nodeMapping.neg = document.getElementById('negNode').value;
+  nodeMapping.seed = document.getElementById('seedNode').value;
+  saveAll();
+  toast('ノードマッピング保存', 'ok');
+}
+
+// ============================================================
+// Image Generation
+// ============================================================
+async function generate() {
+  if (!workflow) { toast('先にワークフローを読み込んで', 'err'); return; }
+  if (!nodeMapping.pos || !nodeMapping.neg) { toast('ノードマッピングして', 'err'); return; }
+  if (generating) return;
+
+  const item = items.find(i => i.id === selectedId);
   if (!item) return;
 
-  isGenerating = true;
+  generating = true;
   item.status = 'generating';
-  updateCounts();
-  renderCgList();
+  updateCounts(); renderList();
 
-  const btn = document.getElementById('btnGenerate');
-  btn.disabled = true;
-  btn.textContent = '⏳ 生成中...';
-  document.getElementById('progressBar').style.display = 'block';
-  document.getElementById('progressText').style.display = 'block';
-  updateProgress(0, '送信中...');
+  const btn = document.getElementById('btnGen');
+  btn.disabled = true; btn.textContent = '⏳ 生成中...';
+  document.getElementById('progBar').style.display = 'block';
+  document.getElementById('progText').style.display = 'block';
+  setProgress(0, '送信中...');
 
   try {
-    // Build prompt by cloning workflow and replacing prompts
-    const promptPayload = JSON.parse(JSON.stringify(workflow));
+    const payload = JSON.parse(JSON.stringify(workflow));
+    if (payload[nodeMapping.pos]) payload[nodeMapping.pos].inputs.text = document.getElementById('posPrompt').value;
+    if (payload[nodeMapping.neg]) payload[nodeMapping.neg].inputs.text = document.getElementById('negPrompt').value;
 
-    // Set positive prompt
-    if (promptPayload[nodeMap.positive]) {
-      promptPayload[nodeMap.positive].inputs.text =
-        document.getElementById('positivePrompt').value;
+    const seed = parseInt(document.getElementById('pSeed').value);
+    if (nodeMapping.seed && payload[nodeMapping.seed]) {
+      payload[nodeMapping.seed].inputs.seed = seed >= 0 ? seed : Math.floor(Math.random() * 2**32);
     }
-    // Set negative prompt
-    if (promptPayload[nodeMap.negative]) {
-      promptPayload[nodeMap.negative].inputs.text =
-        document.getElementById('negativePrompt').value;
-    }
-    // Set seed if applicable
-    const seed = parseInt(document.getElementById('paramSeed').value);
-    if (nodeMap.seed && promptPayload[nodeMap.seed]) {
-      if (seed >= 0) {
-        promptPayload[nodeMap.seed].inputs.seed = seed;
-      } else {
-        promptPayload[nodeMap.seed].inputs.seed = Math.floor(Math.random() * 2**32);
-      }
-    }
-    // Set batch size if applicable
-    const batch = parseInt(document.getElementById('paramBatch').value) || 1;
 
-    // Apply advanced params to all matching nodes
-    for (const [id, node] of Object.entries(promptPayload)) {
+    const batch = parseInt(document.getElementById('pBatch').value) || 1;
+    for (const [, node] of Object.entries(payload)) {
       if (!node.inputs) continue;
       const cls = node.class_type || '';
-
-      // Batch size on EmptyLatentImage
       if (cls === 'EmptyLatentImage') {
         node.inputs.batch_size = batch;
-        // Width/Height override
-        if (item.width) node.inputs.width = item.width;
-        if (item.height) node.inputs.height = item.height;
+        if (item.w) node.inputs.width = item.w;
+        if (item.h) node.inputs.height = item.h;
       }
-
-      // KSampler params override
       if (cls.includes('KSampler') || cls.includes('Sampler')) {
         if (item.steps) node.inputs.steps = item.steps;
         if (item.cfg) node.inputs.cfg = item.cfg;
-        if (item.denoise !== null && item.denoise !== undefined) {
-          // Only set denoise if it's explicitly provided (for img2img workflows)
-          if ('denoise' in node.inputs) node.inputs.denoise = item.denoise;
-        }
+        if (item.denoise != null && 'denoise' in node.inputs) node.inputs.denoise = item.denoise;
         if (item.sampler) node.inputs.sampler_name = item.sampler;
       }
     }
 
-    // Queue the prompt
     const res = await fetch(`${comfyUrl}/prompt`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: promptPayload, client_id: clientId }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: payload, client_id: clientId }),
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { prompt_id } = await res.json();
+    setProgress(5, 'キュー登録');
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `HTTP ${res.status}`);
-    }
-
-    const result = await res.json();
-    const promptId = result.prompt_id;
-    updateProgress(5, 'キュー登録完了');
-
-    // Poll for completion
-    await pollForResult(promptId, item);
-
-  } catch (e) {
-    toast(`生成エラー: ${e.message}`, 'err');
-    item.status = item.history.length > 0 ? 'review' : 'pending';
-  } finally {
-    isGenerating = false;
-    btn.disabled = false;
-    btn.textContent = '🎨 生成する';
-    document.getElementById('progressBar').style.display = 'none';
-    document.getElementById('progressText').style.display = 'none';
-    updateCounts();
-    renderCgList();
-    saveSettings();
-  }
-}
-
-async function pollForResult(promptId, item) {
-  const maxWait = 300000; // 5 minutes
-  const pollInterval = 1000;
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < maxWait) {
-    await sleep(pollInterval);
-
-    try {
-      const res = await fetch(`${comfyUrl}/history/${promptId}`);
-      if (!res.ok) continue;
-
-      const history = await res.json();
-      const entry = history[promptId];
-      if (!entry) continue;
-
-      if (entry.status?.completed) {
-        // Get output images
-        const outputs = entry.outputs || {};
-        for (const [nodeId, output] of Object.entries(outputs)) {
-          if (output.images) {
-            for (const img of output.images) {
-              const imageUrl = `${comfyUrl}/view?filename=${encodeURIComponent(img.filename)}&subfolder=${encodeURIComponent(img.subfolder || '')}&type=${img.type || 'output'}`;
-
-              // Fetch as data URL for local storage
+    // Poll
+    const t0 = Date.now();
+    while (Date.now() - t0 < 300000) {
+      await sleep(1000);
+      try {
+        const hr = await fetch(`${comfyUrl}/history/${prompt_id}`);
+        if (!hr.ok) continue;
+        const hist = await hr.json();
+        const entry = hist[prompt_id];
+        if (!entry) continue;
+        if (entry.status?.completed) {
+          for (const [, out] of Object.entries(entry.outputs || {})) {
+            if (!out.images) continue;
+            for (const img of out.images) {
+              const url = `${comfyUrl}/view?filename=${encodeURIComponent(img.filename)}&subfolder=${encodeURIComponent(img.subfolder || '')}&type=${img.type || 'output'}`;
               try {
-                const imgRes = await fetch(imageUrl);
-                const blob = await imgRes.blob();
-                const dataUrl = await blobToDataUrl(blob);
-
-                item.history.push({
-                  imageUrl: dataUrl,
-                  timestamp: new Date().toISOString(),
-                  adopted: false,
-                  comfyFilename: img.filename,
-                });
-              } catch (e) {
-                // Fallback: store ComfyUI URL directly
-                item.history.push({
-                  imageUrl,
-                  timestamp: new Date().toISOString(),
-                  adopted: false,
-                  comfyFilename: img.filename,
-                });
+                const blob = await (await fetch(url)).blob();
+                const dataUrl = await new Promise((ok, ng) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ng; r.readAsDataURL(blob); });
+                item.history.push({ url: dataUrl, ts: new Date().toISOString(), adopted: false, comfyFile: img.filename });
+              } catch {
+                item.history.push({ url, ts: new Date().toISOString(), adopted: false, comfyFile: img.filename });
               }
             }
           }
+          item.status = 'review';
+          setProgress(100, '完了！');
+          if (selectedId === item.id) selectItem(item.id);
+          toast('画像生成完了！', 'ok');
+          return;
         }
-
-        item.status = 'review';
-        updateProgress(100, '完了！');
-
-        // Update UI
-        if (selectedId === item.id) {
-          selectCg(item.id);
-        }
-        toast('画像生成が完了しました！', 'ok');
-        return;
-      }
-
-      if (entry.status?.status_str === 'error') {
-        throw new Error('ComfyUI実行エラー');
-      }
-    } catch (e) {
-      if (e.message === 'ComfyUI実行エラー') throw e;
-      // Network error — continue polling
+        if (entry.status?.status_str === 'error') throw new Error('ComfyUIエラー');
+      } catch (e) { if (e.message === 'ComfyUIエラー') throw e; }
     }
+    throw new Error('タイムアウト');
+  } catch (e) {
+    toast(`エラー: ${e.message}`, 'err');
+    item.status = item.history.length > 0 ? 'review' : 'pending';
+  } finally {
+    generating = false;
+    btn.disabled = false; btn.textContent = '🎨 生成';
+    document.getElementById('progBar').style.display = 'none';
+    document.getElementById('progText').style.display = 'none';
+    updateCounts(); renderList(); saveAll();
   }
-
-  throw new Error('タイムアウト（5分）');
 }
 
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+function setProgress(pct, text) {
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progText').textContent = text;
 }
-
-function updateProgress(pct, text) {
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressText').textContent = text;
-}
-
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ============================================================
-// Review actions
+// Review
 // ============================================================
-function adoptImage() {
-  const item = cgItems.find(c => c.id === selectedId);
-  if (!item || item.history.length === 0) return;
-
-  // Find which image is currently selected in preview, or use latest
-  const previewImg = document.querySelector('#imagePreview img');
-  let adoptedUrl = null;
-
-  if (previewImg) {
-    adoptedUrl = previewImg.src;
-  } else {
-    adoptedUrl = item.history[item.history.length - 1].imageUrl;
-  }
-
-  // Mark in history
-  for (const h of item.history) {
-    h.adopted = (h.imageUrl === adoptedUrl);
-  }
-
-  item.adoptedImage = adoptedUrl;
+function adopt() {
+  const item = items.find(i => i.id === selectedId);
+  if (!item || !item.history.length) return;
+  const img = document.querySelector('#imgPreview img');
+  const url = img ? img.src : item.history[item.history.length - 1].url;
+  for (const h of item.history) h.adopted = (h.url === url);
+  item.adoptedImage = url;
   item.status = 'done';
 
   // Auto-download with correct filename
-  downloadAdoptedImage(item);
+  const a = document.createElement('a');
+  a.href = url; a.download = item.file;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 
-  saveSettings();
-  updateCounts();
-  selectCg(item.id);
-  toast(`「${item.trigger}」を採用しました！ ファイル: ${item.file}`, 'ok');
+  saveAll(); updateCounts(); selectItem(item.id);
+  toast(`「${item.trigger}」採用！ → ${item.file}`, 'ok');
 
-  // Auto-advance to next pending CG
-  autoAdvance();
+  // Auto-advance
+  const next = items.find(i => i.status === 'pending');
+  if (next) setTimeout(() => selectItem(next.id), 300);
 }
 
-function downloadAdoptedImage(item) {
-  if (!item.adoptedImage) return;
-
-  // Convert data URL to blob for download
-  try {
-    const a = document.createElement('a');
-    a.href = item.adoptedImage;
-    a.download = item.file; // Use the correct filename from manifest
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  } catch (e) {
-    console.error('Download failed:', e);
-  }
-}
-
-function rejectImage() {
-  // Open the rejection reason modal
+function reject() {
   document.getElementById('rejectModal').classList.remove('hidden');
   document.getElementById('rejectReason').value = '';
-  document.getElementById('rejectReason').focus();
 }
 
-function addQuickReason(text) {
+function qr(text) {
   const ta = document.getElementById('rejectReason');
   if (ta.value) ta.value += '、';
   ta.value += text;
 }
 
-function closeRejectModal() {
-  document.getElementById('rejectModal').classList.add('hidden');
-}
+function closeReject() { document.getElementById('rejectModal').classList.add('hidden'); }
 
-function confirmReject() {
-  doReject();
-}
-
-function confirmRejectAndRegenerate() {
-  doReject();
-  // Auto-regenerate after rejection
-  setTimeout(() => generateImage(), 100);
-}
-
-function doReject() {
-  const item = cgItems.find(c => c.id === selectedId);
+function doReject(regen) {
+  const item = items.find(i => i.id === selectedId);
   if (!item) return;
-
   const reason = document.getElementById('rejectReason').value.trim();
+  if (reason) item.feedback.push({ reason, ts: new Date().toISOString(), idx: item.history.length - 1 });
+  if (item.history.length > 1) { item.history.pop(); item.status = 'review'; }
+  else { item.history = []; item.status = 'pending'; }
+  closeReject();
+  saveAll(); updateCounts(); selectItem(item.id);
+  toast(reason ? `却下: ${reason}` : '却下', 'info');
+  if (regen) setTimeout(() => generate(), 100);
+}
 
-  // Save feedback
-  if (reason) {
-    item.feedback.push({
-      reason,
-      timestamp: new Date().toISOString(),
-      imageIndex: item.history.length - 1,
-    });
+// ============================================================
+// Import/Export manifest
+// ============================================================
+function showImportModal() { document.getElementById('importModal').classList.remove('hidden'); document.getElementById('importText').value = ''; }
+function showExportModal() { document.getElementById('exportText').value = generateManifest(); document.getElementById('exportModal').classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function generateManifest() {
+  const charId = document.getElementById('charId').value || 'unknown';
+  const charName = document.getElementById('charName').value;
+  const charNameEn = document.getElementById('charNameEn').value;
+  const pad = (s, n) => s + ' '.repeat(Math.max(0, n - s.length));
+
+  const cgs = items.filter(i => i.type === 'cg');
+  const portraits = items.filter(i => i.type === 'portrait');
+  const icons = items.filter(i => i.type === 'icon');
+  const total = items.length;
+
+  const doneCount = items.filter(i => i.status === 'done').length;
+  const statusLine = doneCount === total ? '全て作成済み' :
+    doneCount > 0 ? `${doneCount}/${total}枚 作成済み` : '全て未作成';
+
+  let o = '';
+  o += '# ============================================\n';
+  o += `# Operation Nightcap - CG Manifest\n`;
+  o += `# Character: ${charNameEn} (${charName})\n`;
+  o += '# ============================================\n';
+  o += '#\n# フォーマット: ファイル名 | トリガー | 酔いLv | 備考\n';
+  o += '# ============================================\n\n';
+
+  o += `# --- イベントCG (${cgs.length}枚) ---\n`;
+  o += `# 配置先: assets/characters/${charId}/cg/\n\n`;
+  for (const r of cgs) o += `${pad(r.file, 26)}| ${pad(r.trigger, 18)}| ${pad(r.level || '', 6)}| ${r.note || ''}\n`.replace(/\s+$/, '') + '\n';
+
+  o += `\n# --- 立ち絵 (${portraits.length}枚) ---\n`;
+  o += `# 配置先: assets/characters/${charId}/\n\n`;
+  for (const r of portraits) o += `${pad(r.file, 26)}| ${pad(r.trigger, 18)}| ${pad(r.level || '', 6)}| ${r.note || ''}\n`.replace(/\s+$/, '') + '\n';
+
+  o += `\n# --- アイコン (${icons.length}枚) ---\n`;
+  o += `# 配置先: assets/characters/${charId}/\n\n`;
+  for (const r of icons) o += `${pad(r.file, 26)}| ${pad(r.trigger, 18)}| ${r.note || ''}\n`.replace(/\s+$/, '') + '\n';
+
+  o += `\n# ============================================\n`;
+  o += `# 合計: ${total}枚\n`;
+  o += `# ステータス: ${statusLine}\n`;
+  o += '# ============================================\n';
+  return o;
+}
+
+function copyManifest() {
+  navigator.clipboard.writeText(document.getElementById('exportText').value)
+    .then(() => toast('コピーしました', 'ok'))
+    .catch(() => toast('コピー失敗', 'err'));
+}
+
+function downloadManifest() {
+  const blob = new Blob([generateManifest()], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cg-manifest.txt';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('ダウンロード完了', 'ok');
+}
+
+function doImport() {
+  const text = document.getElementById('importText').value;
+  if (!text.trim()) { toast('空です', 'err'); return; }
+
+  // Parse character info
+  const cm = text.match(/# Character:\s*(.+?)\s*\((.+?)\)/);
+  if (cm) { document.getElementById('charNameEn').value = cm[1].trim(); document.getElementById('charName').value = cm[2].trim(); }
+  const pm = text.match(/assets\/characters\/([a-z_]+)\//);
+  if (pm) document.getElementById('charId').value = pm[1];
+
+  // Parse items
+  const lines = text.split('\n');
+  let section = null;
+  const newItems = [];
+
+  for (const line of lines) {
+    const t = line.trim();
+    if (t.startsWith('#') || t === '') {
+      if (t.includes('イベントCG')) section = 'cg';
+      else if (t.includes('立ち絵') || t.includes('ポートレート')) section = 'portrait';
+      else if (t.includes('アイコン')) section = 'icon';
+      else if (t.includes('合計')) section = null;
+      continue;
+    }
+    if (!section) continue;
+    const parts = t.split('|').map(s => s.trim());
+    if (parts.length < 2) continue;
+    const file = parts[0], trigger = parts[1], level = parts[2] || '', note = parts[3] || '';
+    const id = file.replace(/\.\w+$/, '');
+
+    // Preserve existing progress if item exists
+    const existing = items.find(i => i.id === id);
+    if (existing) {
+      existing.file = file; existing.trigger = trigger;
+      existing.level = level; existing.note = note; existing.type = section;
+      newItems.push(existing);
+    } else {
+      newItems.push(makeItem({ id, file, trigger, level, type: section, note }));
+    }
   }
 
-  // Keep in review if there are other images, otherwise back to pending
-  if (item.history.length > 1) {
-    item.history.pop();
-    item.status = 'review';
+  if (newItems.length > 0) {
+    items = newItems;
+    saveAll(); renderList(); updateCounts();
+    closeModal('importModal');
+    toast(`インポート: ${newItems.length}件`, 'ok');
+    checkAllFiles();
   } else {
-    item.history = [];
-    item.status = 'pending';
-  }
-
-  closeRejectModal();
-  saveSettings();
-  updateCounts();
-  selectCg(item.id);
-  toast(reason ? `却下: ${reason}` : '却下しました', 'info');
-}
-
-function renderFeedback(item) {
-  const section = document.getElementById('feedbackSection');
-  const log = document.getElementById('feedbackLog');
-
-  if (!item.feedback || item.feedback.length === 0) {
-    section.style.display = 'none';
-    return;
-  }
-
-  section.style.display = 'block';
-  log.innerHTML = '';
-
-  for (const fb of item.feedback) {
-    const time = new Date(fb.timestamp).toLocaleString('ja-JP', {
-      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-    const entry = document.createElement('div');
-    entry.className = 'feedback-entry';
-    entry.innerHTML = `
-      <span class="fb-time">${time}</span>
-      <span class="fb-reason">却下: ${fb.reason}</span>
-    `;
-    log.appendChild(entry);
-  }
-  log.scrollTop = log.scrollHeight;
-}
-
-function toggleAdvanced() {
-  const panel = document.getElementById('advancedParams');
-  const arrow = document.getElementById('advArrow');
-  panel.classList.toggle('hidden');
-  arrow.classList.toggle('open', !panel.classList.contains('hidden'));
-}
-
-function autoAdvance() {
-  // Select next pending CG
-  const nextPending = cgItems.find(c => c.status === 'pending');
-  if (nextPending) {
-    setTimeout(() => selectCg(nextPending.id), 300);
+    toast('パースできませんでした', 'err');
   }
 }
 
@@ -1932,27 +1372,8 @@ function toast(msg, type) {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast show ' + (type || 'ok');
-  clearTimeout(el._timer);
-  el._timer = setTimeout(() => { el.className = 'toast'; }, 3000);
-}
-
-// ============================================================
-// Utilities
-// ============================================================
-
-// Export adopted images as zip (for manual placement)
-async function exportAll() {
-  const adopted = cgItems.filter(c => c.adoptedImage);
-  if (adopted.length === 0) {
-    toast('採用済みの画像がありません', 'err');
-    return;
-  }
-  // Download each individually
-  for (const item of adopted) {
-    downloadAdoptedImage(item);
-    await sleep(300); // Stagger downloads
-  }
-  toast(`${adopted.length}枚の画像をダウンロードしました`, 'ok');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = 'toast', 3000);
 }
 
 // ============================================================
