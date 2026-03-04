@@ -18,53 +18,53 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
       {
         level: 0, name: 'シラフ', threshold: 0,
         lines: [
-          'さぁ飲むぞ！ついてこいよ！',
-          'まだまだ序の口だぜ',
-          'ドクター、あんた酒は強い方か？'
+          'さぁ飲もっか！ついてきなよドクター！',
+          'まだまだ序の口だよ、本気出してないから',
+          'ドクター、お酒強い方？……ふーん、じゃあ勝負しよっか'
         ]
       },
       {
         level: 1, name: 'ほろ酔い', threshold: 2,
         lines: [
-          'ハハッ！いい気分になってきた！',
-          'なぁドクター、もう一杯いこうぜ',
-          'この酒うめぇな！クロージャいいもん仕入れてんじゃん'
+          'あはは！いい気分になってきたかも',
+          'ねぇドクター、もう一杯いこうよ。……私が注いであげよっか？',
+          'この酒おいしいね！クロージャいいもん仕入れてるじゃん'
         ]
       },
       {
         level: 2, name: '酔い', threshold: 4,
         lines: [
-          'おい…なんか暑くないか…？',
-          'ドクター…顔ちかくねぇ？',
-          'ふぅ…ちょっと効いてきたかも…なんてな！'
+          'ん……なんか暑くない？ ちょっとだけ、前はだけていい……？',
+          'ドクター……なんか今日、顔近くない？ ……別にいいけどさ',
+          'ふぅ……ちょっと効いてきたかも。……なんてね、まだまだいけるよ'
         ]
       },
       {
         level: 3, name: 'べろべろ', threshold: 7,
         lines: [
-          'ドクターぁ…もっと近くに来いよぉ…',
-          'あたし…別にドクターのこと…ぅう…',
-          'んー…ドクターっていい匂いするよなぁ…'
+          'ドクターぁ……もっとこっち来なよぉ。寒いんだから……',
+          '私ね……別にドクターのこと……ぅん……嫌いじゃ、ないよ……',
+          'んー……ドクターってさ、いい匂いするよね……もうちょっとだけ、嗅いでていい？'
         ]
       },
       {
         level: 4, name: '潰れ', threshold: 10,
         lines: [
           '………zzZ',
-          '…ドクター…あったかい…zzZ'
+          '……ドクター……あったかい……このまま……zzZ'
         ]
       }
     ],
     battleLines: {
-      playDrink: ['おっ、やるじゃん！', 'いい勝負だな！'],
-      playFood: ['つまみか…ちっ、逃げるなよ', 'うまそうなもん食ってんな'],
-      playChug: ['一気いくぜぇ！！', 'はっはっは！飲めぇ！'],
-      takeDamage: ['くっ…効くな…', 'やるじゃねぇか…！'],
-      dealDamage: ['ほらもっと飲めよ！', 'まだまだぁ！'],
-      harassmentSuccess: ['なっ…！？', '……っ'],
-      harassmentFail: ['は？何やってんだ？', 'おいおい…シラフでそれかよ'],
-      winLine: 'はーっはっは！あたしの勝ちだ！弱いなドクター！',
-      loseLine: '………zzZ……ドクター……ばか……'
+      playDrink: ['おっ、やるじゃん！', 'いい勝負だね！'],
+      playFood: ['つまみ？ ……逃がさないよ？', 'おいしそうなもん食べてるね'],
+      playChug: ['一気いくよ！！ついてきて！', 'あはは！飲め飲めー！'],
+      takeDamage: ['くっ……効くね……', 'やるじゃん……！'],
+      dealDamage: ['ほら、もっと飲みなよ！', 'まだまだぁ！'],
+      harassmentSuccess: ['なっ……！？ ……ばか'],
+      harassmentFail: ['ん？ 何やってんの？', '……シラフでそれやる度胸は認めるけどね'],
+      winLine: 'あっはは！私の勝ちっ！ 弱いなぁドクター。……ま、罰ゲームは後で考えてあげるよ',
+      loseLine: '………zzZ……ドクター……ばか……もう飲ませないでよ……'
     },
     deck_ai: {
       personality: 'aggressive',
@@ -86,8 +86,8 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         cgColor: '#e85d3a',
         dialogue: [
           { speaker: 'ドクター', text: '（そっと肩を寄せる）' },
-          { speaker: 'ブレイズ', text: '……っ、なんだよ急に' },
-          { speaker: 'ブレイズ', text: '……べつに、嫌じゃねーけど。今日だけだからな' }
+          { speaker: 'ブレイズ', text: '……っ、なに、急に' },
+          { speaker: 'ブレイズ', text: '……別に、嫌じゃないけど。……今日だけだからね？' }
         ]
       },
       {
@@ -97,8 +97,8 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         cgColor: '#e85d3a',
         dialogue: [
           { speaker: 'ドクター', text: '（頭をぽんぽんする）' },
-          { speaker: 'ブレイズ', text: 'なっ……子ども扱いすんなよ…' },
-          { speaker: 'ブレイズ', text: '……もうちょっとだけ、いいけど' }
+          { speaker: 'ブレイズ', text: 'ちょっ……子ども扱いしないでよ……' },
+          { speaker: 'ブレイズ', text: '……もうちょっとだけ。……上手いんだから、ずるいよ' }
         ]
       },
       {
@@ -108,8 +108,8 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         cgColor: '#e85d3a',
         dialogue: [
           { speaker: 'ドクター', text: '（じっと見つめる）' },
-          { speaker: 'ブレイズ', text: 'お、おい…そんな見んなよ…' },
-          { speaker: 'ブレイズ', text: '…………心臓うるせぇだろ、ばか' }
+          { speaker: 'ブレイズ', text: 'ちょ……そんな見ないでよ……' },
+          { speaker: 'ブレイズ', text: '…………聞こえてるでしょ、心臓の音。……ドクターのせいだからね' }
         ]
       },
       {
@@ -119,8 +119,8 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         cgColor: '#e85d3a',
         dialogue: [
           { speaker: 'ドクター', text: '（膝を差し出す）' },
-          { speaker: 'ブレイズ', text: 'はぁ？膝枕？あたしに？' },
-          { speaker: 'ブレイズ', text: '……ちょっとだけだからな…zzZ…' }
+          { speaker: 'ブレイズ', text: 'え……膝枕？ 私に？ ……ふふ、ドクターって大胆だよね' },
+          { speaker: 'ブレイズ', text: '……ちょっとだけだよ。……ん……あったかい……zzZ' }
         ]
       },
       {
@@ -131,8 +131,8 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         instantWin: true,
         dialogue: [
           { speaker: 'ドクター', text: '（顔を近づける）' },
-          { speaker: 'ブレイズ', text: 'おい……マジかよ……' },
-          { speaker: 'ブレイズ', text: '…………ばか' }
+          { speaker: 'ブレイズ', text: '……え、ちょっと……マジで言ってる……？' },
+          { speaker: 'ブレイズ', text: '…………ばか。……逃がさないからね' }
         ]
       }
     ]
