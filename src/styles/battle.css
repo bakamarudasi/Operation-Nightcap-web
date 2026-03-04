@@ -205,12 +205,25 @@
   object-position: center top;
 }
 
-/* 現状のemoji表示 */
+/* キャラ表示（画像 or emoji） */
 .char-portrait-icon {
-  font-size: 6rem;
+  width: 100%;
+  height: 100%;
   z-index: 1;
   filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.4));
   transition: transform 0.4s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.char-portrait-icon .char-emoji {
+  font-size: 6rem;
+}
+
+.char-portrait-icon .char-img {
+  border-radius: 12px;
 }
 
 /* 酔い赤み */
@@ -345,6 +358,15 @@
   justify-content: center;
   font-size: 1.6rem;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.opp-portrait-mini .char-img {
+  border-radius: 8px;
+}
+
+.opp-portrait-mini .char-emoji {
+  font-size: 1.6rem;
 }
 
 .opp-info {
@@ -491,6 +513,12 @@
 
 .card-3d.flipped {
   transform: rotateY(180deg);
+}
+
+/* プレイヤーカード: 選んだカードなので即表面表示（フリップ不要） */
+.card-3d.instant-flip {
+  transform: rotateY(180deg);
+  transition: none;
 }
 
 .card-3d-face {

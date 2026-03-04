@@ -63,29 +63,44 @@ export const CARD_DATA: Record<string, CardDef> = {
 
   // === セクハラカード（特殊・CG発動） ===
   shoulder_lean: {
-    id: 'shoulder_lean', name: '肩を寄せる', emoji: '💋', type: 'harassment',
+    id: 'shoulder_lean', name: '耳元でささやく', emoji: '💋', type: 'harassment',
     requiredDrunkLevel: 1, drunkDamage: 1,
-    description: '酔いLv.1以上で発動。酔い+1 & CG再生', rarity: 4, price: 1500
+    description: '肩を寄せて耳元に唇を近づける。酔いLv.1以上で発動。酔い+1 & CG再生', rarity: 4, price: 1500
   },
   headpat: {
-    id: 'headpat', name: '頭ポンポン', emoji: '🫳', type: 'harassment',
+    id: 'headpat', name: 'うなじを撫でる', emoji: '🫳', type: 'harassment',
     requiredDrunkLevel: 2, drunkDamage: 1,
-    description: '酔いLv.2以上で発動。酔い+1 & CG再生', rarity: 4, price: 1500
+    description: '髪をかき上げてうなじに指を這わせる。酔いLv.2以上で発動。酔い+1 & CG再生', rarity: 4, price: 1500
   },
   gaze: {
-    id: 'gaze', name: '見つめる', emoji: '👀', type: 'harassment',
+    id: 'gaze', name: '唇を見つめる', emoji: '👀', type: 'harassment',
     requiredDrunkLevel: 2, drunkDamage: 2,
-    description: '酔いLv.2以上で発動。酔い+2 & CG再生', rarity: 4, price: 2000
+    description: '顎を持ち上げて濡れた唇をじっと見つめる。酔いLv.2以上で発動。酔い+2 & CG再生', rarity: 4, price: 2000
   },
   lap_pillow: {
-    id: 'lap_pillow', name: '膝枕する', emoji: '💕', type: 'harassment',
+    id: 'lap_pillow', name: '太ももに誘う', emoji: '💕', type: 'harassment',
     requiredDrunkLevel: 3, drunkDamage: 2,
-    description: '酔いLv.3以上で発動。酔い+2 & CG再生', rarity: 5, price: 3000
+    description: '膝枕させて髪を指に絡めながら耳を甘噛み。酔いLv.3以上で発動。酔い+2 & CG再生', rarity: 5, price: 3000
+  },
+  breast_touch: {
+    id: 'breast_touch', name: '胸に触れる', emoji: '🫦', type: 'harassment',
+    requiredDrunkLevel: 2, drunkDamage: 3,
+    description: '「酔ってるから」を口実にそっと胸に手を伸ばす。酔いLv.2以上で発動。酔い+3 & CG再生', rarity: 5, price: 4000
+  },
+  hip_touch: {
+    id: 'hip_touch', name: 'お尻をなでる', emoji: '🍑', type: 'harassment',
+    requiredDrunkLevel: 2, drunkDamage: 2,
+    description: '隣に座ったまま大胆にお尻に手を滑らせる。酔いLv.2以上で発動。酔い+2 & CG再生', rarity: 5, price: 3500
+  },
+  ear_bite: {
+    id: 'ear_bite', name: '耳を甘噛み', emoji: '👅', type: 'harassment',
+    requiredDrunkLevel: 3, drunkDamage: 3,
+    description: '耳たぶをそっと唇で挟む。酔いLv.3以上で発動。酔い+3 & CG再生', rarity: 5, price: 4500
   },
   kiss: {
-    id: 'kiss', name: 'キス', emoji: '💋', type: 'harassment',
+    id: 'kiss', name: 'ディープキス', emoji: '💋', type: 'harassment',
     requiredDrunkLevel: 3, instantWin: true,
-    description: '酔いLv.3以上で発動。即酔い潰し(勝利) & CG再生', rarity: 6, price: 5000
+    description: '腰を引き寄せて深く口づけ。酔いLv.3以上で発動。即KO & CG再生', rarity: 6, price: 5000
   }
 };
 

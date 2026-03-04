@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import type { CharacterDef } from '../data/types.ts';
+import { CharacterPortrait } from './CharacterPortrait.tsx';
 import '../styles/select.css';
 
 /* ── 定数 ── */
@@ -76,7 +77,7 @@ function playKanpaiSound() {
 }
 
 /* ── フェーズ型 ── */
-type Phase = 'select' | 'noren-close' | 'vs' | 'noren-open' | 'kanpai' | 'noren-final';
+type Phase = 'select' | 'noren-close' | 'noren-closed' | 'noren-open' | 'vs' | 'kanpai' | 'noren-final';
 
 /* ── コンポーネント ── */
 export function SelectScreen() {
@@ -143,71 +144,64 @@ export function SelectScreen() {
     setIsAnim(true);
     setVsChar(char);
 
-    // Phase 1: noren close
+    // Phase 1: noren close (CSS animation = 0.5s)
     setPhase('noren-close');
 
+    // Phase 2: 閉じ切ったら一拍止める (600ms後 = CSS完了後に余裕)
     addTimer(() => {
-      // Phase 2: noren opens to reveal VS
-      setPhase('noren-open');
-      addTimer(() => playVsSound(), 100);
+      setPhase('noren-closed');
 
+      // Phase 3: 300ms止めてから開く
       addTimer(() => {
-        // Phase 3: VS screen (noren fully open)
-        setPhase('vs');
+        setPhase('noren-open');
+        addTimer(() => playVsSound(), 100);
 
+        // Phase 4: 開き終わったらVS画面 (2500ms後)
         addTimer(() => {
-          // Phase 4: kanpai
-          setPhase('kanpai');
+          setPhase('vs');
 
-          // kanpai sub-anim
+          // Phase 5: kanpai (600ms後)
           addTimer(() => {
-            setKanpaiFlash(true);
-            playKanpaiSound();
-            addTimer(() => setKanpaiFlash(false), 200);
-          }, 750);
+            setPhase('kanpai');
 
-          addTimer(() => setKanpaiText(true), 1000);
-
-          addTimer(() => {
-            // confetti
-            const pieces = Array.from({ length: 40 }, (_, i) => ({
-              id: i,
-              left: Math.random() * 100,
-              hue: Math.random() * 360,
-              delay: Math.random() * 0.5,
-            }));
-            setConfettiPieces(pieces);
-          }, 1100);
-
-          addTimer(() => {
-            setKanpaiDialogue(char.drunkLevels[0].lines[0]);
-          }, 2000);
-
-          addTimer(() => setKanpaiText(false), 3000);
-
-          addTimer(() => setKanpaiDialogue(null), 5000);
-
-          // Final: transition to battle
-          addTimer(() => {
-            // Fix #2: noren-final で暗転させてからバトルへ
-            setPhase('noren-final');
+            // kanpai sub-anim
             addTimer(() => {
-              // reset everything
-              setPhase('select');
-              setVsChar(null);
-              setKanpaiFlash(false);
-              setKanpaiText(false);
-              setKanpaiDialogue(null);
-              setConfettiPieces([]);
-              setIsAnim(false);
-              // initBattle triggers screen transition to battle
-              initBattle(char.id);
-            }, 600);
-          }, 6000);
+              setKanpaiFlash(true);
+              playKanpaiSound();
+              addTimer(() => setKanpaiFlash(false), 200);
+            }, 750);
 
-        }, 600);
-      }, 2500);
-    }, 500);
+            addTimer(() => setKanpaiText(true), 1000);
+
+            addTimer(() => {
+              const pieces = Array.from({ length: 40 }, (_, i) => ({
+                id: i,
+                left: Math.random() * 100,
+                hue: Math.random() * 360,
+                delay: Math.random() * 0.5,
+              }));
+              setConfettiPieces(pieces);
+            }, 1100);
+
+            addTimer(() => {
+              setKanpaiDialogue(char.drunkLevels[0].lines[0]);
+            }, 2000);
+
+            addTimer(() => setKanpaiText(false), 3000);
+            addTimer(() => setKanpaiDialogue(null), 5000);
+
+            // Final: noren-final で暗転してバトルへ
+            addTimer(() => {
+              setPhase('noren-final');
+              addTimer(() => {
+                initBattle(char.id);
+              }, 600);
+            }, 6000);
+
+          }, 600);
+        }, 2500);
+      }, 300);
+    }, 600);
   }, [isAnim, charCount, money, characters, currentIdx, addTimer, initBattle]);
 
   /* ── キーボード操作 ── */
@@ -231,7 +225,7 @@ export function SelectScreen() {
   const cgTotal = currentChar?.cgEvents.length ?? 0;
 
   /* ── セレクトUI表示条件 ── */
-  const showSelectContent = phase === 'select' || phase === 'noren-close' || phase === 'noren-final';
+  const showSelectContent = phase === 'select' || phase === 'noren-close' || phase === 'noren-closed' || phase === 'noren-final';
 
   /* ── render ── */
   return (
@@ -280,7 +274,9 @@ export function SelectScreen() {
                     style={{ '--char-color': char.theme.color } as React.CSSProperties}
                     onClick={() => goTo(i)}
                   >
-                    <div className="sel-card-sprite">{char.theme.icon}</div>
+                    <div className="sel-card-sprite">
+                      <CharacterPortrait theme={char.theme} variant="portrait" />
+                    </div>
                     <div className="sel-card-name">{char.name}</div>
                     <div className="sel-card-sub">{char.subtitle}</div>
                     <div className="sel-card-nameEn">{char.nameEn}</div>
@@ -349,9 +345,10 @@ export function SelectScreen() {
       {/* ====== NOREN (curtain) ====== */}
       {/* Fix #1: pointer-events:auto でクリック透過を防止 */}
       {/* Fix #2: noren-final は閉じた状態で開始 (closed-instant) */}
-      {(phase === 'noren-close' || phase === 'noren-open' || phase === 'noren-final') && (
+      {(phase === 'noren-close' || phase === 'noren-closed' || phase === 'noren-open' || phase === 'noren-final') && (
         <div className={`sel-noren ${
           phase === 'noren-close' ? 'closing' :
+          phase === 'noren-closed' ? 'closed-instant' :
           phase === 'noren-final' ? 'closed-instant' :
           'opening'
         }`}>
@@ -374,7 +371,9 @@ export function SelectScreen() {
           </div>
           <div className="sel-vs-badge">VS</div>
           <div className="sel-vs-side sel-vs-opponent">
-            <div className="sel-vs-icon">{vsChar.theme.icon}</div>
+            <div className="sel-vs-icon">
+              <CharacterPortrait theme={vsChar.theme} variant="icon" />
+            </div>
             <div className="sel-vs-name">{vsChar.name}</div>
           </div>
         </div>

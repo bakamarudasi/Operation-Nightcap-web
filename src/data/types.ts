@@ -42,6 +42,10 @@ export interface CharacterTheme {
   colorDark: string;
   colorGlow: string;
   icon: string;
+  /** 立ち絵画像パス (例: '/characters/blaze/portrait.png')。未設定ならiconにフォールバック */
+  portraitImg?: string;
+  /** ミニアイコン画像パス。未設定ならiconにフォールバック */
+  iconImg?: string;
 }
 
 export interface BattleLines {
@@ -90,6 +94,7 @@ export interface BattleState {
   isProcessing: boolean;
   opponentDiscardNext: boolean;
   playerReducedHand: boolean;
+  opponentReducedHand: boolean;
   spillActive: boolean;
 }
 

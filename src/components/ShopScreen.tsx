@@ -30,6 +30,11 @@ export function ShopScreen() {
       setClosureLine(randomPick([...SHOP_DATA.closureLines.deckFull]));
       return;
     }
+    const sameCount = playerDeck.filter(id => id === cardId).length;
+    if (sameCount >= 3) {
+      setClosureLine(randomPick([...SHOP_DATA.closureLines.cardLimit]));
+      return;
+    }
 
     const success = buyCard(cardId);
     if (success) {
@@ -40,6 +45,11 @@ export function ShopScreen() {
   };
 
   const handleSell = (index: number) => {
+    const cardId = playerDeck[index];
+    const card = CARD_DATA[cardId];
+    if (!card) return;
+    const refund = Math.floor(card.price / 2);
+    if (!window.confirm(`${card.name}を売却しますか？（${refund}龍門幣）`)) return;
     const success = sellCard(index);
     if (success) {
       setClosureLine(randomPick([...SHOP_DATA.closureLines.sell]));
