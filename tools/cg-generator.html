@@ -99,7 +99,7 @@
   .main {
     display: grid;
     grid-template-columns: 340px 1fr;
-    height: calc(100vh - 54px);
+    height: calc(100vh - 90px);
   }
 
   /* Left panel */
@@ -359,6 +359,26 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+  /* Character tabs */
+  .char-tabs {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 12px; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto; flex-wrap: nowrap;
+  }
+  .char-tabs label { font-size: 0.75em; color: var(--text-dim); margin-right: 4px; white-space: nowrap; }
+  .char-tab {
+    padding: 4px 12px; border-radius: 4px;
+    font-size: 0.78em; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-dim); transition: all 0.15s; white-space: nowrap;
+  }
+  .char-tab:hover { border-color: var(--accent); color: var(--text); }
+  .char-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .char-tab-add { padding: 4px 10px; border-radius: 4px; font-size: 0.78em; cursor: pointer;
+    background: transparent; border: 1px dashed var(--border); color: var(--text-dim); }
+  .char-tab-add:hover { border-color: var(--accent); color: var(--accent); }
+
   @media (max-width: 800px) {
     .main { grid-template-columns: 1fr; }
     .left-panel { max-height: 40vh; }
@@ -380,13 +400,16 @@
   </div>
 </div>
 
+<!-- Character tabs -->
+<div class="char-tabs" id="charTabs"></div>
+
 <!-- Main -->
 <div class="main">
   <!-- Left panel -->
   <div class="left-panel">
     <!-- Character info -->
     <div class="char-bar">
-      <label>ID:</label><input id="charId" value="blaze" onchange="saveAll()">
+      <label>ID:</label><input id="charId" value="blaze" onchange="onCharIdChange()" readonly style="opacity:0.6">
       <label>名前:</label><input id="charName" value="ブレイズ" onchange="saveAll()">
       <label>EN:</label><input id="charNameEn" value="BLAZE" onchange="saveAll()">
     </div>
@@ -587,7 +610,12 @@
 // ============================================================
 // State
 // ============================================================
-const STORAGE_KEY = 'nightcap_cg_pipeline_v2';
+const STORAGE_PREFIX = 'nightcap_cg_pipeline_';
+const CHARLIST_KEY = 'nightcap_cg_charlist';    // shared with inventory editor
+const LASTCHAR_KEY = 'nightcap_cg_gen_lastchar';
+const OLD_STORAGE_KEY = 'nightcap_cg_pipeline_v2'; // for migration
+
+let currentCharId = 'blaze';
 let comfyUrl = 'http://127.0.0.1:8188';
 let workflow = null;
 let nodeMapping = { pos: null, neg: null, seed: null };
@@ -601,58 +629,202 @@ let ws = null;
 let fileExistence = {}; // id → true/false/undefined
 
 // ============================================================
-// Default items
+// Character presets (defaults + suggestions per character)
 // ============================================================
-const DEFAULTS = [
-  { id: 'shoulder_lean', file: 'shoulder_lean.webp', trigger: '耳元でささやく', level: 'Lv.1', type: 'cg', note: '' },
-  { id: 'headpat', file: 'headpat.webp', trigger: 'うなじを撫でる', level: 'Lv.2', type: 'cg', note: '' },
-  { id: 'gaze', file: 'gaze.webp', trigger: '唇を見つめる', level: 'Lv.2', type: 'cg', note: '' },
-  { id: 'breast_touch', file: 'breast_touch.webp', trigger: '胸に触れる', level: 'Lv.2', type: 'cg', note: '' },
-  { id: 'hip_touch', file: 'hip_touch.webp', trigger: 'お尻をなでる', level: 'Lv.2', type: 'cg', note: '' },
-  { id: 'ear_bite', file: 'ear_bite.webp', trigger: '耳を甘噛み', level: 'Lv.3', type: 'cg', note: '' },
-  { id: 'lap_pillow', file: 'lap_pillow.webp', trigger: '太ももに誘う', level: 'Lv.3', type: 'cg', note: '' },
-  { id: 'kiss', file: 'kiss.webp', trigger: 'ディープキス', level: 'Lv.3', type: 'cg', note: 'instant_win' },
-  { id: 'portrait', file: 'portrait.webp', trigger: '基本立ち絵', level: '', type: 'portrait', note: '' },
-  { id: 'portrait-drunk-0', file: 'portrait-drunk-0.webp', trigger: '素面', level: 'Lv.0', type: 'portrait', note: '' },
-  { id: 'portrait-drunk-1', file: 'portrait-drunk-1.webp', trigger: 'ほろ酔い', level: 'Lv.1', type: 'portrait', note: '' },
-  { id: 'portrait-drunk-2', file: 'portrait-drunk-2.webp', trigger: '酔い', level: 'Lv.2', type: 'portrait', note: '' },
-  { id: 'portrait-drunk-3', file: 'portrait-drunk-3.webp', trigger: 'べろべろ', level: 'Lv.3', type: 'portrait', note: '' },
-  { id: 'portrait-drunk-4', file: 'portrait-drunk-4.webp', trigger: '潰れ', level: 'Lv.4', type: 'portrait', note: '' },
-  { id: 'select-icon', file: 'select-icon.webp', trigger: 'キャラ選択画面用', level: '', type: 'icon', note: '' },
-];
+const CHAR_PRESETS = {
+  blaze: {
+    id: 'blaze', name: 'ブレイズ', nameEn: 'BLAZE',
+    defaults: [
+      { id: 'shoulder_lean', file: 'shoulder_lean.webp', trigger: '耳元でささやく', level: 'Lv.1', type: 'cg', note: '' },
+      { id: 'headpat', file: 'headpat.webp', trigger: 'うなじを撫でる', level: 'Lv.2', type: 'cg', note: '' },
+      { id: 'gaze', file: 'gaze.webp', trigger: '唇を見つめる', level: 'Lv.2', type: 'cg', note: '' },
+      { id: 'breast_touch', file: 'breast_touch.webp', trigger: '胸に触れる', level: 'Lv.2', type: 'cg', note: '' },
+      { id: 'hip_touch', file: 'hip_touch.webp', trigger: 'お尻をなでる', level: 'Lv.2', type: 'cg', note: '' },
+      { id: 'ear_bite', file: 'ear_bite.webp', trigger: '耳を甘噛み', level: 'Lv.3', type: 'cg', note: '' },
+      { id: 'lap_pillow', file: 'lap_pillow.webp', trigger: '太ももに誘う', level: 'Lv.3', type: 'cg', note: '' },
+      { id: 'kiss', file: 'kiss.webp', trigger: 'ディープキス', level: 'Lv.3', type: 'cg', note: 'instant_win' },
+      { id: 'portrait', file: 'portrait.webp', trigger: '基本立ち絵', level: '', type: 'portrait', note: '' },
+      { id: 'portrait-drunk-0', file: 'portrait-drunk-0.webp', trigger: '素面', level: 'Lv.0', type: 'portrait', note: '' },
+      { id: 'portrait-drunk-1', file: 'portrait-drunk-1.webp', trigger: 'ほろ酔い', level: 'Lv.1', type: 'portrait', note: '' },
+      { id: 'portrait-drunk-2', file: 'portrait-drunk-2.webp', trigger: '酔い', level: 'Lv.2', type: 'portrait', note: '' },
+      { id: 'portrait-drunk-3', file: 'portrait-drunk-3.webp', trigger: 'べろべろ', level: 'Lv.3', type: 'portrait', note: '' },
+      { id: 'portrait-drunk-4', file: 'portrait-drunk-4.webp', trigger: '潰れ', level: 'Lv.4', type: 'portrait', note: '' },
+      { id: 'select-icon', file: 'select-icon.webp', trigger: 'キャラ選択画面用', level: '', type: 'icon', note: '' },
+    ],
+    suggestions: {
+      _basePos: '(blaze arknights:1.3), feline girl, orange hair, long hair, red eyes, cat ears, athletic build, large breasts',
+      _baseSetting: 'bar interior, dim lighting, warm amber light, bottles in background, bar counter, night, cozy atmosphere',
+      _baseNeg: '(worst quality:1.4), (low quality:1.4), blurry, deformed, extra fingers, extra limbs, bad anatomy, bad hands, text, watermark, username, signature, jpeg artifacts, cropped, poorly drawn',
+      shoulder_lean: { pos: 'leaning close, whispering in ear, faces very close, slight blush, shy expression, looking away, intimate proximity, from side', neg: '' },
+      headpat: { pos: 'hand on nape of neck, fingers in hair, trembling, blushing heavily, eyes half-closed, sensitive reaction, goosebumps', neg: '' },
+      gaze: { pos: 'chin lift, staring at lips, intense eye contact, wet lips, parted lips, blushing, romantic tension, close-up face', neg: '' },
+      breast_touch: { pos: 'hand on chest, surprised expression, deep blush, looking down at hand, heart racing, embarrassed but accepting, open shirt', neg: '' },
+      hip_touch: { pos: 'hand on hip, seated together, surprised gasp, blushing ears, squirming slightly, flustered expression, side view', neg: '' },
+      ear_bite: { pos: 'ear nibbling, lips on ear, trembling body, intense blush, eyes tearing up, melting expression, heavy breathing, extremely sensitive', neg: '' },
+      lap_pillow: { pos: 'lap pillow, head on thighs, hair spread out, drowsy expression, peaceful smile, hand in hair, relaxed pose, lying down', neg: '' },
+      kiss: { pos: '(kiss:1.3), lips touching, pulled close by waist, eyes closed, deep blush, passionate, intimate moment, tears of joy, from side close-up', neg: '' },
+      portrait: { pos: 'standing pose, confident smile, hands on hips, full body, formal uniform, clean outfit, looking at viewer', neg: '' },
+      'portrait-drunk-0': { pos: 'standing pose, neutral expression, formal uniform, neat appearance, sober, composed, full body, looking at viewer', neg: 'blush, disheveled' },
+      'portrait-drunk-1': { pos: 'standing pose, slight blush, happy smile, slightly loosened collar, relaxed pose, tipsy, cheerful, full body', neg: '' },
+      'portrait-drunk-2': { pos: 'standing pose, moderate blush, open collar, exposed collarbone, cleavage peek, fanning self, drunk, swaying slightly, full body', neg: '' },
+      'portrait-drunk-3': { pos: 'standing pose, heavy blush, clothes falling off shoulder, visible bra strap, exposed thigh, very drunk, unfocused eyes, leaning forward, full body', neg: '' },
+      'portrait-drunk-4': { pos: 'slumped over, passed out, nearly undressed, underwear visible, red cheeks, sleeping, peaceful face, collapsed on counter, full body', neg: '' },
+      'select-icon': { pos: 'portrait icon, head and shoulders, confident wink, one eye closed, cheerful, simple background, circular crop', neg: '' },
+    },
+  },
+};
 
-// Prompt suggestions
-const SUGGESTIONS = {
-  _basePos: '(blaze arknights:1.3), feline girl, orange hair, long hair, red eyes, cat ears, athletic build, large breasts',
+// Fallback suggestions for unknown characters
+const DEFAULT_SUGGESTIONS = {
+  _basePos: '',
   _baseSetting: 'bar interior, dim lighting, warm amber light, bottles in background, bar counter, night, cozy atmosphere',
   _baseNeg: '(worst quality:1.4), (low quality:1.4), blurry, deformed, extra fingers, extra limbs, bad anatomy, bad hands, text, watermark, username, signature, jpeg artifacts, cropped, poorly drawn',
-  shoulder_lean: { pos: 'leaning close, whispering in ear, faces very close, slight blush, shy expression, looking away, intimate proximity, from side', neg: '' },
-  headpat: { pos: 'hand on nape of neck, fingers in hair, trembling, blushing heavily, eyes half-closed, sensitive reaction, goosebumps', neg: '' },
-  gaze: { pos: 'chin lift, staring at lips, intense eye contact, wet lips, parted lips, blushing, romantic tension, close-up face', neg: '' },
-  breast_touch: { pos: 'hand on chest, surprised expression, deep blush, looking down at hand, heart racing, embarrassed but accepting, open shirt', neg: '' },
-  hip_touch: { pos: 'hand on hip, seated together, surprised gasp, blushing ears, squirming slightly, flustered expression, side view', neg: '' },
-  ear_bite: { pos: 'ear nibbling, lips on ear, trembling body, intense blush, eyes tearing up, melting expression, heavy breathing, extremely sensitive', neg: '' },
-  lap_pillow: { pos: 'lap pillow, head on thighs, hair spread out, drowsy expression, peaceful smile, hand in hair, relaxed pose, lying down', neg: '' },
-  kiss: { pos: '(kiss:1.3), lips touching, pulled close by waist, eyes closed, deep blush, passionate, intimate moment, tears of joy, from side close-up', neg: '' },
-  portrait: { pos: 'standing pose, confident smile, hands on hips, full body, formal uniform, clean outfit, looking at viewer', neg: '' },
-  'portrait-drunk-0': { pos: 'standing pose, neutral expression, formal uniform, neat appearance, sober, composed, full body, looking at viewer', neg: 'blush, disheveled' },
-  'portrait-drunk-1': { pos: 'standing pose, slight blush, happy smile, slightly loosened collar, relaxed pose, tipsy, cheerful, full body', neg: '' },
-  'portrait-drunk-2': { pos: 'standing pose, moderate blush, open collar, exposed collarbone, cleavage peek, fanning self, drunk, swaying slightly, full body', neg: '' },
-  'portrait-drunk-3': { pos: 'standing pose, heavy blush, clothes falling off shoulder, visible bra strap, exposed thigh, very drunk, unfocused eyes, leaning forward, full body', neg: '' },
-  'portrait-drunk-4': { pos: 'slumped over, passed out, nearly undressed, underwear visible, red cheeks, sleeping, peaceful face, collapsed on counter, full body', neg: '' },
-  'select-icon': { pos: 'portrait icon, head and shoulders, confident wink, one eye closed, cheerful, simple background, circular crop', neg: '' },
 };
+
+function getSuggestions() {
+  return CHAR_PRESETS[currentCharId]?.suggestions || DEFAULT_SUGGESTIONS;
+}
+
+function getDefaults() {
+  const preset = CHAR_PRESETS[currentCharId];
+  if (preset) return preset.defaults;
+  return [
+    { id: 'portrait', file: 'portrait.webp', trigger: '基本立ち絵', level: '', type: 'portrait', note: '' },
+    { id: 'select-icon', file: 'select-icon.webp', trigger: 'キャラ選択画面用', level: '', type: 'icon', note: '' },
+  ];
+}
+
+// ============================================================
+// Character list management (shared with inventory editor)
+// ============================================================
+function getCharList() {
+  const raw = localStorage.getItem(CHARLIST_KEY);
+  if (raw) { try { return JSON.parse(raw); } catch {} }
+  return ['blaze'];
+}
+
+function saveCharList(list) {
+  localStorage.setItem(CHARLIST_KEY, JSON.stringify(list));
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderCharTabs() {
+  const el = document.getElementById('charTabs');
+  const list = getCharList();
+  let html = '<label>キャラ:</label>';
+  list.forEach(id => {
+    const data = loadCharData(id);
+    const label = data?.charName || CHAR_PRESETS[id]?.name || id;
+    const active = id === currentCharId ? ' active' : '';
+    html += `<button class="char-tab${active}" onclick="switchChar('${esc(id)}')">${esc(label)}</button>`;
+  });
+  html += `<button class="char-tab-add" onclick="addNewChar()">+ 追加</button>`;
+  if (list.length > 1) {
+    html += `<button class="sm danger" onclick="deleteChar()" style="margin-left:auto;font-size:0.72em">このキャラ削除</button>`;
+  }
+  el.innerHTML = html;
+}
+
+function switchChar(id) {
+  saveAll();
+  currentCharId = id;
+  localStorage.setItem(LASTCHAR_KEY, id);
+  selectedId = null;
+  fileExistence = {};
+  load();
+  renderCharTabs();
+  renderList();
+  updateCounts();
+  showEmpty();
+  checkAllFiles();
+  loadStagingManifest();
+}
+
+function addNewChar() {
+  const id = prompt('新キャラのID (英字小文字)', '');
+  if (!id || !/^[a-z][a-z0-9_]*$/.test(id)) {
+    if (id !== null) toast('IDは英字小文字で入力してください', 'err');
+    return;
+  }
+  const list = getCharList();
+  if (list.includes(id)) { toast('このIDは既に存在します', 'err'); return; }
+  list.push(id);
+  saveCharList(list);
+  saveAll();
+  currentCharId = id;
+  localStorage.setItem(LASTCHAR_KEY, id);
+  document.getElementById('charId').value = id;
+  document.getElementById('charName').value = '';
+  document.getElementById('charNameEn').value = id.toUpperCase();
+  items = getDefaults().map(makeItem);
+  selectedId = null;
+  fileExistence = {};
+  saveAll();
+  renderCharTabs();
+  renderList();
+  updateCounts();
+  showEmpty();
+  toast(`キャラ「${id}」を追加しました`, 'ok');
+}
+
+function deleteChar() {
+  const list = getCharList();
+  if (list.length <= 1) { toast('最後のキャラは削除できません', 'err'); return; }
+  if (!confirm(`「${currentCharId}」を削除しますか？`)) return;
+  localStorage.removeItem(STORAGE_PREFIX + currentCharId);
+  const idx = list.indexOf(currentCharId);
+  list.splice(idx, 1);
+  saveCharList(list);
+  switchChar(list[0]);
+  toast('削除しました', 'ok');
+}
+
+function loadCharData(id) {
+  const raw = localStorage.getItem(STORAGE_PREFIX + id);
+  if (raw) { try { return JSON.parse(raw); } catch {} }
+  return null;
+}
 
 // ============================================================
 // Init
 // ============================================================
 function init() {
+  migrateOldData();
+  // Restore last character
+  const lastChar = localStorage.getItem(LASTCHAR_KEY);
+  const list = getCharList();
+  if (lastChar && list.includes(lastChar)) currentCharId = lastChar;
+  else currentCharId = list[0] || 'blaze';
+
   load();
+  renderCharTabs();
   renderList();
   updateCounts();
   checkConnection();
   checkAllFiles();
-  loadStagingManifest(); // Check for Claude Code generated images
+  loadStagingManifest();
+}
+
+// Migrate old single-key storage to per-character
+function migrateOldData() {
+  const raw = localStorage.getItem(OLD_STORAGE_KEY);
+  if (!raw) return;
+  try {
+    const d = JSON.parse(raw);
+    const charId = d.charId || 'blaze';
+    // Only migrate if new key doesn't exist yet
+    if (!localStorage.getItem(STORAGE_PREFIX + charId)) {
+      localStorage.setItem(STORAGE_PREFIX + charId, raw);
+    }
+    // Ensure char is in list
+    const list = getCharList();
+    if (!list.includes(charId)) {
+      list.push(charId);
+      saveCharList(list);
+    }
+    localStorage.removeItem(OLD_STORAGE_KEY);
+  } catch {}
 }
 
 // ============================================================
@@ -687,13 +859,24 @@ function saveAll() {
       history: it.history, feedback: it.feedback, adoptedImage: it.adoptedImage,
     })),
   };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  localStorage.setItem(STORAGE_PREFIX + currentCharId, JSON.stringify(data));
 }
 
 function load() {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  const raw = localStorage.getItem(STORAGE_PREFIX + currentCharId);
   if (!raw) {
-    items = DEFAULTS.map(makeItem);
+    // Load from preset or generic defaults
+    const preset = CHAR_PRESETS[currentCharId];
+    if (preset) {
+      document.getElementById('charId').value = preset.id;
+      document.getElementById('charName').value = preset.name;
+      document.getElementById('charNameEn').value = preset.nameEn;
+    } else {
+      document.getElementById('charId').value = currentCharId;
+      document.getElementById('charName').value = '';
+      document.getElementById('charNameEn').value = currentCharId.toUpperCase();
+    }
+    items = getDefaults().map(makeItem);
     return;
   }
   try {
@@ -707,9 +890,9 @@ function load() {
     if (d.items && d.items.length > 0) {
       items = d.items.map(s => ({ ...makeItem(s), ...s }));
     } else {
-      items = DEFAULTS.map(makeItem);
+      items = getDefaults().map(makeItem);
     }
-  } catch (e) { items = DEFAULTS.map(makeItem); }
+  } catch (e) { items = getDefaults().map(makeItem); }
 }
 
 // ============================================================
@@ -968,9 +1151,10 @@ function selectItem(id) {
   updateFileStatus(item);
 
   // Prompts
-  const sug = SUGGESTIONS[item.id] || {};
-  const defPos = `${SUGGESTIONS._basePos}, ${SUGGESTIONS._baseSetting}, ${sug.pos || item.trigger}`;
-  const defNeg = `${SUGGESTIONS._baseNeg}${sug.neg ? ', ' + sug.neg : ''}`;
+  const S = getSuggestions();
+  const sug = S[item.id] || {};
+  const defPos = `${S._basePos || ''}, ${S._baseSetting || ''}, ${sug.pos || item.trigger}`.replace(/^, /, '');
+  const defNeg = `${S._baseNeg || ''}${sug.neg ? ', ' + sug.neg : ''}`;
   document.getElementById('posPrompt').value = item.posPrompt || defPos;
   document.getElementById('negPrompt').value = item.negPrompt || defNeg;
   document.getElementById('pSeed').value = item.seed ?? -1;
@@ -1030,13 +1214,14 @@ function savePrompt() {
 function resetSuggestion(type) {
   const item = items.find(i => i.id === selectedId);
   if (!item) return;
-  const sug = SUGGESTIONS[item.id] || {};
+  const S = getSuggestions();
+  const sug = S[item.id] || {};
   if (type === 'pos') {
-    const val = `${SUGGESTIONS._basePos}, ${SUGGESTIONS._baseSetting}, ${sug.pos || item.trigger}`;
+    const val = `${S._basePos || ''}, ${S._baseSetting || ''}, ${sug.pos || item.trigger}`.replace(/^, /, '');
     document.getElementById('posPrompt').value = val;
     item.posPrompt = val;
   } else {
-    const val = `${SUGGESTIONS._baseNeg}${sug.neg ? ', ' + sug.neg : ''}`;
+    const val = `${S._baseNeg || ''}${sug.neg ? ', ' + sug.neg : ''}`;
     document.getElementById('negPrompt').value = val;
     item.negPrompt = val;
   }
