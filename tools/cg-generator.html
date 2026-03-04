@@ -565,6 +565,9 @@
 <!-- Header -->
 <div class="header">
   <h1>CG Production Pipeline</h1>
+  <a href="cg-inventory-editor.html" style="font-size:0.75em;color:var(--text-dim);text-decoration:none;border:1px solid var(--border);padding:4px 10px;border-radius:4px" title="CG一覧の追加・編集はこちら">
+    インベントリ編集
+  </a>
   <div class="connection">
     <span style="font-size:0.8em;color:var(--text-dim)">ComfyUI:</span>
     <input id="comfyUrl" value="http://127.0.0.1:8188" onchange="saveSettings();checkConnection()">
@@ -581,7 +584,13 @@
 <div class="main">
   <!-- Left panel -->
   <div class="left-panel">
-    <div class="stats-bar">
+    <div class="stats-bar" style="flex-wrap:wrap">
+      <div class="stat" id="dataSource" style="width:100%;margin-bottom:4px;font-size:0.9em">
+        データソース: <span id="dataSourceLabel" style="color:var(--text-dim)">読込中...</span>
+        <button class="small" onclick="syncFromInventory()" style="margin-left:auto;font-size:0.7em;padding:2px 8px">
+          インベントリ同期
+        </button>
+      </div>
       <div class="stat">未作成: <span class="stat-val" id="countPending">0</span></div>
       <div class="stat">レビュー: <span class="stat-val" id="countReview">0</span></div>
       <div class="stat">採用済み: <span class="stat-val" id="countDone">0</span></div>
@@ -807,10 +816,76 @@ let isGenerating = false;
 let wsConnection = null;
 
 // ============================================================
-// Default CG data (from manifest)
+// CG data — read from Inventory Editor's localStorage
 // ============================================================
-const DEFAULT_CG_ITEMS = [
-  // Event CGs
+// Key shared with cg-inventory-editor.html
+const INVENTORY_STORAGE_KEY = 'nightcap_cg_editor';
+
+/**
+ * Read CG list from the Inventory Editor's localStorage.
+ * Returns { charId, charName, items[] } or null if not found.
+ */
+function readInventoryData() {
+  const raw = localStorage.getItem(INVENTORY_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw);
+    const charId = data.charId || 'blaze';
+    const charName = data.charName || '';
+    const items = [];
+
+    // Convert inventory rows → pipeline items
+    if (data.cgRows) {
+      for (const row of data.cgRows) {
+        const id = row.file.replace(/\.\w+$/, ''); // shoulder_lean.webp → shoulder_lean
+        items.push({
+          id,
+          file: row.file,
+          trigger: row.trigger,
+          level: row.level || '',
+          type: 'cg',
+          note: row.note || '',
+          charId,
+        });
+      }
+    }
+    if (data.portraitRows) {
+      for (const row of data.portraitRows) {
+        const id = row.file.replace(/\.\w+$/, '');
+        items.push({
+          id,
+          file: row.file,
+          trigger: row.trigger,
+          level: row.level || '',
+          type: 'portrait',
+          note: row.note || '',
+          charId,
+        });
+      }
+    }
+    if (data.iconRows) {
+      for (const row of data.iconRows) {
+        const id = row.file.replace(/\.\w+$/, '');
+        items.push({
+          id,
+          file: row.file,
+          trigger: row.trigger,
+          level: '',
+          type: 'icon',
+          note: row.note || '',
+          charId,
+        });
+      }
+    }
+    return { charId, charName, charNameEn: data.charNameEn || '', items };
+  } catch (e) {
+    console.error('Failed to read inventory data:', e);
+    return null;
+  }
+}
+
+// Hardcoded fallback (used only when inventory editor has no data)
+const FALLBACK_CG_ITEMS = [
   { id: 'shoulder_lean', file: 'shoulder_lean.webp', trigger: '耳元でささやく', level: 'Lv.1', type: 'cg', note: '' },
   { id: 'headpat', file: 'headpat.webp', trigger: 'うなじを撫でる', level: 'Lv.2', type: 'cg', note: '' },
   { id: 'gaze', file: 'gaze.webp', trigger: '唇を見つめる', level: 'Lv.2', type: 'cg', note: '' },
@@ -819,14 +894,12 @@ const DEFAULT_CG_ITEMS = [
   { id: 'ear_bite', file: 'ear_bite.webp', trigger: '耳を甘噛み', level: 'Lv.3', type: 'cg', note: '' },
   { id: 'lap_pillow', file: 'lap_pillow.webp', trigger: '太ももに誘う', level: 'Lv.3', type: 'cg', note: '' },
   { id: 'kiss', file: 'kiss.webp', trigger: 'ディープキス', level: 'Lv.3', type: 'cg', note: 'instant_win' },
-  // Portraits
   { id: 'portrait', file: 'portrait.webp', trigger: '基本立ち絵', level: '', type: 'portrait', note: '' },
   { id: 'portrait-drunk-0', file: 'portrait-drunk-0.webp', trigger: '素面', level: 'Lv.0', type: 'portrait', note: '' },
   { id: 'portrait-drunk-1', file: 'portrait-drunk-1.webp', trigger: 'ほろ酔い', level: 'Lv.1', type: 'portrait', note: '' },
   { id: 'portrait-drunk-2', file: 'portrait-drunk-2.webp', trigger: '酔い', level: 'Lv.2', type: 'portrait', note: '' },
   { id: 'portrait-drunk-3', file: 'portrait-drunk-3.webp', trigger: 'べろべろ', level: 'Lv.3', type: 'portrait', note: '' },
   { id: 'portrait-drunk-4', file: 'portrait-drunk-4.webp', trigger: '潰れ', level: 'Lv.4', type: 'portrait', note: '' },
-  // Icons
   { id: 'select-icon', file: 'select-icon.webp', trigger: 'キャラ選択画面用', level: '', type: 'icon', note: '' },
 ];
 
@@ -976,27 +1049,38 @@ function loadSettings() {
 }
 
 function loadCgState() {
-  // Initialize CG items from defaults
-  cgItems = DEFAULT_CG_ITEMS.map(def => ({
+  // 1. Try to read from Inventory Editor (shared localStorage)
+  const inventory = readInventoryData();
+  let sourceItems;
+
+  if (inventory && inventory.items.length > 0) {
+    sourceItems = inventory.items;
+    updateDataSourceUI(true, inventory.charName, inventory.items.length);
+  } else {
+    sourceItems = FALLBACK_CG_ITEMS;
+    updateDataSourceUI(false);
+  }
+
+  // 2. Build cgItems with production state defaults
+  cgItems = sourceItems.map(def => ({
     ...def,
-    status: 'pending',    // pending | generating | review | done
+    status: 'pending',
     positivePrompt: '',
     negativePrompt: '',
     seed: -1,
     batchSize: 1,
-    // Advanced workflow params (empty = use workflow default)
     steps: null,
     cfg: null,
     denoise: null,
     width: null,
     height: null,
     sampler: '',
-    history: [],          // Array of { imageUrl, timestamp, adopted }
-    feedback: [],         // Array of { reason, timestamp, imageIndex }
-    adoptedImage: null,   // The approved image data URL
+    history: [],
+    feedback: [],
+    adoptedImage: null,
   }));
 
-  // Merge saved state
+  // 3. Merge saved pipeline state (progress, prompts, history, etc.)
   const raw = localStorage.getItem('nightcap_cg_pipeline');
   if (!raw) return;
   try {
@@ -1023,6 +1107,76 @@ function loadCgState() {
       }
     }
   } catch (e) { console.error('Failed to load CG state:', e); }
+}
+
+/** Update the data source label in the left panel */
+function updateDataSourceUI(fromInventory, charName, count) {
+  const label = document.getElementById('dataSourceLabel');
+  if (fromInventory) {
+    label.textContent = `インベントリ (${charName || '?'}, ${count}件)`;
+    label.style.color = 'var(--success)';
+  } else {
+    label.textContent = 'フォールバック (インベントリ未設定)';
+    label.style.color = 'var(--warn)';
+  }
+}
+
+/** Sync: re-read from inventory editor, merge new items, keep existing progress */
+function syncFromInventory() {
+  const inventory = readInventoryData();
+  if (!inventory || inventory.items.length === 0) {
+    toast('インベントリエディタにデータがありません。先にインベントリエディタでCG一覧を作成してください。', 'err');
+    return;
+  }
+
+  // Keep a map of existing progress
+  const existingMap = {};
+  for (const item of cgItems) {
+    existingMap[item.id] = item;
+  }
+
+  // Rebuild from inventory, preserving progress
+  const newItems = inventory.items.map(def => {
+    const existing = existingMap[def.id];
+    if (existing) {
+      // Update metadata from inventory but keep production state
+      return {
+        ...existing,
+        file: def.file,
+        trigger: def.trigger,
+        level: def.level,
+        type: def.type,
+        note: def.note,
+        charId: def.charId,
+      };
+    } else {
+      // New item from inventory
+      return {
+        ...def,
+        status: 'pending',
+        positivePrompt: '',
+        negativePrompt: '',
+        seed: -1,
+        batchSize: 1,
+        steps: null, cfg: null, denoise: null, width: null, height: null, sampler: '',
+        history: [],
+        feedback: [],
+        adoptedImage: null,
+      };
+    }
+  });
+
+  cgItems = newItems;
+  updateDataSourceUI(true, inventory.charName, inventory.items.length);
+  saveSettings();
+  renderCgList();
+  updateCounts();
+
+  const newCount = newItems.filter(i => !existingMap[i.id]).length;
+  const msg = newCount > 0
+    ? `同期完了: ${inventory.items.length}件 (新規${newCount}件追加)`
+    : `同期完了: ${inventory.items.length}件 (変更なし)`;
+  toast(msg, 'ok');
 }
 
 // ============================================================
