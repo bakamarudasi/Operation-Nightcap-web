@@ -144,6 +144,142 @@ export const CARD_DATA: Record<string, CardDef> = {
     description: '腰を引き寄せて深く口づけ。「…もう、いいです。いいですから…」酔いLv.3以上で発動。即KO & CG再生', rarity: 6, price: 5000
   },
 
+  // === ガチャ追加ドリンク ===
+  shochu: {
+    id: 'shochu', name: '東国芋焼酎', emoji: '🍶', type: 'drink',
+    damage: 1, description: '東の島で蒸留された素朴な酒。湯割りが正解', rarity: 1, price: 100
+  },
+  soju: {
+    id: 'soju', name: '高麗焼酎', emoji: '🫗', type: 'drink',
+    damage: 1, description: '甘くて飲みやすいが油断すると足に来る', rarity: 1, price: 100
+  },
+  ale: {
+    id: 'ale', name: 'カジミエーシュ麦酒', emoji: '🍺', type: 'drink',
+    damage: 2, description: '騎士たちの祝杯用。泡がきめ細かく喉越し抜群', rarity: 2, price: 280
+  },
+  liter_beer: {
+    id: 'liter_beer', name: 'ジョッキ一気', emoji: '🍻', type: 'drink',
+    damage: 2, description: '巨大ジョッキで一気飲み。周囲が盛り上がる', rarity: 2, price: 350
+  },
+  sparkling: {
+    id: 'sparkling', name: 'コロンビア産泡酒', emoji: '🥂', type: 'drink',
+    damage: 2, description: '新興都市の洗練。細かい泡が喉を撫でる', rarity: 2, price: 320
+  },
+  rice_wine: {
+    id: 'rice_wine', name: '炎国紹興酒', emoji: '🫘', type: 'drink',
+    damage: 2, description: '温めると芳醇な香りが広がる。甕出しが最高', rarity: 2, price: 290
+  },
+  mead: {
+    id: 'mead', name: 'サーミ蜂蜜酒', emoji: '🍯', type: 'drink',
+    damage: 2, description: '極北の蜂蜜で醸した甘い酒。凍えた体を優しく温める', rarity: 2, price: 310
+  },
+  herb_liqueur: {
+    id: 'herb_liqueur', name: 'イベリア薬草酒', emoji: '🌿', type: 'drink',
+    damage: 3, description: '修道院秘伝のハーブリキュール。薬か酒か分からない味', rarity: 3, price: 550
+  },
+  absinthe: {
+    id: 'absinthe', name: 'リターニアの緑妖精', emoji: '🧚', type: 'drink',
+    damage: 3, description: 'アーツが見える…気がする禁断の蒸留酒。角砂糖を添えて', rarity: 3, price: 600
+  },
+  stout: {
+    id: 'stout', name: 'ヴィクトリア黒ビール', emoji: '🍫', type: 'drink',
+    damage: 3, description: 'コーヒーのような苦みと甘み。一杯で満足感がすごい', rarity: 3, price: 480
+  },
+  gin: {
+    id: 'gin', name: 'コロンビア・ドライジン', emoji: '🫧', type: 'drink',
+    damage: 3, description: 'ボタニカルが香る都会派の一杯。トニックで割って', rarity: 3, price: 520
+  },
+  sake: {
+    id: 'sake', name: '東国・純米大吟醸', emoji: '🍶', type: 'drink',
+    damage: 3, description: '極上の米から生まれた透明な芸術品。冷やで味わうべし', rarity: 3, price: 650
+  },
+  mystery_flask: {
+    id: 'mystery_flask', name: '謎のフラスコ', emoji: '⚗️', type: 'drink',
+    damage: -1, description: 'ロドス研究室から流出した謎液体。飲んだ者は語らない', rarity: 3, price: 500
+  },
+  double_shot: {
+    id: 'double_shot', name: 'ダブルショット', emoji: '🥃', type: 'drink',
+    damage: 4, description: 'ウィスキーをダブルで。「…付き合ってくれ、今夜は」', rarity: 4, price: 900
+  },
+  brandy: {
+    id: 'brandy', name: 'ガリア産ブランデー', emoji: '🫗', type: 'drink',
+    damage: 4, description: '琥珀色の液体が揺れる。大人の夜にふさわしい一杯', rarity: 4, price: 1000
+  },
+
+  // === ガチャ追加フード ===
+  black_bread: {
+    id: 'black_bread', name: 'ウルサス黒パン', emoji: '🍞', type: 'food',
+    heal: 1, description: '帝国兵の主食。硬いが噛むほど味が出る', rarity: 1, price: 80
+  },
+  candy: {
+    id: 'candy', name: 'ペンギン急便キャンディ', emoji: '🍬', type: 'food',
+    heal: 1, description: 'エクシアが配り歩く謎味キャンディ。たまにアタリ', rarity: 1, price: 60
+  },
+  opera_cake: {
+    id: 'opera_cake', name: 'リターニア歌劇菓子', emoji: '🍰', type: 'food',
+    heal: 1, description: '歌劇場のロビーで売られる小さな焼き菓子。上品な甘さ', rarity: 1, price: 120
+  },
+  dimsum: {
+    id: 'dimsum', name: '龍門式飲茶', emoji: '🥟', type: 'food',
+    heal: 2, description: '小さな蒸籠に詰まった龍門の味。お茶と一緒に', rarity: 2, price: 280
+  },
+  highland_tea: {
+    id: 'highland_tea', name: 'シルバーアッシュの茶', emoji: '🍵', type: 'food',
+    heal: 2, description: 'カランド貿易が扱う高山茶。一口で目が覚める', rarity: 2, price: 350
+  },
+  daily_meal: {
+    id: 'daily_meal', name: 'ロドス食堂の日替り', emoji: '🍱', type: 'food',
+    heal: 2, description: 'ガムラの渾身作。毎日違うメニューが出る。たまに事故る', rarity: 2, price: 250
+  },
+  skewer: {
+    id: 'skewer', name: '羊肉串', emoji: '🍢', type: 'food',
+    heal: 2, description: 'クミンと唐辛子が効いた炎国式串焼き。ビールが進む', rarity: 2, price: 270
+  },
+  grilled_fish: {
+    id: 'grilled_fish', name: '龍門烤魚', emoji: '🐟', type: 'food',
+    heal: 2, description: '丸ごと一匹を炭火でじっくり。ピリ辛ダレで食す', rarity: 2, price: 300
+  },
+  jerky: {
+    id: 'jerky', name: 'クルビア式ジャーキー', emoji: '🥩', type: 'food',
+    heal: 2, description: '荒野を駆けるレンジャー御用達。塩気が酒を呼ぶ', rarity: 2, price: 230
+  },
+  dango: {
+    id: 'dango', name: '東国式団子', emoji: '🍡', type: 'food',
+    heal: 2, description: 'みたらし風のタレが甘辛い。ミヅキのお気に入り', rarity: 2, price: 240
+  },
+  ration_plus: {
+    id: 'ration_plus', name: '強化レーション', emoji: '💪', type: 'food',
+    heal: 3, description: '通常の3倍のカロリー。味は保証しない', rarity: 3, price: 450
+  },
+  mushroom_soup: {
+    id: 'mushroom_soup', name: 'サルカズ毒キノコ鍋', emoji: '🍄', type: 'food',
+    heal: 3, description: 'ちゃんと処理すれば美味い…らしい。自己責任で', rarity: 3, price: 580
+  },
+  bibimbap: {
+    id: 'bibimbap', name: '高麗式石焼ビビンバ', emoji: '🍳', type: 'food',
+    heal: 3, description: '熱々の石鍋で混ぜる。おこげが最高に美味い', rarity: 3, price: 550
+  },
+  hangover_set: {
+    id: 'hangover_set', name: '二日酔いセット', emoji: '🧊', type: 'food',
+    heal: 3, description: '冷たいスープと胃薬のセット。翌朝の救世主', rarity: 3, price: 500
+  },
+  hotpot: {
+    id: 'hotpot', name: '炎国激辛火鍋', emoji: '🫕', type: 'food',
+    heal: 4, description: '汗だくで鍋を囲む。距離が自然と近くなる', rarity: 4, price: 850
+  },
+
+  // === ガチャ追加アクション ===
+  fix_collar: {
+    id: 'fix_collar', name: '襟を直してあげる', emoji: '👔', type: 'harassment',
+    requiredDrunkLevel: 1, drunkDamage: 1,
+    description: '「曲がってますよ」指先が首筋に触れる。意図的に。酔いLv.1以上で発動', rarity: 3, price: 500
+  },
+  check_pulse: {
+    id: 'check_pulse', name: '脈を測る', emoji: '💓', type: 'harassment',
+    requiredDrunkLevel: 1, drunkDamage: 1,
+    description: '「顔が赤いですね…脈を」手首をそっと掴む。ドクターらしい口実。酔いLv.1以上で発動', rarity: 3, price: 520
+  },
+
   // === 逆セクハラカード（相手→プレイヤーへの理性攻撃） ===
   foot_tease: {
     id: 'foot_tease', name: 'テーブルの下の足首', emoji: '🦶', type: 'harassment',
