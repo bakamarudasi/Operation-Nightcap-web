@@ -1,19 +1,28 @@
 /** バトル中の一時的な状態変化 */
 export interface Buff {
-  id: 'stun' | 'atk_down' | 'dot' | 'no_food' | 'corrupted_hand';
+  id: 'stun' | 'atk_down' | 'dot' | 'no_food' | 'corrupted_hand'
+    | 'tipsy' | 'blush' | 'alone' | 'karaoke' | 'dimlight' | 'excuse';
   duration: number;   // -1 = 永続, 1~ = 残りターン数
   value?: number;     // ダメージ量・倍率など
   source?: string;    // 付与元カードID
 }
 
+export type CardType = 'drink' | 'food' | 'chug' | 'harassment' | 'strategy' | 'environment' | 'status';
+export type CardEffect = 'chug' | 'toast' | 'spill'
+  | 'rumor' | 'excuse' | 'distract'
+  | 'karaoke' | 'lastorder' | 'dimlight'
+  | 'tipsy' | 'blush' | 'alone';
+
 export interface CardDef {
   id: string;
   name: string;
   emoji: string;
-  type: 'drink' | 'food' | 'chug' | 'harassment';
+  type: CardType;
   damage?: number;
   heal?: number;
-  effect?: 'chug' | 'toast' | 'spill';
+  effect?: CardEffect;
+  /** 環境カードの持続ターン数 */
+  duration?: number;
   enemyDamage?: number;
   selfDamage?: number;
   requiredDrunkLevel?: number;

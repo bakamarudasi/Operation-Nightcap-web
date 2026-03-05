@@ -3,61 +3,112 @@ import type { CardDef } from './types.ts';
 export const CARD_DATA: Record<string, CardDef> = {
   // === ドリンクカード（攻撃） ===
   beer: {
-    id: 'beer', name: 'ビール', emoji: '🍺', type: 'drink',
-    damage: 1, description: '安定の軽い一杯', rarity: 1, price: 100
+    id: 'beer', name: '龍門ラガー', emoji: '🍺', type: 'drink',
+    damage: 1, description: '龍門の屋台で必ず出てくる地ビール。とりあえずこれ', rarity: 1, price: 100
   },
   wine: {
-    id: 'wine', name: 'ワイン', emoji: '🍷', type: 'drink',
-    damage: 2, description: 'バランス型', rarity: 2, price: 300
+    id: 'wine', name: 'ヴィクトリア産熟成赤', emoji: '🍷', type: 'drink',
+    damage: 2, description: '王国の晩餐会御用達。品があって、それなりに効く', rarity: 2, price: 300
   },
   whiskey: {
-    id: 'whiskey', name: 'ウイスキー', emoji: '🥃', type: 'drink',
-    damage: 3, description: '重い一撃', rarity: 3, price: 500
+    id: 'whiskey', name: 'ウルサス原酒ストレート', emoji: '🥃', type: 'drink',
+    damage: 3, description: '帝国の極寒が生んだ重厚な一杯。一口で胃が焼ける', rarity: 3, price: 500
   },
   baijiu: {
-    id: 'baijiu', name: '白酒', emoji: '🍶', type: 'drink',
-    damage: 4, description: '中国酒。最強のドリンク', rarity: 4, price: 800
+    id: 'baijiu', name: '炎国・茅台酒', emoji: '🍶', type: 'drink',
+    damage: 4, description: '歴史ある炎国の国酒。飲んだ者は皆、地に伏す', rarity: 4, price: 800
   },
   cocktail: {
-    id: 'cocktail', name: 'カクテル', emoji: '🧊', type: 'drink',
+    id: 'cocktail', name: 'ペンギン急便スペシャル', emoji: '🧊', type: 'drink',
     damage: -1, // ランダム(1~3)
-    description: 'ランダムダメージ（ロシアンルーレット感）', rarity: 2, price: 400
+    description: '「中身は企業秘密」。エクシア謹製、何が入ってるかは飲んでから分かる', rarity: 2, price: 400
   },
 
   // === つまみカード（防御・回復） ===
   nuts: {
-    id: 'nuts', name: 'ナッツ', emoji: '🥜', type: 'food',
-    heal: 1, description: '軽いつまみ', rarity: 1, price: 100
+    id: 'nuts', name: '行軍糧食', emoji: '🥜', type: 'food',
+    heal: 1, description: 'ロドス配給の携帯食。味気ないが確実に体を支える', rarity: 1, price: 100
   },
   yakitori: {
-    id: 'yakitori', name: '焼き鳥', emoji: '🍖', type: 'food',
-    heal: 2, description: 'がっつり系', rarity: 2, price: 300
+    id: 'yakitori', name: '龍門屋台の串焼き', emoji: '🍖', type: 'food',
+    heal: 2, description: '龍門の夜市名物。煙と喧騒の中で食う一本がたまらない', rarity: 2, price: 300
   },
   ramen: {
-    id: 'ramen', name: 'ラーメン', emoji: '🍜', type: 'food',
-    heal: 3, description: '〆の一杯。大回復', rarity: 3, price: 600
+    id: 'ramen', name: '龍門式老火麺', emoji: '🍜', type: 'food',
+    heal: 3, description: '〆はこれに限る。長時間煮込んだスープが酔いを芯から癒す', rarity: 3, price: 600
   },
   ukon: {
-    id: 'ukon', name: 'ウコン', emoji: '💊', type: 'food',
-    heal: 99, description: 'クロージャ限定販売。ぶっ壊れ', rarity: 5, price: 1200
+    id: 'ukon', name: 'ケルシー処方薬', emoji: '💊', type: 'food',
+    heal: 99, description: 'クロージャが裏ルートで横流しした禁断の回復薬。「お前には過ぎた代物だ」', rarity: 5, price: 1200
+  },
+
+  // === 戦略・妨害カード ===
+  rumor: {
+    id: 'rumor', name: '龍門の噂話', emoji: '🗣️', type: 'strategy',
+    effect: 'rumor',
+    description: '「ねえ聞いた？」相手の次に出すカードをランダムに差し替える。ペンギン急便の情報網を使った情報戦', rarity: 3, price: 600
+  },
+  excuse: {
+    id: 'excuse', name: '「酔ってるから」', emoji: '🙈', type: 'strategy',
+    effect: 'excuse',
+    description: 'ハラスメントカードの発動必要酔いLvを1下げる。「これは任務の一環です」', rarity: 4, price: 900
+  },
+  distract: {
+    id: 'distract', name: '話題転換', emoji: '👁️', type: 'strategy',
+    effect: 'distract',
+    description: '相手の手札を全て確認する。「そういえば、ウルサスのこと聞きましたよ」', rarity: 2, price: 500
+  },
+
+  // === 環境変化カード ===
+  karaoke: {
+    id: 'karaoke', name: 'カラオケ2次会', emoji: '🎤', type: 'environment',
+    effect: 'karaoke', duration: 3,
+    description: '3ターン、全ドリンクのダメージ+1。「まだ終わりませんよ、ドクター」', rarity: 3, price: 700
+  },
+  lastorder: {
+    id: 'lastorder', name: 'ラストオーダー', emoji: '🔔', type: 'environment',
+    effect: 'lastorder',
+    description: '次のターンのみ手札を全て使用可能。「閉店前の最後のチャンスです」', rarity: 4, price: 1000
+  },
+  dimlight: {
+    id: 'dimlight', name: '照明を落とす', emoji: '🕯️', type: 'environment',
+    effect: 'dimlight', duration: 2,
+    description: '2ターン、全ハラスメントカードの必要酔いLvを1下げる。「…暗くしたんですか」', rarity: 3, price: 800
+  },
+
+  // === 状態異常カード ===
+  tipsy: {
+    id: 'tipsy', name: 'ほろ酔い状態', emoji: '😳', type: 'status',
+    effect: 'tipsy',
+    description: '相手をほろ酔い状態にする。ほろ酔い時は受けるドリンクダメージが1.5倍になる', rarity: 3, price: 750
+  },
+  blush: {
+    id: 'blush', name: '顔が赤い', emoji: '😶‍🌫️', type: 'status',
+    effect: 'blush',
+    description: '相手を動揺状態にする。動揺中はハラスメントカードのdrunkDamageが+1される', rarity: 4, price: 1100
+  },
+  alone: {
+    id: 'alone', name: '二人きり', emoji: '🌙', type: 'status',
+    effect: 'alone',
+    description: '2ターン、場の状態を「二人きり」にする。この間ハラスメントカードのダメージが2倍', rarity: 5, price: 2000
   },
 
   // === 一気飲みカード（ハイリスク） ===
   chug: {
-    id: 'chug', name: '一気飲み', emoji: '🍻', type: 'chug',
+    id: 'chug', name: 'レユニオン式気合注入', emoji: '🍻', type: 'chug',
     effect: 'chug', enemyDamage: 3, selfDamage: 1,
-    description: '相手に酔い3ダメージ、自分にも酔い1ダメージ', rarity: 3, price: 800
+    description: '「ためらうな、飲め！」相手に酔い3ダメージ。自分も巻き込まれて酔い1ダメージ', rarity: 3, price: 800
   },
   toast: {
-    id: 'toast', name: '乾杯強制', emoji: '🥂', type: 'chug',
+    id: 'toast', name: '強制乾杯令', emoji: '🥂', type: 'chug',
     effect: 'toast', enemyDamage: 2, selfDamage: 1,
-    description: '相手に酔い2ダメージ+次ラウンド相手の手札1枚破棄、自分も酔い1ダメージ',
+    description: '断れない空気を作り出す上級テクニック。相手に酔い2+次ターン手札破棄。自分も酔い1',
     rarity: 3, price: 700
   },
   spill: {
-    id: 'spill', name: 'こぼし', emoji: '🫗', type: 'chug',
+    id: 'spill', name: 'わざとこぼし', emoji: '🫗', type: 'chug',
     effect: 'spill',
-    description: '相手の出したカード無効化。次ラウンド自分の手札が3枚に減る',
+    description: '「あっ、ごめんなさい」相手のカード効果を無効化。次ターン自分の手札が3枚に減る',
     rarity: 2, price: 500
   },
 
@@ -65,42 +116,32 @@ export const CARD_DATA: Record<string, CardDef> = {
   shoulder_lean: {
     id: 'shoulder_lean', name: '耳元でささやく', emoji: '💋', type: 'harassment',
     requiredDrunkLevel: 1, drunkDamage: 1,
-    description: '肩を寄せて耳元に唇を近づける。酔いLv.1以上で発動。酔い+1 & CG再生', rarity: 4, price: 1500
+    description: '肩を寄せて耳元に唇を近づける。「…少し、近すぎませんか」酔いLv.1以上で発動。酔い+1 & CG再生', rarity: 4, price: 1500
   },
   headpat: {
     id: 'headpat', name: 'うなじを撫でる', emoji: '🫳', type: 'harassment',
     requiredDrunkLevel: 2, drunkDamage: 1,
-    description: '髪をかき上げてうなじに指を這わせる。酔いLv.2以上で発動。酔い+1 & CG再生', rarity: 4, price: 1500
-  },
-  gaze: {
-    id: 'gaze', name: '唇を見つめる', emoji: '👀', type: 'harassment',
-    requiredDrunkLevel: 2, drunkDamage: 2,
-    description: '顎を持ち上げて濡れた唇をじっと見つめる。酔いLv.2以上で発動。酔い+2 & CG再生', rarity: 4, price: 2000
-  },
-  lap_pillow: {
-    id: 'lap_pillow', name: '太ももに誘う', emoji: '💕', type: 'harassment',
-    requiredDrunkLevel: 3, drunkDamage: 2,
-    description: '膝枕させて髪を指に絡めながら耳を甘噛み。酔いLv.3以上で発動。酔い+2 & CG再生', rarity: 5, price: 3000
+    description: '髪をかき上げてうなじに指を這わせる。「…っ、何を」酔いLv.2以上で発動。酔い+1 & CG再生', rarity: 4, price: 1500
   },
   breast_touch: {
     id: 'breast_touch', name: '胸に触れる', emoji: '🫦', type: 'harassment',
     requiredDrunkLevel: 2, drunkDamage: 3,
-    description: '「酔ってるから」を口実にそっと胸に手を伸ばす。酔いLv.2以上で発動。酔い+3 & CG再生', rarity: 5, price: 4000
+    description: '「酔ってるから」を口実にそっと手を伸ばす。「…これは、任務外です」酔いLv.2以上で発動。酔い+3 & CG再生', rarity: 5, price: 4000
   },
   hip_touch: {
     id: 'hip_touch', name: 'お尻をなでる', emoji: '🍑', type: 'harassment',
     requiredDrunkLevel: 2, drunkDamage: 2,
-    description: '隣に座ったまま大胆にお尻に手を滑らせる。酔いLv.2以上で発動。酔い+2 & CG再生', rarity: 5, price: 3500
+    description: '隣に座ったまま大胆に手を滑らせる。「っ…ドクター、あなたは」酔いLv.2以上で発動。酔い+2 & CG再生', rarity: 5, price: 3500
   },
   ear_bite: {
     id: 'ear_bite', name: '耳を甘噛み', emoji: '👅', type: 'harassment',
     requiredDrunkLevel: 3, drunkDamage: 3,
-    description: '耳たぶをそっと唇で挟む。酔いLv.3以上で発動。酔い+3 & CG再生', rarity: 5, price: 4500
+    description: '耳たぶをそっと唇で挟む。「…もう、やめて、ください」酔いLv.3以上で発動。酔い+3 & CG再生', rarity: 5, price: 4500
   },
   kiss: {
     id: 'kiss', name: 'ディープキス', emoji: '💋', type: 'harassment',
     requiredDrunkLevel: 3, instantWin: true,
-    description: '腰を引き寄せて深く口づけ。酔いLv.3以上で発動。即KO & CG再生', rarity: 6, price: 5000
+    description: '腰を引き寄せて深く口づけ。「…もう、いいです。いいですから…」酔いLv.3以上で発動。即KO & CG再生', rarity: 6, price: 5000
   },
 
   // === 逆セクハラカード（相手→プレイヤーへの理性攻撃） ===
