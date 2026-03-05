@@ -280,6 +280,18 @@ export const CARD_DATA: Record<string, CardDef> = {
     description: '「顔が赤いですね…脈を」手首をそっと掴む。ドクターらしい口実。酔いLv.1以上で発動', rarity: 3, price: 520
   },
 
+  // === 追加セクハラカード ===
+  gaze: {
+    id: 'gaze', name: '唇を見つめる', emoji: '👁️', type: 'harassment',
+    requiredDrunkLevel: 2, drunkDamage: 2,
+    description: '顎を持ち上げ、濡れた唇をじっと見つめる。「…見ないで…恥ずかしい」酔いLv.2以上で発動。酔い+2 & CG再生', rarity: 4, price: 2000
+  },
+  lap_pillow: {
+    id: 'lap_pillow', name: '膝枕', emoji: '🛌', type: 'harassment',
+    requiredDrunkLevel: 3, drunkDamage: 2,
+    description: '相手の頭をそっと膝に導く。「…ここで寝ちゃっていいよ」酔いLv.3以上で発動。酔い+2 & CG再生', rarity: 5, price: 3000
+  },
+
   // === 逆セクハラカード（相手→プレイヤーへの理性攻撃） ===
   foot_tease: {
     id: 'foot_tease', name: 'テーブルの下の足首', emoji: '🦶', type: 'harassment',

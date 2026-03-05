@@ -193,6 +193,12 @@ export const BattleEngine = {
     }
 
     // === 一気飲み系カード処理 ===
+    if (pCard.type === 'chug' && oCard.type === 'chug') {
+      // 両者chug: 両方の効果を処理
+      this.resolveChugCard(pCard, oCard, result, 'player', battle);
+      this.resolveChugCard(oCard, pCard, result, 'opponent', battle);
+      return result;
+    }
     if (pCard.type === 'chug') {
       return this.resolveChugCard(pCard, oCard, result, 'player', battle);
     }
@@ -201,6 +207,12 @@ export const BattleEngine = {
     }
 
     // === セクハラカード処理（プレイヤー・相手 双方向対応） ===
+    if (pCard.type === 'harassment' && oCard.type === 'harassment') {
+      // 両者harassment: 両方の効果を処理
+      this.resolveHarassmentCard(pCard, oCard, result, 'player', battle);
+      this.resolveHarassmentCard(oCard, pCard, result, 'opponent', battle);
+      return result;
+    }
     if (pCard.type === 'harassment') {
       return this.resolveHarassmentCard(pCard, oCard, result, 'player', battle);
     }
@@ -215,6 +227,9 @@ export const BattleEngine = {
 
       if (hasBuff(battle.playerBuffs, 'atk_down')) {
         result.messages.push(`⬇️ 攻撃力低下中…ダメージ半減！`);
+      }
+      if (hasBuff(battle.opponentBuffs, 'atk_down')) {
+        result.messages.push(`⬇️ 相手も攻撃力低下中…ダメージ半減！`);
       }
 
       if (pDmg > oDmg) {
@@ -231,9 +246,14 @@ export const BattleEngine = {
     else if (pCard.type === 'drink' && oCard.type === 'food') {
       let pDmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
       result.opponentDamage += pDmg;
-      result.opponentHeal = oCard.heal === 99 ? Math.max(0, battle.opponentDrunk + pDmg) : (oCard.heal ?? 0);
-      result.messages.push(`${pCard.emoji} ${pCard.name}で酔い${pDmg}ダメージ！`);
-      result.messages.push(`${oCard.emoji} ${oCard.name}で${result.opponentHeal}回復！`);
+      if (hasBuff(battle.opponentBuffs, 'no_food')) {
+        result.messages.push(`${pCard.emoji} ${pCard.name}で酔い${pDmg}ダメージ！`);
+        result.messages.push(`🚫 相手はつまみ封じ中！${oCard.emoji}${oCard.name}が使えない！`);
+      } else {
+        result.opponentHeal = oCard.heal === 99 ? Math.max(0, battle.opponentDrunk + pDmg) : (oCard.heal ?? 0);
+        result.messages.push(`${pCard.emoji} ${pCard.name}で酔い${pDmg}ダメージ！`);
+        result.messages.push(`${oCard.emoji} ${oCard.name}で${result.opponentHeal}回復！`);
+      }
     }
     else if (pCard.type === 'food' && oCard.type === 'drink') {
       if (hasBuff(battle.playerBuffs, 'no_food')) {
@@ -254,8 +274,16 @@ export const BattleEngine = {
       if (hasBuff(battle.playerBuffs, 'no_food')) {
         result.messages.push(`🚫 つまみ封じ中！${pCard.emoji}${pCard.name}が使えない！`);
       } else {
-        result.messages.push('平和なラウンド…お互いつまみを食べた');
+        result.playerHeal = pCard.heal === 99 ? Math.max(0, battle.playerDrunk) : (pCard.heal ?? 0);
+        result.messages.push(`${pCard.emoji} ${pCard.name}で${result.playerHeal}回復！`);
       }
+      if (hasBuff(battle.opponentBuffs, 'no_food')) {
+        result.messages.push(`🚫 相手もつまみ封じ中！${oCard.emoji}${oCard.name}が使えない！`);
+      } else {
+        result.opponentHeal = oCard.heal === 99 ? Math.max(0, battle.opponentDrunk) : (oCard.heal ?? 0);
+        result.messages.push(`${oCard.emoji} ${oCard.name}で相手も${result.opponentHeal}回復！`);
+      }
+      result.messages.push('平和なラウンド…お互いつまみを食べた');
     }
 
     return result;
@@ -310,8 +338,15 @@ export const BattleEngine = {
         break;
 
       case 'lastorder':
-        // TODO: 次のターン手札全使用可能（要UI対応、今はメッセージのみ）
-        result.messages.push(`${card.emoji} ${card.name}！閉店間近…次のターン、全力勝負！`);
+        // 次のターン手札全使用可能 → ドリンクダメージ+2 バフで表現
+        {
+          if (isPlayer) {
+            result.newPlayerBuffs!.push({ id: 'karaoke', duration: 1, value: 2, source: card.id });
+          } else {
+            result.newOpponentBuffs!.push({ id: 'karaoke', duration: 1, value: 2, source: card.id });
+          }
+          result.messages.push(`${card.emoji} ${card.name}！閉店間近…次のターン、全力勝負！（ドリンクダメージ+2）`);
+        }
         break;
 
       case 'dimlight':
@@ -398,7 +433,7 @@ export const BattleEngine = {
 
   resolveHarassmentCard(hCard: any, otherCard: any, result: ExtendedResult, user: 'player' | 'opponent', battle: BattleState): ExtendedResult {
     // 判定: 相手の酔い度で判定（どちら側でも相手の酔いを参照）
-    const triggerDrunk = user === 'player' ? battle.opponentDrunk : battle.opponentDrunk;
+    const triggerDrunk = user === 'player' ? battle.opponentDrunk : battle.playerDrunk;
     const triggerLevel = getDrunkLevel(triggerDrunk);
 
     // バフによる必要Lv補正
@@ -460,11 +495,13 @@ export const BattleEngine = {
 
     // 相手のカードも処理
     if (!result.spillNullified && otherCard.type === 'drink') {
-      const dmg = getCardDamage(otherCard);
+      const baseDmg = getCardDamage(otherCard);
       if (user === 'player') {
+        const dmg = applyDrinkBuffs(baseDmg, battle.opponentBuffs, battle.playerBuffs);
         result.playerDamage += dmg;
         result.messages.push(`相手の${otherCard.emoji}${otherCard.name}で酔い${dmg}ダメージ！`);
       } else {
+        const dmg = applyDrinkBuffs(baseDmg, battle.playerBuffs, battle.opponentBuffs);
         result.opponentDamage += dmg;
         result.messages.push(`${otherCard.emoji}${otherCard.name}で相手に酔い${dmg}ダメージ！`);
       }
