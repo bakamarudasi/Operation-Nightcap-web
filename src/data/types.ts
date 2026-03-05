@@ -141,7 +141,16 @@ export interface CharacterDef {
   afterEvents: AfterEvent[];
 }
 
-export type ScreenId = 'title' | 'select' | 'battle' | 'shop' | 'gallery' | 'settings';
+export type ScreenId = 'title' | 'select' | 'battle' | 'shop' | 'gacha' | 'gallery' | 'settings';
+
+/** ガチャ1回分の排出結果 */
+export interface GachaResult {
+  cardId: string;
+  rarity: number;
+  isNew: boolean;
+  isDuplicate: boolean;
+  refund: number;
+}
 
 export interface BattleState {
   round: number;

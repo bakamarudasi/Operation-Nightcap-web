@@ -1,15 +1,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff } from '../data/types.ts';
+import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, GachaResult } from '../data/types.ts';
 import { DEFAULT_DECK, CARD_DATA } from '../data/cards.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import { shuffleArray, randomPick } from '../engine/utils.ts';
 import { BattleEngine, tickBuffs } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
+import { pullMulti } from '../engine/gachaEngine.ts';
+import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
 
 interface GameStore {
   // 永続データ
   money: number;
+  inventory: string[];
   playerDeck: string[];
   unlockedCGs: string[];
   unlockedAfterEvents: string[];
@@ -45,6 +48,9 @@ interface GameStore {
   // ショップ
   buyCard: (cardId: string) => boolean;
   sellCard: (index: number) => boolean;
+
+  // ガチャ
+  pullGacha: (count: 1 | 10) => GachaResult[] | null;
 
   // CG
   showCG: (cg: CGEvent) => void;
@@ -89,6 +95,7 @@ export const useGameStore = create<GameStore>()(
     (set, get) => ({
       // 永続データ
       money: 3200,
+      inventory: [...DEFAULT_DECK],
       playerDeck: [...DEFAULT_DECK],
       unlockedCGs: [],
       unlockedAfterEvents: [],
@@ -363,6 +370,32 @@ export const useGameStore = create<GameStore>()(
         return true;
       },
 
+      pullGacha: (count) => {
+        const state = get();
+        const cost = count === 10 ? GACHA_MULTI_COST : GACHA_SINGLE_COST;
+        if (state.money < cost) return null;
+
+        const results = pullMulti(state.inventory, count);
+
+        // 結果を反映
+        let moneyDelta = -cost;
+        const newInventory = [...state.inventory];
+        for (const r of results) {
+          if (r.isDuplicate) {
+            moneyDelta += r.refund;
+          } else {
+            newInventory.push(r.cardId);
+          }
+        }
+
+        set({
+          money: state.money + moneyDelta,
+          inventory: newInventory,
+        });
+
+        return results;
+      },
+
       showCG: (cg) => set({ activeCG: cg, cgDialogueIndex: 0 }),
 
       advanceCG: () => {
@@ -427,6 +460,7 @@ export const useGameStore = create<GameStore>()(
       resetData: () => {
         set({
           money: 3200,
+          inventory: [...DEFAULT_DECK],
           playerDeck: [...DEFAULT_DECK],
           unlockedCGs: [],
           unlockedAfterEvents: [],
@@ -450,6 +484,7 @@ export const useGameStore = create<GameStore>()(
       name: 'closures_bar_save',
       partialize: (state) => ({
         money: state.money,
+        inventory: state.inventory,
         playerDeck: state.playerDeck,
         unlockedCGs: state.unlockedCGs,
         unlockedAfterEvents: state.unlockedAfterEvents,
