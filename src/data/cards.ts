@@ -101,7 +101,23 @@ export const CARD_DATA: Record<string, CardDef> = {
     id: 'kiss', name: 'ディープキス', emoji: '💋', type: 'harassment',
     requiredDrunkLevel: 3, instantWin: true,
     description: '腰を引き寄せて深く口づけ。酔いLv.3以上で発動。即KO & CG再生', rarity: 6, price: 5000
-  }
+  },
+
+  // === 逆セクハラカード（相手→プレイヤーへの理性攻撃） ===
+  foot_tease: {
+    id: 'foot_tease', name: 'テーブルの下の足首', emoji: '🦶', type: 'harassment',
+    requiredDrunkLevel: 2, sanityDamage: 3,
+    applyBuffs: [{ id: 'atk_down', duration: 1, value: 0.5 }],
+    description: '素足がテーブルの下でドクターの股間をゆっくり擦り上げる。酔いLv.2以上。理性+3 & 攻撃半減1T & CG再生',
+    rarity: 5, price: 3000
+  },
+  dirty_talk: {
+    id: 'dirty_talk', name: '淫らな耳元囁き', emoji: '👄', type: 'harassment',
+    requiredDrunkLevel: 2, sanityDamage: 2,
+    corruptHand: 2,
+    description: '「今夜は最後まで帰さないから…」手札2枚を発情状態に。酔いLv.2以上。理性+2 & 手札汚染 & CG再生',
+    rarity: 5, price: 3500
+  },
 };
 
 export function getCardDamage(card: CardDef): number {

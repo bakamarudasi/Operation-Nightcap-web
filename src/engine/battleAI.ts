@@ -10,6 +10,12 @@ function getDrunkLevel(drunkValue: number): number {
   return 0;
 }
 
+/** プレイヤーがつまみばかり使っているか判定（直近の行動傾向から推定） */
+function isPlayerStalling(battle: BattleState): boolean {
+  // ラウンド3以上経過しても相手の酔いが低い → 守り寄り
+  return battle.round >= 3 && battle.opponentDrunk <= 1;
+}
+
 export const BattleAI = {
   selectCard(hand: string[], character: CharacterDef, battle: BattleState): string | null {
     if (hand.length === 0) return null;
@@ -21,6 +27,21 @@ export const BattleAI = {
     const drinks = hand.filter(id => CARD_DATA[id]?.type === 'drink');
     const foods = hand.filter(id => CARD_DATA[id]?.type === 'food');
     const chugs = hand.filter(id => CARD_DATA[id]?.type === 'chug');
+    const harassments = hand.filter(id => CARD_DATA[id]?.type === 'harassment');
+
+    // === 逆セクハラ条件行動 ===
+    // 自分の酔いLvが高い（大胆になっている）→ 確定で逆セクハラを仕掛ける
+    if (myDrunkLevel >= 3 && harassments.length > 0) {
+      // 酔いが深い → 最も強力なセクハラカードを選択
+      return this.pickStrongestHarassment(harassments);
+    }
+
+    // プレイヤーが守りに徹している → しびれを切らして逆セクハラ
+    if (isPlayerStalling(battle) && harassments.length > 0 && myDrunkLevel >= 2) {
+      if (Math.random() < 0.6) {
+        return randomPick(harassments);
+      }
+    }
 
     // 自分の酔いが高い → つまみ優先
     if (myDrunkLevel >= 2 && foods.length > 0) {
@@ -40,6 +61,13 @@ export const BattleAI = {
     if (chugs.length > 0 && playerDrunkLevel >= 2) {
       if (Math.random() < 0.5) {
         return randomPick(chugs);
+      }
+    }
+
+    // 逆セクハラ: 条件を満たしていれば低確率で使用
+    if (harassments.length > 0 && myDrunkLevel >= 2) {
+      if (Math.random() < 0.3) {
+        return randomPick(harassments);
       }
     }
 
@@ -85,5 +113,16 @@ export const BattleAI = {
       const bestCard = CARD_DATA[best];
       return (card.heal ?? 0) > (bestCard.heal ?? 0) ? id : best;
     }, foods[0]);
+  },
+
+  /** 最も強力なセクハラカードを選択（sanityDamage > drunkDamage > instantWin） */
+  pickStrongestHarassment(cards: string[]): string {
+    return cards.reduce((best, id) => {
+      const card = CARD_DATA[id];
+      const bestCard = CARD_DATA[best];
+      const score = (card.sanityDamage ?? 0) + (card.drunkDamage ?? 0) + (card.instantWin ? 10 : 0);
+      const bestScore = (bestCard.sanityDamage ?? 0) + (bestCard.drunkDamage ?? 0) + (bestCard.instantWin ? 10 : 0);
+      return score > bestScore ? id : best;
+    }, cards[0]);
   },
 };

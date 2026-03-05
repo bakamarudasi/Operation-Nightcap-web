@@ -1,3 +1,11 @@
+/** バトル中の一時的な状態変化 */
+export interface Buff {
+  id: 'stun' | 'atk_down' | 'dot' | 'no_food' | 'corrupted_hand';
+  duration: number;   // -1 = 永続, 1~ = 残りターン数
+  value?: number;     // ダメージ量・倍率など
+  source?: string;    // 付与元カードID
+}
+
 export interface CardDef {
   id: string;
   name: string;
@@ -11,6 +19,14 @@ export interface CardDef {
   requiredDrunkLevel?: number;
   drunkDamage?: number;
   instantWin?: boolean;
+  /** 理性（サニティ）への直接ダメージ。逆セクハラ等で使用 */
+  sanityDamage?: number;
+  /** 成功時に対象に付与するバフ/デバフ */
+  applyBuffs?: Buff[];
+  /** 成功時に自分に付与するバフ/デバフ */
+  applySelfBuffs?: Buff[];
+  /** 手札汚染: ランダムでN枚を「発情」状態に変える */
+  corruptHand?: number;
   description: string;
   rarity: number;
   price: number;
@@ -133,6 +149,12 @@ export interface BattleState {
   playerReducedHand: boolean;
   opponentReducedHand: boolean;
   spillActive: boolean;
+  /** プレイヤー（ドクター）側のバフ/デバフ */
+  playerBuffs: Buff[];
+  /** 相手側のバフ/デバフ */
+  opponentBuffs: Buff[];
+  /** 手札の汚染状態 (カードindex → true で「発情」状態) */
+  corruptedSlots: boolean[];
 }
 
 export interface RoundResult {
@@ -146,4 +168,12 @@ export interface RoundResult {
   cgEvent: CGEvent | null;
   instantWin: boolean;
   spillNullified: boolean;
+  /** 相手のセクハラ/逆セクハラで発動するCGイベント */
+  opponentCgEvent?: CGEvent | null;
+  /** このラウンドで付与されるバフ（プレイヤー側） */
+  newPlayerBuffs?: Buff[];
+  /** このラウンドで付与されるバフ（相手側） */
+  newOpponentBuffs?: Buff[];
+  /** 手札汚染数 */
+  corruptCount?: number;
 }
