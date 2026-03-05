@@ -1,15 +1,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent } from '../data/types.ts';
+import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, GachaResult } from '../data/types.ts';
 import { DEFAULT_DECK, CARD_DATA } from '../data/cards.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import { shuffleArray, randomPick } from '../engine/utils.ts';
-import { BattleEngine } from '../engine/battleEngine.ts';
+import { BattleEngine, tickBuffs } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
+import { pullMulti } from '../engine/gachaEngine.ts';
+import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
 
 interface GameStore {
   // 永続データ
   money: number;
+  inventory: string[];
   playerDeck: string[];
   unlockedCGs: string[];
   unlockedAfterEvents: string[];
@@ -38,13 +41,16 @@ interface GameStore {
   initBattle: (opponentId: string) => void;
   drawHands: () => void;
   selectCard: (cardId: string) => void;
-  playRound: () => { messages: string[]; cgEvent: CGEvent | null; instantWin: boolean; opponentCardId: string; playerDamage: number; opponentDamage: number; playerHeal: number; opponentHeal: number } | null;
+  playRound: () => { messages: string[]; cgEvent: CGEvent | null; opponentCgEvent: CGEvent | null; instantWin: boolean; opponentCardId: string; playerDamage: number; opponentDamage: number; playerHeal: number; opponentHeal: number } | null;
   checkGameEnd: () => 'player_win' | 'opponent_win' | 'draw' | null;
   endBattle: (result: 'player_win' | 'opponent_win' | 'draw') => number;
 
   // ショップ
   buyCard: (cardId: string) => boolean;
   sellCard: (index: number) => boolean;
+
+  // ガチャ
+  pullGacha: (count: 1 | 10) => GachaResult[] | null;
 
   // CG
   showCG: (cg: CGEvent) => void;
@@ -79,6 +85,9 @@ const initialBattle: BattleState = {
   playerReducedHand: false,
   opponentReducedHand: false,
   spillActive: false,
+  playerBuffs: [],
+  opponentBuffs: [],
+  corruptedSlots: [],
 };
 
 export const useGameStore = create<GameStore>()(
@@ -86,6 +95,7 @@ export const useGameStore = create<GameStore>()(
     (set, get) => ({
       // 永続データ
       money: 3200,
+      inventory: [...DEFAULT_DECK],
       playerDeck: [...DEFAULT_DECK],
       unlockedCGs: [],
       unlockedAfterEvents: [],
@@ -193,7 +203,7 @@ export const useGameStore = create<GameStore>()(
 
         const result = BattleEngine.resolveRound(b.selectedCard, opponentCardId, b);
 
-        // セクハラカード成功時にCGイベント検索
+        // === プレイヤーのセクハラ成功時 → CGイベント検索 ===
         const pCard = CARD_DATA[b.selectedCard];
         if (pCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
           const targetDrunk = b.opponentDrunk;
@@ -206,13 +216,59 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
-        // CG解放
-        if (result.cgEvent) {
-          const cgs = [...state.unlockedCGs];
-          if (!cgs.includes(result.cgEvent.id)) {
-            cgs.push(result.cgEvent.id);
+        // === 相手の逆セクハラ成功時 → CGイベント検索 ===
+        const oCard = CARD_DATA[opponentCardId];
+        let opponentCgEvent: CGEvent | null = null;
+        if (oCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
+          const opponentDrunk = b.opponentDrunk;
+          const opponentLevel = get().getDrunkLevel(opponentDrunk);
+          if (opponentLevel >= (oCard.requiredDrunkLevel ?? 0)) {
+            // 相手のセクハラカードIDでCGイベントを検索
+            const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === opponentCardId);
+            if (cgEvent) {
+              opponentCgEvent = cgEvent;
+            }
           }
+        }
+
+        // CG解放（プレイヤー側 + 相手側の両方）
+        const cgs = [...state.unlockedCGs];
+        if (result.cgEvent && !cgs.includes(result.cgEvent.id)) {
+          cgs.push(result.cgEvent.id);
+        }
+        if (opponentCgEvent && !cgs.includes(opponentCgEvent.id)) {
+          cgs.push(opponentCgEvent.id);
+        }
+        if (cgs.length !== state.unlockedCGs.length) {
           set({ unlockedCGs: cgs });
+        }
+
+        // === バフ処理 ===
+        // 既存バフのtick（duration減少）
+        let newPlayerBuffs = tickBuffs([...b.playerBuffs]);
+        let newOpponentBuffs = tickBuffs([...b.opponentBuffs]);
+
+        // 今回のラウンドで付与されたバフを追加
+        if (result.newPlayerBuffs) {
+          newPlayerBuffs = [...newPlayerBuffs, ...result.newPlayerBuffs];
+        }
+        if (result.newOpponentBuffs) {
+          newOpponentBuffs = [...newOpponentBuffs, ...result.newOpponentBuffs];
+        }
+
+        // === 手札汚染処理 ===
+        let corruptedSlots = [...b.corruptedSlots];
+        if (result.corruptCount && result.corruptCount > 0) {
+          // 次のラウンドの手札に対して汚染を予約（4枠分のフラグ）
+          corruptedSlots = [false, false, false, false];
+          const indices = [0, 1, 2, 3];
+          for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+          }
+          for (let i = 0; i < Math.min(result.corruptCount, 4); i++) {
+            corruptedSlots[indices[i]] = true;
+          }
         }
 
         set((state) => ({
@@ -229,12 +285,16 @@ export const useGameStore = create<GameStore>()(
             playerReducedHand: result.playerReducedHand ?? state.battle.playerReducedHand,
             opponentReducedHand: result.opponentReducedHand ?? state.battle.opponentReducedHand,
             spillActive: result.spillNullified,
+            playerBuffs: newPlayerBuffs,
+            opponentBuffs: newOpponentBuffs,
+            corruptedSlots,
           },
         }));
 
         return {
           messages: result.messages,
           cgEvent: result.cgEvent,
+          opponentCgEvent,
           instantWin: result.instantWin,
           opponentCardId,
           playerDamage: result.playerDamage,
@@ -310,6 +370,32 @@ export const useGameStore = create<GameStore>()(
         return true;
       },
 
+      pullGacha: (count) => {
+        const state = get();
+        const cost = count === 10 ? GACHA_MULTI_COST : GACHA_SINGLE_COST;
+        if (state.money < cost) return null;
+
+        const results = pullMulti(state.inventory, count);
+
+        // 結果を反映
+        let moneyDelta = -cost;
+        const newInventory = [...state.inventory];
+        for (const r of results) {
+          if (r.isDuplicate) {
+            moneyDelta += r.refund;
+          } else {
+            newInventory.push(r.cardId);
+          }
+        }
+
+        set({
+          money: state.money + moneyDelta,
+          inventory: newInventory,
+        });
+
+        return results;
+      },
+
       showCG: (cg) => set({ activeCG: cg, cgDialogueIndex: 0 }),
 
       advanceCG: () => {
@@ -374,6 +460,7 @@ export const useGameStore = create<GameStore>()(
       resetData: () => {
         set({
           money: 3200,
+          inventory: [...DEFAULT_DECK],
           playerDeck: [...DEFAULT_DECK],
           unlockedCGs: [],
           unlockedAfterEvents: [],
@@ -397,6 +484,7 @@ export const useGameStore = create<GameStore>()(
       name: 'closures_bar_save',
       partialize: (state) => ({
         money: state.money,
+        inventory: state.inventory,
         playerDeck: state.playerDeck,
         unlockedCGs: state.unlockedCGs,
         unlockedAfterEvents: state.unlockedAfterEvents,

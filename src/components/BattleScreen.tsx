@@ -262,10 +262,20 @@ export function BattleScreen() {
           }
           setTimeout(() => setReaction(null), 2000);
 
-          // CG
+          // CG（プレイヤーのセクハラ成功時）
           if (result.cgEvent) {
             setTimeout(() => { showCG(result.cgEvent!); }, 1000);
           }
+
+          // CG（相手の逆セクハラ成功時）
+          // プレイヤー側CGがある場合はその後に表示、なければ同タイミング
+          if (result.opponentCgEvent) {
+            const delay = result.cgEvent ? 5000 : 1000;
+            setTimeout(() => { showCG(result.opponentCgEvent!); }, delay);
+          }
+
+          const hasCG = !!(result.cgEvent || result.opponentCgEvent);
+          const cgDelay = result.cgEvent && result.opponentCgEvent ? 9000 : hasCG ? 5000 : 2000;
 
           // 即勝利
           if (result.instantWin) {
@@ -275,7 +285,7 @@ export function BattleScreen() {
               setGameResult('player_win');
               const afterEvt = checkAfterEvent();
               if (afterEvt) setPendingAfterEvent(afterEvt);
-            }, result.cgEvent ? 5000 : 2000);
+            }, cgDelay);
             return;
           }
 
