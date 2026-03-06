@@ -1616,13 +1616,55 @@ async function adopt() {
       const pct = Math.round((1 - result.webpSize / result.origSize) * 100);
       const kb = (result.webpSize / 1024).toFixed(0);
       const subPath = item.type === 'cg' ? `cg/${webpFile}` : webpFile;
-      toast(`「${item.trigger}」→ ${subPath} (${kb}KB, ${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`, 'ok');
+
+      // フレーム個別画像も保存
+      let frameSaved = 0;
+      if (item.frames?.length) {
+        for (let fi = 0; fi < item.frames.length; fi++) {
+          const frame = item.frames[fi];
+          if (!frame.imageUrl) continue;
+          try {
+            const fResult = await convertToWebP(frame.imageUrl);
+            const frameFile = `${item.id}_frame${fi}.webp`;
+            const frameItem = { ...item, file: frameFile };
+            await saveToFolder(fResult.blob, frameItem);
+            URL.revokeObjectURL(fResult.url);
+            frame.file = frameFile;
+            frameSaved++;
+          } catch (e) {
+            console.warn(`フレーム${fi}の保存失敗:`, e);
+          }
+        }
+      }
+
+      const frameMsg = frameSaved > 0 ? ` + ${frameSaved}フレーム` : '';
+      toast(`「${item.trigger}」→ ${subPath}${frameMsg} (${kb}KB, ${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`, 'ok');
     } else {
-      // 未設定 → 従来のダウンロード
+      // 未設定 → 従来のダウンロード（メイン画像）
       const a = document.createElement('a');
       a.href = result.url; a.download = webpFile;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(result.url);
+
+      // フレーム個別画像もダウンロード
+      if (item.frames?.length) {
+        for (let fi = 0; fi < item.frames.length; fi++) {
+          const frame = item.frames[fi];
+          if (!frame.imageUrl) continue;
+          try {
+            const fResult = await convertToWebP(frame.imageUrl);
+            const frameFile = `${item.id}_frame${fi}.webp`;
+            const fa = document.createElement('a');
+            fa.href = fResult.url; fa.download = frameFile;
+            document.body.appendChild(fa); fa.click(); document.body.removeChild(fa);
+            URL.revokeObjectURL(fResult.url);
+            frame.file = frameFile;
+          } catch (e) {
+            console.warn(`フレーム${fi}のダウンロード失敗:`, e);
+          }
+        }
+      }
+
       const pct = Math.round((1 - result.webpSize / result.origSize) * 100);
       const kb = (result.webpSize / 1024).toFixed(0);
       toast(`「${item.trigger}」採用 → WebP ${kb}KB (${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`, 'ok');
@@ -2739,7 +2781,8 @@ function generateSingleEventCode(item) {
   if (item.frames?.length) {
     code += `,\n${indent}  frames: [\n`;
     for (const f of item.frames) {
-      code += `${indent}    { label: '${escCode(f.label || '')}', dialogueStart: ${f.dialogueStart || 0}, transition: '${f.transition || 'fade'}' },\n`;
+      const filePart = f.file ? `, file: '${escCode(f.file)}'` : '';
+      code += `${indent}    { label: '${escCode(f.label || '')}', dialogueStart: ${f.dialogueStart || 0}, transition: '${f.transition || 'fade'}'${filePart} },\n`;
     }
     code += `${indent}  ]`;
   }
