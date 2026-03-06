@@ -297,6 +297,32 @@
     font-size: 0.78em; color: var(--text-dim); padding: 8px;
     background: var(--bg); border-radius: 5px; margin-bottom: 10px;
   }
+  /* Batch assign modal */
+  .batch-modal { width: 640px; max-height: 85vh; display: flex; flex-direction: column; }
+  .batch-modal .batch-list { flex: 1; overflow-y: auto; max-height: 50vh; }
+  .batch-modal .batch-item {
+    display: grid; grid-template-columns: 80px 1fr 1fr; gap: 8px;
+    align-items: center; padding: 8px; border-bottom: 1px solid var(--border);
+  }
+  .batch-modal .batch-thumb {
+    width: 80px; height: 60px; object-fit: contain;
+    background: #0d0d1a; border-radius: 5px;
+  }
+  .batch-modal .batch-item select {
+    width: 100%; padding: 5px 6px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text); font-size: 0.82em;
+  }
+  .batch-modal .batch-item .batch-fname {
+    font-size: 0.7em; color: var(--text-dim); margin-top: 2px; text-align: center;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px;
+  }
+  .batch-modal .batch-controls {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 10px;
+  }
+  .batch-modal .batch-controls label { font-size: 0.75em; color: var(--text-dim); }
+  .batch-modal .batch-count { font-size: 0.8em; color: var(--accent2); margin-bottom: 8px; }
+
   .assign-modal .assign-info .auto-name {
     color: var(--success); font-weight: 600; font-family: monospace;
   }
@@ -351,14 +377,30 @@
   }
   .dlg-line:hover { border-color: var(--border); }
   .dlg-line .dlg-num { font-size: 0.65em; color: var(--text-dim); font-weight: 700; width: 16px; flex-shrink: 0; text-align: center; }
-  .dlg-line input.dlg-speaker {
-    width: 80px; padding: 3px 5px; background: var(--surface); border: 1px solid var(--border);
-    border-radius: 3px; color: var(--accent2); font-size: 0.78em; font-weight: 600; flex-shrink: 0;
+  .dlg-line .dlg-speaker-wrap {
+    display: flex; gap: 2px; flex-shrink: 0;
+  }
+  .dlg-line select.dlg-speaker-sel {
+    width: 80px; padding: 3px 4px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; color: var(--accent2); font-size: 0.78em; font-weight: 600;
+  }
+  .dlg-line input.dlg-speaker-custom {
+    width: 70px; padding: 3px 5px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; color: var(--accent2); font-size: 0.78em; font-weight: 600;
+  }
+  .dlg-text-wrap {
+    flex: 1; position: relative;
   }
   .dlg-line input.dlg-text {
-    flex: 1; padding: 3px 5px; background: var(--surface); border: 1px solid var(--border);
-    border-radius: 3px; color: var(--text); font-size: 0.78em;
+    width: 100%; padding: 3px 38px 3px 5px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; color: var(--text); font-size: 0.78em; box-sizing: border-box;
   }
+  .dlg-charcount {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    font-size: 0.65em; color: var(--text-dim); pointer-events: none;
+  }
+  .dlg-charcount.warn { color: #e8a33a; }
+  .dlg-charcount.over { color: #e85d3a; }
   .dlg-line .dlg-btns { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
   .dlg-line:hover .dlg-btns { opacity: 1; }
   .dlg-line .dlg-btns button { padding: 1px 4px; font-size: 0.65em; }
@@ -772,7 +814,7 @@
 <!-- Drop zone overlay -->
 <div class="drop-overlay" id="dropOverlay">
   <div class="drop-icon">🖼️</div>
-  <div class="drop-text">画像をドロップして追加</div>
+  <div class="drop-text">画像をドロップして追加（複数可）</div>
 </div>
 
 <!-- Assignment modal -->
@@ -794,6 +836,25 @@
     <div class="ma">
       <button onclick="closeModal('assignModal'); pendingDropImage = null;">キャンセル</button>
       <button class="primary" onclick="doAssign()">割り当て</button>
+    </div>
+  </div>
+</div>
+
+<!-- Batch Assignment Modal -->
+<div class="modal-overlay hidden" id="batchAssignModal">
+  <div class="modal batch-modal">
+    <h3>一括画像割り当て</h3>
+    <div class="batch-controls">
+      <div>
+        <label>キャラクター（全体）</label>
+        <select id="batchChar" onchange="onBatchCharChange()"></select>
+      </div>
+    </div>
+    <div class="batch-count" id="batchCount"></div>
+    <div class="batch-list" id="batchList"></div>
+    <div class="ma">
+      <button onclick="closeModal('batchAssignModal'); pendingBatchImages = [];">キャンセル</button>
+      <button class="primary" onclick="doBatchAssign()">一括割り当て</button>
     </div>
   </div>
 </div>
@@ -1016,7 +1077,7 @@ function parseCharacters(src) {
               label: fb.match(/label:\s*'([^']*)'/) ?.[1] || '',
               dialogueStart: parseInt(fb.match(/dialogueStart:\s*(\d+)/)?.[1] || '0'),
               transition: fb.match(/transition:\s*'([^']*)'/) ?.[1] || 'fade',
-              imageUrl: null,
+              src: fb.match(/src:\s*'([^']*)'/) ?.[1] || null,
             });
           }
         }
@@ -1295,7 +1356,30 @@ function deleteChar() {
 // ============================================================
 // Persistence
 // ============================================================
+// Undo history
+const undoStack = [];
+const UNDO_MAX = 30;
+
+function pushUndo() {
+  const snapshot = localStorage.getItem(STORAGE_PREFIX + currentCharId);
+  if (snapshot) {
+    undoStack.push({ charId: currentCharId, data: snapshot, selectedId });
+    if (undoStack.length > UNDO_MAX) undoStack.shift();
+  }
+}
+
+function undo() {
+  if (!undoStack.length) { toast('これ以上戻せません', 'err'); return; }
+  const entry = undoStack.pop();
+  localStorage.setItem(STORAGE_PREFIX + entry.charId, entry.data);
+  if (entry.charId !== currentCharId) switchChar(entry.charId);
+  else { load(); renderList(); }
+  if (entry.selectedId) { selectedId = entry.selectedId; selectItem(selectedId); }
+  toast('元に戻しました');
+}
+
 function saveAll() {
+  pushUndo();
   const existing = loadCharData(currentCharId);
   const info = getCharInfo(currentCharId);
   const data = {
@@ -1932,6 +2016,7 @@ function toast(msg, type) {
 // Drag & Drop → キャラ/シーン選択 → 自動割り当て
 // ============================================================
 let pendingDropImage = null; // { dataUrl, fileName }
+let pendingBatchImages = []; // [{ dataUrl, fileName }]
 
 // ドラッグオーバーレイ
 (function setupDragDrop() {
@@ -1957,9 +2042,13 @@ let pendingDropImage = null; // { dataUrl, fileName }
     e.preventDefault();
     dragCounter = 0;
     overlay().classList.remove('active');
-    const file = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'));
-    if (!file) { toast('画像ファイルのみ対応', 'err'); return; }
-    handleDroppedImage(file);
+    const imageFiles = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) { toast('画像ファイルのみ対応', 'err'); return; }
+    if (imageFiles.length === 1) {
+      handleDroppedImage(imageFiles[0]);
+    } else {
+      handleDroppedImages(imageFiles);
+    }
   });
 })();
 
@@ -1967,10 +2056,14 @@ let pendingDropImage = null; // { dataUrl, fileName }
 document.addEventListener('paste', e => {
   // テキスト入力中は無視
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  const file = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
-  if (!file) return;
+  const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
+  if (files.length === 0) return;
   e.preventDefault();
-  handleDroppedImage(file);
+  if (files.length === 1) {
+    handleDroppedImage(files[0]);
+  } else {
+    handleDroppedImages(files);
+  }
 });
 
 function handleDroppedImage(file) {
@@ -1980,6 +2073,162 @@ function handleDroppedImage(file) {
     showAssignModal();
   };
   reader.readAsDataURL(file);
+}
+
+// 複数画像の一括処理
+function handleDroppedImages(files) {
+  pendingBatchImages = [];
+  let loaded = 0;
+  const sorted = [...files].sort((a, b) => a.name.localeCompare(b.name));
+  for (const file of sorted) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      pendingBatchImages.push({ dataUrl: e.target.result, fileName: file.name });
+      loaded++;
+      if (loaded === sorted.length) {
+        pendingBatchImages.sort((a, b) => a.fileName.localeCompare(b.fileName));
+        showBatchAssignModal();
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function showBatchAssignModal() {
+  // キャラ選択肢
+  const charSelect = document.getElementById('batchChar');
+  const list = getCharList();
+  charSelect.innerHTML = list.map(id => {
+    const info = getCharInfo(id);
+    const data = loadCharData(id);
+    const label = data?.charName || info?.name || id;
+    return `<option value="${esc(id)}"${id === currentCharId ? ' selected' : ''}>${esc(label)} (${esc(id)})</option>`;
+  }).join('');
+
+  onBatchCharChange();
+  document.getElementById('batchAssignModal').classList.remove('hidden');
+}
+
+function onBatchCharChange() {
+  const charId = document.getElementById('batchChar').value;
+  const info = getCharInfo(charId);
+  const container = document.getElementById('batchList');
+  container.innerHTML = '';
+
+  document.getElementById('batchCount').textContent = `${pendingBatchImages.length} 件の画像`;
+
+  // シーン選択肢を構築
+  function buildSceneOptions(autoMatchId) {
+    let opts = '';
+    const reverseIdSet = new Set(reverseHarassCards.map(rc => rc.id));
+    if (info) {
+      for (const ev of info.cgEvents) {
+        const cardName = cardNameCache[ev.triggerCard] || ev.triggerCard;
+        const isRev = reverseIdSet.has(ev.triggerCard);
+        const suffix = ev.instantWin ? ' \u2605' : isRev ? ' \uD83D\uDD25逆セクハラ' : '';
+        const label = `${cardName} (Lv.${ev.requiredDrunkLevel})${suffix}`;
+        const sel = (autoMatchId && ev.triggerCard === autoMatchId) ? ' selected' : '';
+        opts += `<option value="cg:${esc(ev.triggerCard)}"${sel}>${esc(label)}</option>`;
+      }
+    }
+    const existingTriggers = new Set(info?.cgEvents.map(e => e.triggerCard) || []);
+    for (const rc of reverseHarassCards) {
+      if (existingTriggers.has(rc.id)) continue;
+      const cardName = cardNameCache[rc.id] || rc.id;
+      const label = `${cardName} \uD83D\uDD25逆セクハラ (Lv.${rc.requiredDrunkLevel})`;
+      const sel = (autoMatchId && rc.id === autoMatchId) ? ' selected' : '';
+      opts += `<option value="cg:${esc(rc.id)}"${sel}>${esc(label)}</option>`;
+    }
+    opts += `<option value="portrait:portrait">基本立ち絵</option>`;
+    const drunkLabels = ['素面', 'ほろ酔い', '酔い', 'べろべろ', '潰れ'];
+    const levels = info ? info.costumeLevels : 5;
+    for (let i = 0; i < levels; i++) {
+      opts += `<option value="portrait:portrait-drunk-${i}">${drunkLabels[i] || 'Lv.' + i} 立ち絵</option>`;
+    }
+    opts += `<option value="icon:select-icon">選択アイコン</option>`;
+    return opts;
+  }
+
+  for (let i = 0; i < pendingBatchImages.length; i++) {
+    const img = pendingBatchImages[i];
+    // ファイル名からカードIDを推測（拡張子除去）
+    const baseName = img.fileName.replace(/\.\w+$/, '');
+    const autoMatch = tryMatchCardId(baseName, info);
+
+    const row = document.createElement('div');
+    row.className = 'batch-item';
+    row.innerHTML = `
+      <div>
+        <img class="batch-thumb" src="${esc(img.dataUrl)}" alt="">
+        <div class="batch-fname">${esc(img.fileName)}</div>
+      </div>
+      <select id="batchScene_${i}">${buildSceneOptions(autoMatch)}</select>
+    `;
+    container.appendChild(row);
+  }
+}
+
+function tryMatchCardId(name, info) {
+  if (!info) return null;
+  // 完全一致
+  for (const ev of info.cgEvents) {
+    if (ev.triggerCard === name) return ev.triggerCard;
+  }
+  // 部分一致（ファイル名にカードIDが含まれる）
+  for (const ev of info.cgEvents) {
+    if (name.includes(ev.triggerCard)) return ev.triggerCard;
+  }
+  for (const rc of reverseHarassCards) {
+    if (name === rc.id || name.includes(rc.id)) return rc.id;
+  }
+  return null;
+}
+
+function doBatchAssign() {
+  if (pendingBatchImages.length === 0) return;
+  const charId = document.getElementById('batchChar').value;
+
+  // 対象キャラに切り替え
+  if (charId !== currentCharId) {
+    saveAll();
+    currentCharId = charId;
+    localStorage.setItem(LASTCHAR_KEY, charId);
+    selectedId = null;
+    fileExistence = {};
+    load();
+  }
+
+  let count = 0;
+  for (let i = 0; i < pendingBatchImages.length; i++) {
+    const img = pendingBatchImages[i];
+    const sceneSelect = document.getElementById('batchScene_' + i);
+    if (!sceneSelect) continue;
+    const sceneVal = sceneSelect.value;
+    const [type, id] = sceneVal.split(':');
+    const ext = (img.fileName.match(/\.\w+$/) || ['.png'])[0];
+
+    let item = items.find(it => it.id === id);
+    if (!item) {
+      const trigger = type === 'cg'
+        ? (cardNameCache[id] || id)
+        : type === 'portrait' ? (id === 'portrait' ? '基本立ち絵' : id)
+        : 'キャラ選択画面用';
+      item = makeItem({ id, file: id + ext, trigger, level: '', type, note: '' });
+      items.push(item);
+    }
+    item.history.push({ url: img.dataUrl, ts: new Date().toISOString(), adopted: false });
+    item.status = 'review';
+    count++;
+  }
+
+  pendingBatchImages = [];
+  closeModal('batchAssignModal');
+  saveAll();
+  renderCharTabs();
+  renderList();
+  updateCounts();
+  toast(`${count} 件の画像を一括割り当て → レビュー待ち`, 'ok');
+  checkAllFiles();
 }
 
 function showAssignModal() {
@@ -2324,7 +2573,7 @@ function renderGamePreview() {
     const frame = frames[currentFrame];
     const frameLabel = frame?.label || '';
     // Use frame-specific image if available, fallback to item image
-    const frameImgSrc = frame?.imageUrl || imgSrc;
+    const frameImgSrc = frame?.src || imgSrc;
     // Build frame dot indicators
     let dotsHtml = '';
     if (frames.length > 1) {
@@ -2459,12 +2708,19 @@ function closeGamePreview() {
   overlay.innerHTML = '';
 }
 
-// ESCキーでプレビューを閉じる
+// キーボードショートカット
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (gpState) closeGamePreview();
     const cmpOverlay = document.getElementById('compareOverlay');
     if (cmpOverlay && cmpOverlay.style.display !== 'none' && cmpOverlay.style.display !== '') closeCompareView();
+  }
+  // Ctrl+Z で元に戻す（入力欄にフォーカス中はブラウザ標準のundoを優先）
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    e.preventDefault();
+    undo();
   }
 });
 
@@ -2631,8 +2887,8 @@ function renderFrames(item) {
     const card = document.createElement('div');
     card.className = 'frame-card';
 
-    const thumbContent = f.imageUrl
-      ? `<img src="${f.imageUrl}" alt="F${i + 1}">`
+    const thumbContent = f.src
+      ? `<img src="${f.src}" alt="F${i + 1}">`
       : '🖼';
 
     card.innerHTML = `
@@ -2671,7 +2927,7 @@ function addFrame() {
   const item = items.find(i => i.id === selectedId);
   if (!item) return;
   if (!item.frames) item.frames = [];
-  item.frames.push({ label: '', dialogueStart: item.dialogue?.length ? item.frames.length : 0, transition: 'fade', imageUrl: null });
+  item.frames.push({ label: '', dialogueStart: item.dialogue?.length ? item.frames.length : 0, transition: 'fade', src: null });
   saveAll();
   renderFrames(item);
 }
@@ -2713,7 +2969,7 @@ function pickFrameImage(idx) {
     reader.onload = (ev) => {
       const item = items.find(i => i.id === selectedId);
       if (!item?.frames?.[idx]) return;
-      item.frames[idx].imageUrl = ev.target.result;
+      item.frames[idx].src = ev.target.result;
       saveAll();
       renderFrames(item);
     };
@@ -2737,17 +2993,41 @@ function renderDialogue(item) {
   count.textContent = item.dialogue.length + ' 行';
   list.innerHTML = '';
 
+  const charInfo = getCharInfo(currentCharId);
+  const charName = charInfo?.name || currentCharId;
+
   for (let i = 0; i < item.dialogue.length; i++) {
     const d = item.dialogue[i];
     const line = document.createElement('div');
     line.className = 'dlg-line';
+
+    // Determine select value: match known options or treat as custom
+    const knownSpeakers = ['ドクター', charName, '', '__custom__'];
+    const isKnown = knownSpeakers.includes(d.speaker);
+    const selVal = isKnown ? d.speaker : '__custom__';
+    const showCustom = !isKnown;
+
     line.innerHTML = `
       <span class="dlg-num">${i}</span>
-      <input class="dlg-speaker" value="${esc(d.speaker)}" onchange="updateDialogue(${i},'speaker',this.value)" placeholder="話者">
-      <input class="dlg-text" value="${esc(d.text)}" onchange="updateDialogue(${i},'text',this.value)" placeholder="セリフ">
+      <div class="dlg-speaker-wrap">
+        <select class="dlg-speaker-sel" onchange="onSpeakerSelect(${i},this)">
+          <option value="ドクター" ${selVal === 'ドクター' ? 'selected' : ''}>ドクター</option>
+          <option value="${esc(charName)}" ${selVal === charName ? 'selected' : ''}>${esc(charName)}</option>
+          <option value="" ${selVal === '' ? 'selected' : ''}>(ナレーション)</option>
+          <option value="__custom__" ${selVal === '__custom__' ? 'selected' : ''}>自由入力</option>
+        </select>
+        <input class="dlg-speaker-custom" value="${esc(showCustom ? d.speaker : '')}"
+          style="display:${showCustom ? 'block' : 'none'}"
+          onchange="updateDialogue(${i},'speaker',this.value)" placeholder="話者名">
+      </div>
+      <div class="dlg-text-wrap">
+        <input class="dlg-text" value="${esc(d.text)}" onchange="updateDialogue(${i},'text',this.value)" oninput="updateCharCount(this)" placeholder="セリフ">
+        <span class="dlg-charcount ${d.text.length > 60 ? 'over' : d.text.length > 45 ? 'warn' : ''}">${d.text.length}</span>
+      </div>
       <div class="dlg-btns">
         <button onclick="moveDialogue(${i},-1)" ${i === 0 ? 'disabled' : ''}>▲</button>
         <button onclick="moveDialogue(${i},1)" ${i === item.dialogue.length - 1 ? 'disabled' : ''}>▼</button>
+        <button onclick="insertDialogueAfter(${i})" title="下に行を追加">＋</button>
         <button class="danger" onclick="removeDialogue(${i})">✕</button>
       </div>
     `;
@@ -2772,6 +3052,21 @@ function addDialogueLine() {
   }, 50);
 }
 
+function insertDialogueAfter(idx) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item?.dialogue) return;
+  const info = getCharInfo(currentCharId);
+  const speaker = info?.name || currentCharId;
+  item.dialogue.splice(idx + 1, 0, { speaker, text: '' });
+  saveAll();
+  renderDialogue(item);
+  // Focus the newly inserted text input
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#dlgList .dlg-text');
+    if (inputs[idx + 1]) inputs[idx + 1].focus();
+  }, 50);
+}
+
 function removeDialogue(idx) {
   const item = items.find(i => i.id === selectedId);
   if (!item?.dialogue) return;
@@ -2790,11 +3085,33 @@ function moveDialogue(idx, dir) {
   renderDialogue(item);
 }
 
+function updateCharCount(input) {
+  const count = input.value.length;
+  const span = input.parentElement.querySelector('.dlg-charcount');
+  if (!span) return;
+  span.textContent = count;
+  span.className = 'dlg-charcount' + (count > 60 ? ' over' : count > 45 ? ' warn' : '');
+}
+
 function updateDialogue(idx, key, val) {
   const item = items.find(i => i.id === selectedId);
   if (!item?.dialogue?.[idx]) return;
   item.dialogue[idx][key] = val;
   saveAll();
+}
+
+function onSpeakerSelect(idx, sel) {
+  const val = sel.value;
+  const wrap = sel.closest('.dlg-speaker-wrap');
+  const customInput = wrap.querySelector('.dlg-speaker-custom');
+  if (val === '__custom__') {
+    customInput.style.display = 'block';
+    customInput.focus();
+    // Don't update speaker yet; wait for custom input
+  } else {
+    customInput.style.display = 'none';
+    updateDialogue(idx, 'speaker', val);
+  }
 }
 
 // ============================================================
@@ -2866,7 +3183,7 @@ function generateSingleEventCode(item) {
   if (item.frames?.length) {
     code += `,\n${indent}  frames: [\n`;
     for (const f of item.frames) {
-      code += `${indent}    { label: '${escCode(f.label || '')}', dialogueStart: ${f.dialogueStart || 0}, transition: '${f.transition || 'fade'}' },\n`;
+      code += `${indent}    { ${f.src ? `src: '${escCode(f.src)}', ` : ''}label: '${escCode(f.label || '')}', dialogueStart: ${f.dialogueStart || 0}, transition: '${f.transition || 'fade'}' },\n`;
     }
     code += `${indent}  ]`;
   }
@@ -2945,7 +3262,7 @@ function getMissingCGData() {
         label: f.label || '',
         dialogueStart: f.dialogueStart || 0,
         transition: f.transition || 'fade',
-        imagePath: f.src || f.imageUrl || `public/characters/${currentCharId}/cg/${cg.triggerCard}_${i + 1}.webp`
+        imagePath: f.src || `public/characters/${currentCharId}/cg/${cg.triggerCard}_${i + 1}.webp`
       }))
     };
     return entry;
