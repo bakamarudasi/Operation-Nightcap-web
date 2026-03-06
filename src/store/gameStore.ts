@@ -306,26 +306,43 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
-        set((state) => ({
-          battle: {
-            ...state.battle,
-            round: state.battle.round + 1,
-            playerDrunk: Math.max(0, Math.min(10, state.battle.playerDrunk + result.playerDamage - result.playerHeal)),
-            opponentDrunk: Math.max(0, Math.min(10, state.battle.opponentDrunk + result.opponentDamage - result.opponentHeal)),
-            playerHand: [],
-            opponentHand: [],
-            selectedCard: null,
-            isProcessing: true,
-            opponentDiscardNext: result.opponentDiscardNext ?? state.battle.opponentDiscardNext,
-            playerReducedHand: result.playerReducedHand ?? state.battle.playerReducedHand,
-            opponentReducedHand: result.opponentReducedHand ?? state.battle.opponentReducedHand,
-            spillActive: result.spillNullified,
-            playerBuffs: newPlayerBuffs,
-            opponentBuffs: newOpponentBuffs,
-            corruptedSlots,
-            rumorActive: result.rumorActive ?? false,
-          },
-        }));
+        // 使用済みカードを1枚だけ除いた残り手札をデッキに戻す
+        const unusedPlayerCards = [...b.playerHand];
+        const pIdx = unusedPlayerCards.indexOf(b.selectedCard!);
+        if (pIdx >= 0) unusedPlayerCards.splice(pIdx, 1);
+        const unusedOpponentCards = [...b.opponentHand];
+        const oIdx = unusedOpponentCards.indexOf(opponentCardId);
+        if (oIdx >= 0) unusedOpponentCards.splice(oIdx, 1);
+
+        set((state) => {
+          const pDeckReturn = [...state.battle.playerDeckRemaining, ...unusedPlayerCards];
+          const oDeckReturn = [...state.battle.opponentDeckRemaining, ...unusedOpponentCards];
+          shuffleArray(pDeckReturn);
+          shuffleArray(oDeckReturn);
+
+          return {
+            battle: {
+              ...state.battle,
+              round: state.battle.round + 1,
+              playerDrunk: Math.max(0, Math.min(10, state.battle.playerDrunk + result.playerDamage - result.playerHeal)),
+              opponentDrunk: Math.max(0, Math.min(10, state.battle.opponentDrunk + result.opponentDamage - result.opponentHeal)),
+              playerDeckRemaining: pDeckReturn,
+              opponentDeckRemaining: oDeckReturn,
+              playerHand: [],
+              opponentHand: [],
+              selectedCard: null,
+              isProcessing: true,
+              opponentDiscardNext: result.opponentDiscardNext ?? state.battle.opponentDiscardNext,
+              playerReducedHand: result.playerReducedHand ?? state.battle.playerReducedHand,
+              opponentReducedHand: result.opponentReducedHand ?? state.battle.opponentReducedHand,
+              spillActive: result.spillNullified,
+              playerBuffs: newPlayerBuffs,
+              opponentBuffs: newOpponentBuffs,
+              corruptedSlots,
+              rumorActive: result.rumorActive ?? false,
+            },
+          };
+        });
 
         return {
           messages: result.messages,
