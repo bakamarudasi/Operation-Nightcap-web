@@ -558,12 +558,22 @@ function parseCharacters(src) {
   }
 }
 
+let reverseHarassCards = [];
+
 function parseCards(src) {
   // id: 'xxx', name: 'yyy' のペアを抽出
   const re = /id:\s*'([^']+)',\s*name:\s*'([^']+)'/g;
   let m;
   while ((m = re.exec(src)) !== null) {
     cardNameCache[m[1]] = m[2];
+  }
+
+  // 逆セクハラカード（sanityDamage を持つ harassment カード）を検出
+  reverseHarassCards = [];
+  const blockRe = /(\w+):\s*\{[^}]*id:\s*'([^']+)'[^}]*type:\s*'harassment'[^}]*sanityDamage:\s*(\d+)[^}]*requiredDrunkLevel:\s*(\d+)/g;
+  let bm;
+  while ((bm = blockRe.exec(src)) !== null) {
+    reverseHarassCards.push({ id: bm[2], requiredDrunkLevel: parseInt(bm[4]) });
   }
 }
 
@@ -594,6 +604,21 @@ function getDefaults() {
       level: 'Lv.' + ev.requiredDrunkLevel,
       type: 'cg',
       note: ev.instantWin ? 'instant_win' : '',
+    });
+  }
+
+  // 逆セクハラCG — cards.ts の sanityDamage 持ちカードから
+  const existingIds = new Set(items.map(i => i.id));
+  for (const rc of reverseHarassCards) {
+    if (existingIds.has(rc.id)) continue;
+    const trigger = (cardNameCache[rc.id] || rc.id) + '（逆セクハラ）';
+    items.push({
+      id: rc.id,
+      file: rc.id + '.webp',
+      trigger,
+      level: 'Lv.' + rc.requiredDrunkLevel,
+      type: 'cg',
+      note: 'reverse_harassment',
     });
   }
 
@@ -756,6 +781,18 @@ function checkFileExists(item) {
 
 async function checkAllFiles() {
   await Promise.all(items.map(it => checkFileExists(it)));
+  // ファイルが配置済みなのにステータスが未作成のままのアイテムを自動的に採用済にする
+  let changed = false;
+  for (const item of items) {
+    if (fileExistence[item.id] === true && item.status === 'pending') {
+      item.status = 'done';
+      changed = true;
+    }
+  }
+  if (changed) {
+    saveAll();
+    updateCounts();
+  }
   renderList();
   if (selectedId) updateFileStatus(items.find(i => i.id === selectedId));
 }
@@ -1059,6 +1096,7 @@ async function adopt() {
   }
 
   saveAll(); updateCounts(); selectItem(item.id);
+  checkAllFiles();
 
   // Auto-advance to next pending
   const next = items.find(i => i.status === 'pending');
@@ -1315,6 +1353,15 @@ function onAssignCharChange() {
     }
   }
 
+  // 逆セクハラCG
+  const existingTriggers = new Set(info?.cgEvents.map(e => e.triggerCard) || []);
+  for (const rc of reverseHarassCards) {
+    if (existingTriggers.has(rc.id)) continue;
+    const cardName = cardNameCache[rc.id] || rc.id;
+    const label = `${cardName}（逆セクハラ / Lv.${rc.requiredDrunkLevel}）`;
+    opts += `<option value="cg:${esc(rc.id)}">${esc(label)}</option>`;
+  }
+
   // 立ち絵
   opts += `<option value="portrait:portrait">基本立ち絵</option>`;
   const drunkLabels = ['素面', 'ほろ酔い', '酔い', 'べろべろ', '潰れ'];
@@ -1392,6 +1439,7 @@ function doAssign() {
   updateCounts();
   selectItem(item.id);
   toast(`「${item.trigger}」に画像を追加 → レビュー待ち`, 'ok');
+  checkAllFiles();
 }
 
 // ============================================================
