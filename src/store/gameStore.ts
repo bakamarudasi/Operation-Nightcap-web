@@ -21,6 +21,7 @@ interface GameStore {
 
   // UI状態
   currentScreen: ScreenId;
+  previousScreen: ScreenId | null;
   currentOpponent: CharacterDef | null;
 
   // バトル状態
@@ -109,6 +110,7 @@ export const useGameStore = create<GameStore>()(
 
       // UI状態
       currentScreen: 'title',
+      previousScreen: null,
       currentOpponent: null,
 
       // バトル
@@ -122,7 +124,10 @@ export const useGameStore = create<GameStore>()(
       activeAfterEvent: null,
       afterEventDialogueIndex: 0,
 
-      setScreen: (screen) => set({ currentScreen: screen }),
+      setScreen: (screen) => set((state) => ({
+        currentScreen: screen,
+        previousScreen: state.currentScreen,
+      })),
 
       initBattle: (opponentId) => {
         const char = CHARACTER_DATA[opponentId];

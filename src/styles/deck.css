@@ -75,6 +75,7 @@
   position: relative;
   border: 1px solid rgba(180, 140, 90, 0.2);
   transition: all 0.2s ease;
+  user-select: none;
 }
 
 .deck-card:hover {
@@ -162,6 +163,64 @@
   color: var(--text-dim);
 }
 
+/* --- カード追加/削除アニメーション --- */
+.deck-card.removing {
+  animation: cardRemove 0.3s ease-out forwards;
+}
+
+@keyframes cardRemove {
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(1.1) rotate(5deg); opacity: 0.6; }
+  100% { transform: scale(0) rotate(15deg) translateY(20px); opacity: 0; }
+}
+
+.deck-card-empty.slot-pulse {
+  animation: slotPulse 0.4s ease;
+}
+
+@keyframes slotPulse {
+  0%   { border-color: rgba(80, 50, 25, 0.3); background: rgba(30, 18, 10, 0.3); }
+  50%  { border-color: var(--gold); background: rgba(201, 168, 92, 0.15); }
+  100% { border-color: rgba(80, 50, 25, 0.3); background: rgba(30, 18, 10, 0.3); }
+}
+
+/* --- ドラッグ中のカード --- */
+.deck-card.dragging {
+  opacity: 0.3;
+  transform: scale(0.9);
+}
+
+/* --- 並べ替えターゲット --- */
+.deck-card.reorder-target {
+  border-color: var(--gold-bright) !important;
+  box-shadow: 0 0 16px rgba(240, 214, 138, 0.4);
+  transform: scale(1.05);
+}
+
+/* --- ドラッグゴースト --- */
+.drag-ghost {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  background: rgba(30, 18, 10, 0.85);
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%) rotate(-5deg);
+  animation: ghostAppear 0.15s ease-out;
+}
+
+@keyframes ghostAppear {
+  from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  to   { transform: translate(-50%, -50%) rotate(-5deg); opacity: 1; }
+}
+
 /* --- フィルター --- */
 .deck-filters {
   display: flex;
@@ -222,6 +281,7 @@
   cursor: pointer;
   border: 1px solid rgba(180, 140, 90, 0.15);
   transition: all 0.2s ease;
+  user-select: none;
 }
 
 .inv-card:hover {
@@ -275,4 +335,82 @@
   font-size: 0.6rem;
   color: var(--gold-bright);
   flex-shrink: 0;
+}
+
+/* ============================================
+   カード詳細プレビューポップアップ
+   ============================================ */
+.card-preview-popup {
+  position: fixed;
+  z-index: 200;
+  width: 220px;
+  padding: 14px;
+  background: linear-gradient(160deg, rgba(30, 18, 10, 0.97), rgba(20, 12, 6, 0.98));
+  border: 1px solid rgba(201, 168, 92, 0.4);
+  border-radius: 10px;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.7),
+    0 0 20px rgba(201, 168, 92, 0.1);
+  pointer-events: none;
+  animation: previewAppear 0.15s ease-out;
+}
+
+@keyframes previewAppear {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.card-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.card-preview-emoji {
+  font-size: 1.4rem;
+}
+
+.card-preview-name {
+  font-family: 'Noto Serif JP', var(--font-heading);
+  font-size: 0.9rem;
+  color: var(--paper);
+  flex: 1;
+}
+
+.card-preview-rarity {
+  font-size: 0.65rem;
+  color: var(--gold-bright);
+}
+
+.card-preview-type {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(80, 50, 25, 0.3);
+}
+
+.card-preview-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.card-preview-stats span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(201, 168, 92, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.card-preview-desc {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  line-height: 1.5;
 }
