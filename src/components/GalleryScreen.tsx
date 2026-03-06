@@ -15,7 +15,7 @@ export function GalleryScreen() {
   const losses = useGameStore((s) => s.losses);
 
   const [activeTab, setActiveTab] = useState<'cg' | 'portrait'>('cg');
-  const [selectedChar, setSelectedChar] = useState<string>('blaze');
+  const [selectedChar, setSelectedChar] = useState<string>(Object.keys(CHARACTER_DATA)[0] ?? 'blaze');
   const [drunkLevel, setDrunkLevel] = useState(0);
   const [currentLine, setCurrentLine] = useState('');
 
