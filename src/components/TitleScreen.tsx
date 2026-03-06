@@ -333,6 +333,10 @@ export function TitleScreen() {
             <span className="ts-btn-icon">🏮</span>
             <span className="ts-btn-label">ショップ</span>
           </button>
+          <button className="ts-menu-btn" onClick={() => setScreen('deck')}>
+            <span className="ts-btn-icon">🃏</span>
+            <span className="ts-btn-label">デッキ編集</span>
+          </button>
           <button className="ts-menu-btn" onClick={() => setScreen('gallery')}>
             <span className="ts-btn-icon">🎨</span>
             <span className="ts-btn-label">ギャラリー</span>

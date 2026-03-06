@@ -141,7 +141,7 @@ export interface CharacterDef {
   afterEvents: AfterEvent[];
 }
 
-export type ScreenId = 'title' | 'select' | 'battle' | 'shop' | 'gacha' | 'gallery' | 'settings';
+export type ScreenId = 'title' | 'select' | 'battle' | 'shop' | 'gacha' | 'gallery' | 'settings' | 'deck';
 
 /** ガチャ1回分の排出結果 */
 export interface GachaResult {

@@ -1,0 +1,416 @@
+/* ============================================
+   デッキ編集画面
+   ============================================ */
+
+.deck-screen {
+  overflow-y: auto;
+  padding: 0 0 24px;
+}
+
+.deck-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(80, 50, 25, 0.3);
+  position: sticky;
+  top: 0;
+  background: var(--wood-dark);
+  z-index: 10;
+}
+
+.deck-header h2 {
+  font-family: 'Noto Serif JP', var(--font-heading);
+  font-size: 1.2rem;
+  color: var(--paper);
+  letter-spacing: 0.1em;
+}
+
+.deck-count {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  background: rgba(30, 18, 10, 0.6);
+  padding: 4px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(201, 168, 92, 0.3);
+}
+
+/* --- セクション --- */
+.deck-section {
+  padding: 16px 20px;
+}
+
+.deck-section-title {
+  font-family: 'Noto Serif JP', var(--font-heading);
+  font-size: 0.9rem;
+  color: var(--gold);
+  margin-bottom: 12px;
+  letter-spacing: 0.08em;
+}
+
+.deck-warning {
+  color: #c98b8b;
+  font-size: 0.75rem;
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* --- デッキグリッド --- */
+.deck-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.deck-card {
+  aspect-ratio: 3 / 4;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  position: relative;
+  border: 1px solid rgba(180, 140, 90, 0.2);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.deck-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(212, 168, 83, 0.5);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.deck-card.type-drink {
+  background: linear-gradient(160deg, rgba(60, 25, 15, 0.9), rgba(40, 18, 10, 0.95));
+  border-bottom: 3px solid #884444;
+}
+.deck-card.type-food {
+  background: linear-gradient(160deg, rgba(20, 40, 20, 0.9), rgba(15, 30, 15, 0.95));
+  border-bottom: 3px solid #448844;
+}
+.deck-card.type-chug {
+  background: linear-gradient(160deg, rgba(35, 20, 50, 0.9), rgba(25, 15, 35, 0.95));
+  border-bottom: 3px solid #665588;
+}
+.deck-card.type-harassment {
+  background: linear-gradient(160deg, rgba(50, 18, 35, 0.9), rgba(35, 12, 25, 0.95));
+  border-bottom: 3px solid #884466;
+}
+.deck-card.type-strategy {
+  background: linear-gradient(160deg, rgba(30, 35, 50, 0.9), rgba(20, 25, 35, 0.95));
+  border-bottom: 3px solid #556688;
+}
+.deck-card.type-environment {
+  background: linear-gradient(160deg, rgba(35, 40, 25, 0.9), rgba(25, 30, 15, 0.95));
+  border-bottom: 3px solid #668855;
+}
+.deck-card.type-status {
+  background: linear-gradient(160deg, rgba(45, 30, 15, 0.9), rgba(35, 20, 10, 0.95));
+  border-bottom: 3px solid #886644;
+}
+
+.deck-card-empty {
+  background: rgba(30, 18, 10, 0.3);
+  border: 2px dashed rgba(80, 50, 25, 0.3);
+  cursor: default;
+}
+.deck-card-empty:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.deck-card-remove {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.7rem;
+  color: rgba(200, 140, 140, 0.5);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.deck-card:hover .deck-card-remove {
+  opacity: 1;
+}
+
+.deck-card-emoji {
+  font-size: 1.6rem;
+}
+
+.deck-card-empty .deck-card-emoji {
+  font-size: 1.2rem;
+  color: rgba(80, 50, 25, 0.4);
+}
+
+.deck-card-name {
+  font-family: 'Noto Serif JP', var(--font-heading);
+  font-size: 0.55rem;
+  color: var(--paper);
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+
+.deck-card-info {
+  font-size: 0.55rem;
+  color: var(--text-dim);
+}
+
+/* --- カード追加/削除アニメーション --- */
+.deck-card.removing {
+  animation: cardRemove 0.3s ease-out forwards;
+}
+
+@keyframes cardRemove {
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(1.1) rotate(5deg); opacity: 0.6; }
+  100% { transform: scale(0) rotate(15deg) translateY(20px); opacity: 0; }
+}
+
+.deck-card-empty.slot-pulse {
+  animation: slotPulse 0.4s ease;
+}
+
+@keyframes slotPulse {
+  0%   { border-color: rgba(80, 50, 25, 0.3); background: rgba(30, 18, 10, 0.3); }
+  50%  { border-color: var(--gold); background: rgba(201, 168, 92, 0.15); }
+  100% { border-color: rgba(80, 50, 25, 0.3); background: rgba(30, 18, 10, 0.3); }
+}
+
+/* --- ドラッグ中のカード --- */
+.deck-card.dragging {
+  opacity: 0.3;
+  transform: scale(0.9);
+}
+
+/* --- 並べ替えターゲット --- */
+.deck-card.reorder-target {
+  border-color: var(--gold-bright) !important;
+  box-shadow: 0 0 16px rgba(240, 214, 138, 0.4);
+  transform: scale(1.05);
+}
+
+/* --- ドラッグゴースト --- */
+.drag-ghost {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  background: rgba(30, 18, 10, 0.85);
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%) rotate(-5deg);
+  animation: ghostAppear 0.15s ease-out;
+}
+
+@keyframes ghostAppear {
+  from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  to   { transform: translate(-50%, -50%) rotate(-5deg); opacity: 1; }
+}
+
+/* --- フィルター --- */
+.deck-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.deck-filter-btn {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(80, 50, 25, 0.3);
+  background: rgba(30, 18, 10, 0.5);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.deck-filter-btn:hover {
+  border-color: rgba(201, 168, 92, 0.4);
+  color: var(--paper);
+}
+
+.deck-filter-btn.active {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+  background: rgba(201, 168, 92, 0.15);
+}
+
+/* --- インベントリグリッド --- */
+.inventory-section {
+  border-top: 1px solid rgba(80, 50, 25, 0.3);
+}
+
+.inventory-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.inventory-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.inv-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid rgba(180, 140, 90, 0.15);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.inv-card:hover {
+  border-color: rgba(212, 168, 83, 0.4);
+  background: rgba(212, 168, 83, 0.05);
+}
+
+.inv-card.cant-add {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.inv-card.type-drink { background: rgba(60, 25, 15, 0.4); }
+.inv-card.type-food { background: rgba(20, 40, 20, 0.4); }
+.inv-card.type-chug { background: rgba(35, 20, 50, 0.4); }
+.inv-card.type-harassment { background: rgba(50, 18, 35, 0.4); }
+.inv-card.type-strategy { background: rgba(30, 35, 50, 0.4); }
+.inv-card.type-environment { background: rgba(35, 40, 25, 0.4); }
+.inv-card.type-status { background: rgba(45, 30, 15, 0.4); }
+
+.inv-card-emoji {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+
+.inv-card-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.inv-card-name {
+  font-family: 'Noto Serif JP', var(--font-heading);
+  font-size: 0.8rem;
+  color: var(--paper);
+}
+
+.inv-card-desc {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.inv-card-count {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.inv-card-rarity {
+  font-size: 0.6rem;
+  color: var(--gold-bright);
+  flex-shrink: 0;
+}
+
+/* ============================================
+   カード詳細プレビューポップアップ
+   ============================================ */
+.card-preview-popup {
+  position: fixed;
+  z-index: 200;
+  width: 220px;
+  padding: 14px;
+  background: linear-gradient(160deg, rgba(30, 18, 10, 0.97), rgba(20, 12, 6, 0.98));
+  border: 1px solid rgba(201, 168, 92, 0.4);
+  border-radius: 10px;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.7),
+    0 0 20px rgba(201, 168, 92, 0.1);
+  pointer-events: none;
+  animation: previewAppear 0.15s ease-out;
+}
+
+@keyframes previewAppear {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.card-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.card-preview-emoji {
+  font-size: 1.4rem;
+}
+
+.card-preview-name {
+  font-family: 'Noto Serif JP', var(--font-heading);
+  font-size: 0.9rem;
+  color: var(--paper);
+  flex: 1;
+}
+
+.card-preview-rarity {
+  font-size: 0.65rem;
+  color: var(--gold-bright);
+}
+
+.card-preview-type {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(80, 50, 25, 0.3);
+}
+
+.card-preview-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.card-preview-stats span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(201, 168, 92, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.card-preview-desc {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
