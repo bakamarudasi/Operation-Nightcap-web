@@ -63,6 +63,10 @@ interface GameStore {
   advanceAfterEvent: () => void;
   closeAfterEvent: () => void;
 
+  // デッキ管理
+  addToDeck: (cardId: string) => boolean;
+  removeFromDeck: (index: number) => boolean;
+
   // 設定
   resetData: () => void;
 
@@ -491,6 +495,29 @@ export const useGameStore = create<GameStore>()(
       },
 
       closeAfterEvent: () => set({ activeAfterEvent: null, afterEventDialogueIndex: 0 }),
+
+      addToDeck: (cardId: string) => {
+        const state = get();
+        if (state.playerDeck.length >= 12) return false;
+        // インベントリにあるかチェック（デッキに入ってない分）
+        const deckCount = state.playerDeck.filter((id: string) => id === cardId).length;
+        const invCount = state.inventory.filter((id: string) => id === cardId).length;
+        if (deckCount >= invCount) return false;
+        // 同じカードは最大3枚まで
+        if (deckCount >= 3) return false;
+        set({ playerDeck: [...state.playerDeck, cardId] });
+        return true;
+      },
+
+      removeFromDeck: (index: number) => {
+        const state = get();
+        if (index < 0 || index >= state.playerDeck.length) return false;
+        if (state.playerDeck.length <= 4) return false; // 最低4枚は維持
+        const newDeck = [...state.playerDeck];
+        newDeck.splice(index, 1);
+        set({ playerDeck: newDeck });
+        return true;
+      },
 
       resetData: () => {
         set({

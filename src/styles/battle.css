@@ -1388,3 +1388,112 @@
   0%, 100% { box-shadow: 0 0 6px rgba(255, 68, 102, 0.4); }
   50% { box-shadow: 0 0 16px rgba(255, 68, 102, 0.8); }
 }
+
+/* ============================================
+   distract: 相手の手札公開オーバーレイ
+   ============================================ */
+
+.revealed-hand-overlay {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 180;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 28px;
+  background: rgba(10, 6, 3, 0.92);
+  border: 1px solid rgba(201, 168, 92, 0.4);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 24px rgba(201, 168, 92, 0.1);
+  animation: revealIn 0.4s ease;
+}
+
+@keyframes revealIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.revealed-hand-title {
+  font-family: 'Noto Serif JP', var(--font-heading);
+  font-size: 1rem;
+  color: var(--gold-bright);
+  letter-spacing: 0.1em;
+}
+
+.revealed-hand-cards {
+  display: flex;
+  gap: 10px;
+}
+
+.revealed-card {
+  width: 80px;
+  height: 108px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid rgba(180, 140, 90, 0.3);
+  animation: revealCardPop 0.3s ease backwards;
+}
+
+.revealed-card:nth-child(1) { animation-delay: 0.1s; }
+.revealed-card:nth-child(2) { animation-delay: 0.2s; }
+.revealed-card:nth-child(3) { animation-delay: 0.3s; }
+.revealed-card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes revealCardPop {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.revealed-card.type-drink {
+  background: linear-gradient(160deg, rgba(60, 25, 15, 0.9), rgba(40, 18, 10, 0.95));
+  border-bottom: 3px solid #884444;
+}
+.revealed-card.type-food {
+  background: linear-gradient(160deg, rgba(20, 40, 20, 0.9), rgba(15, 30, 15, 0.95));
+  border-bottom: 3px solid #448844;
+}
+.revealed-card.type-chug {
+  background: linear-gradient(160deg, rgba(35, 20, 50, 0.9), rgba(25, 15, 35, 0.95));
+  border-bottom: 3px solid #665588;
+}
+.revealed-card.type-harassment {
+  background: linear-gradient(160deg, rgba(50, 18, 35, 0.9), rgba(35, 12, 25, 0.95));
+  border-bottom: 3px solid #884466;
+}
+.revealed-card.type-strategy {
+  background: linear-gradient(160deg, rgba(30, 35, 50, 0.9), rgba(20, 25, 35, 0.95));
+  border-bottom: 3px solid #556688;
+}
+.revealed-card.type-environment {
+  background: linear-gradient(160deg, rgba(35, 40, 25, 0.9), rgba(25, 30, 15, 0.95));
+  border-bottom: 3px solid #668855;
+}
+.revealed-card.type-status {
+  background: linear-gradient(160deg, rgba(45, 30, 15, 0.9), rgba(35, 20, 10, 0.95));
+  border-bottom: 3px solid #886644;
+}
+
+.revealed-card-emoji {
+  font-size: 1.8rem;
+}
+
+.revealed-card-name {
+  font-family: 'Noto Serif JP', var(--font-heading);
+  font-size: 0.6rem;
+  color: var(--paper);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.revealed-card-type {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+}

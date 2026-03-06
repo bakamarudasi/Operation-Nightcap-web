@@ -103,6 +103,7 @@ export function BattleScreen() {
   const [slamPlayer, setSlamPlayer] = useState(false);
   const [slamOpp, setSlamOpp] = useState(false);
 
+  const [revealedCards, setRevealedCards] = useState<string[] | null>(null);
   const [playingCardIdx, setPlayingCardIdx] = useState<number | null>(null);
   const [lastRound, setLastRound] = useState<{ pl: string; op: string; res: string; resColor: string }>({
     pl: '-', op: '-', res: '-', resColor: 'var(--gold)'
@@ -261,6 +262,12 @@ export function BattleScreen() {
             setReaction(null);
           }
           setTimeout(() => setReaction(null), 2000);
+
+          // distract: 相手の手札を公開
+          if (result.revealedHand && result.revealedHand.length > 0) {
+            setRevealedCards(result.revealedHand);
+            setTimeout(() => setRevealedCards(null), 4000);
+          }
 
           // CG（プレイヤーのセクハラ成功時）
           if (result.cgEvent) {
@@ -620,6 +627,33 @@ export function BattleScreen() {
           })}
         </div>
       </div>
+
+      {/* distract: 相手の手札公開 */}
+      {revealedCards && (
+        <div className="revealed-hand-overlay">
+          <div className="revealed-hand-title">👁️ 相手の手札が見えた！</div>
+          <div className="revealed-hand-cards">
+            {revealedCards.map((cardId, i) => {
+              const card = CARD_DATA[cardId];
+              if (!card) return null;
+              return (
+                <div key={`reveal-${i}`} className={`revealed-card type-${card.type}`}>
+                  <div className="revealed-card-emoji">{card.emoji}</div>
+                  <div className="revealed-card-name">{card.name}</div>
+                  <div className="revealed-card-type">
+                    {card.type === 'drink' ? `攻撃 ${card.damage === -1 ? '1~3' : card.damage}` :
+                     card.type === 'food' ? `回復 ${card.heal}` :
+                     card.type === 'chug' ? '一気飲み' :
+                     card.type === 'harassment' ? 'セクハラ' :
+                     card.type === 'strategy' ? '戦略' :
+                     card.type === 'environment' ? '環境' : '状態異常'}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 勝敗リザルト */}
       {gameResult && !activeAfterEvent && (
