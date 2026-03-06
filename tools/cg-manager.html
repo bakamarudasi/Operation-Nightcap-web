@@ -883,15 +883,17 @@ async function fetchGameData() {
 
   let charSrc = null, cardSrc = null;
 
-  // 1. fetch で取得（HTTPサーバー経由）
-  try {
-    const [charRes, cardRes] = await Promise.all([
-      fetch('../src/data/characters.ts?t=' + Date.now()),
-      fetch('../src/data/cards.ts?t=' + Date.now()),
-    ]);
-    if (charRes.ok) charSrc = await charRes.text();
-    if (cardRes.ok) cardSrc = await cardRes.text();
-  } catch {}
+  // 1. fetch で取得（HTTPサーバー経由 — file://プロトコル時はCORSエラーになるためスキップ）
+  if (location.protocol !== 'file:') {
+    try {
+      const [charRes, cardRes] = await Promise.all([
+        fetch('../src/data/characters.ts?t=' + Date.now()),
+        fetch('../src/data/cards.ts?t=' + Date.now()),
+      ]);
+      if (charRes.ok) charSrc = await charRes.text();
+      if (cardRes.ok) cardSrc = await cardRes.text();
+    } catch {}
+  }
 
   // 2. File System Access API で取得（フォルダ設定済みの場合）
   if (!charSrc && projectDirHandle) {
@@ -1267,12 +1269,39 @@ function getAssetPath(item) {
 }
 
 function checkFileExists(item) {
+  // file://プロトコル時はprojectDirHandle経由で確認（Image読み込みだとERR_FILE_NOT_FOUNDがコンソールに出るため）
+  if (location.protocol === 'file:' && projectDirHandle) {
+    return checkFileExistsViaHandle(item);
+  }
+  // file://でprojectDirHandle未設定の場合はスキップ（コンソールエラー抑制）
+  if (location.protocol === 'file:') {
+    fileExistence[item.id] = false;
+    return Promise.resolve(false);
+  }
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => { fileExistence[item.id] = true; resolve(true); };
     img.onerror = () => { fileExistence[item.id] = false; resolve(false); };
     img.src = getAssetPath(item) + '?t=' + Date.now();
   });
+}
+
+async function checkFileExistsViaHandle(item) {
+  try {
+    const pathParts = item.type === 'cg'
+      ? ['assets', 'characters', currentCharId, 'cg', item.file]
+      : ['assets', 'characters', currentCharId, item.file];
+    let dir = projectDirHandle;
+    for (let i = 0; i < pathParts.length - 1; i++) {
+      dir = await dir.getDirectoryHandle(pathParts[i]);
+    }
+    await dir.getFileHandle(pathParts[pathParts.length - 1]);
+    fileExistence[item.id] = true;
+    return true;
+  } catch {
+    fileExistence[item.id] = false;
+    return false;
+  }
 }
 
 async function checkAllFiles() {
@@ -2056,11 +2085,13 @@ let gpState = null; // { dialogue, frames, cgColor, currentLine, currentFrame, t
 
 async function fetchCharSourceRaw() {
   if (charSourceRaw) return charSourceRaw;
-  // 1. fetch
-  try {
-    const res = await fetch('../src/data/characters.ts?t=' + Date.now());
-    if (res.ok) charSourceRaw = await res.text();
-  } catch {}
+  // 1. fetch（file://プロトコル時はスキップ）
+  if (location.protocol !== 'file:') {
+    try {
+      const res = await fetch('../src/data/characters.ts?t=' + Date.now());
+      if (res.ok) charSourceRaw = await res.text();
+    } catch {}
+  }
   // 2. File System Access API
   if (!charSourceRaw && projectDirHandle) {
     charSourceRaw = await readFileViaHandle('src/data/characters.ts');
