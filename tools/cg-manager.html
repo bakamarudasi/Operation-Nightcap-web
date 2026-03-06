@@ -756,6 +756,18 @@ function checkFileExists(item) {
 
 async function checkAllFiles() {
   await Promise.all(items.map(it => checkFileExists(it)));
+  // ファイルが配置済みなのにステータスが未作成のままのアイテムを自動的に採用済にする
+  let changed = false;
+  for (const item of items) {
+    if (fileExistence[item.id] === true && item.status === 'pending') {
+      item.status = 'done';
+      changed = true;
+    }
+  }
+  if (changed) {
+    saveAll();
+    updateCounts();
+  }
   renderList();
   if (selectedId) updateFileStatus(items.find(i => i.id === selectedId));
 }
