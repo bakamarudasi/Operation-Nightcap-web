@@ -1275,8 +1275,31 @@ function checkFileExists(item) {
   });
 }
 
+function checkFrameFileExists(item, frameIdx) {
+  const frame = item.frames?.[frameIdx];
+  if (!frame?.file) return Promise.resolve(false);
+  const frameItem = { ...item, file: frame.file };
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = getAssetPath(frameItem) + '?t=' + Date.now();
+  });
+}
+
 async function checkAllFiles() {
-  await Promise.all(items.map(it => checkFileExists(it)));
+  const checks = items.map(it => checkFileExists(it));
+  // フレーム画像もチェック
+  for (const item of items) {
+    if (item.frames?.length) {
+      for (let fi = 0; fi < item.frames.length; fi++) {
+        checks.push(checkFrameFileExists(item, fi).then(exists => {
+          if (item.frames[fi]) item.frames[fi]._fileExists = exists;
+        }));
+      }
+    }
+  }
+  await Promise.all(checks);
   // ファイルが配置済みなのにステータスが未作成のままのアイテムを自動的に採用済にする
   let changed = false;
   for (const item of items) {
@@ -1630,6 +1653,7 @@ async function adopt() {
             await saveToFolder(fResult.blob, frameItem);
             URL.revokeObjectURL(fResult.url);
             frame.file = frameFile;
+            frame.imageUrl = null; // base64をクリアしてlocalStorage肥大化を防止
             frameSaved++;
           } catch (e) {
             console.warn(`フレーム${fi}の保存失敗:`, e);
@@ -1659,6 +1683,7 @@ async function adopt() {
             document.body.appendChild(fa); fa.click(); document.body.removeChild(fa);
             URL.revokeObjectURL(fResult.url);
             frame.file = frameFile;
+            frame.imageUrl = null; // base64をクリアしてlocalStorage肥大化を防止
           } catch (e) {
             console.warn(`フレーム${fi}のダウンロード失敗:`, e);
           }
@@ -2238,8 +2263,11 @@ function renderGamePreview() {
   if (hasFrames) {
     const frame = frames[currentFrame];
     const frameLabel = frame?.label || '';
-    // Use frame-specific image if available, fallback to item image
-    const frameImgSrc = frame?.imageUrl || imgSrc;
+    // Use frame-specific image if available, fallback to file path, then item image
+    const frameFileSrc = frame?.file ? getAssetPath({ ...items.find(i => i.id === selectedId), file: frame.file }) : null;
+    const frameImgSrc = frame?.imageUrl || frameFileSrc || imgSrc;
+    const transition = frame?.transition || 'fade';
+    const transClass = transition === 'none' ? '' : ` gp-seq-enter-${transition}`;
     // Build frame dot indicators
     let dotsHtml = '';
     if (frames.length > 1) {
@@ -2254,14 +2282,14 @@ function renderGamePreview() {
     if (frameImgSrc) {
       imageHtml = `
         <div class="gp-image">
-          <div class="gp-seq-frame gp-seq-enter-fade" style="background:url('${frameImgSrc}') center/cover no-repeat; width:100%; height:100%;">
+          <div class="gp-seq-frame${transClass}" style="background:url('${frameImgSrc}') center/cover no-repeat; width:100%; height:100%;">
           </div>
           ${dotsHtml}
         </div>`;
     } else {
       imageHtml = `
         <div class="gp-image">
-          <div class="gp-seq-frame gp-seq-enter-fade" style="background:linear-gradient(135deg, ${cgColor}44, ${cgColor}88); width:100%; height:100%;">
+          <div class="gp-seq-frame${transClass}" style="background:linear-gradient(135deg, ${cgColor}44, ${cgColor}88); width:100%; height:100%;">
             <div class="gp-placeholder">
               <div style="font-size:80px">🎨</div>
               <div style="font-size:16px;color:#f5e6d3">${esc(frameLabel)}</div>
@@ -2546,8 +2574,9 @@ function renderFrames(item) {
     const card = document.createElement('div');
     card.className = 'frame-card';
 
-    const thumbContent = f.imageUrl
-      ? `<img src="${f.imageUrl}" alt="F${i + 1}">`
+    const frameThumbSrc = f.imageUrl || (f.file ? getAssetPath({ ...item, file: f.file }) : null);
+    const thumbContent = frameThumbSrc
+      ? `<img src="${frameThumbSrc}" alt="F${i + 1}">`
       : '🖼';
 
     card.innerHTML = `
