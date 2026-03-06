@@ -1396,31 +1396,30 @@ export const CharacterSprite = ({ characterId, imageUrl, drunkLevel }: Character
 #### 画像差分の管理（将来用）
 
 ```
-assets/characters/blaze/
-├── portrait.webp              # Lv0: 通常
+public/characters/blaze/
+├── portrait-drunk-0.webp      # Lv0: 通常（素面）
 ├── portrait-drunk-1.webp      # Lv1: ほろ酔い（微笑み、頬赤い）
 ├── portrait-drunk-2.webp      # Lv2: 酔い（トロン目、服乱れ）
 ├── portrait-drunk-3.webp      # Lv3: べろべろ（甘え顔、服大乱れ）
-└── portrait-drunk-4.webp      # Lv4: 潰れ（目閉じ、傾き）
+├── portrait-drunk-4.webp      # Lv4: 潰れ（目閉じ、傾き）
+└── cg/
+    ├── shoulder_lean.webp     # CGイベント画像
+    └── ...
 ```
 
 ```ts
-// 差分画像の動的読み込み
-const portraits = import.meta.glob<{ default: string }>(
-  '@/assets/characters/*/portrait*.webp',
-  { eager: true }
-);
-
-function getPortrait(characterId: string, drunkLevel: DrunkLevelValue): string {
-  if (drunkLevel === 0) {
-    const key = `/src/assets/characters/${characterId}/portrait.webp`;
-    return portraits[key]?.default ?? '';
-  }
-  // 酔い差分があればそれを使う、なければ通常
-  const drunkKey = `/src/assets/characters/${characterId}/portrait-drunk-${drunkLevel}.webp`;
-  const baseKey = `/src/assets/characters/${characterId}/portrait.webp`;
-  return portraits[drunkKey]?.default ?? portraits[baseKey]?.default ?? '';
+// CharacterTheme で酔いレベル別画像パスを定義
+theme: {
+  portraitImg: '/characters/blaze/portrait-drunk-0.webp',
+  portraitDrunkImgs: {
+    0: '/characters/blaze/portrait-drunk-0.webp',
+    1: '/characters/blaze/portrait-drunk-1.webp',
+    // ...
+  },
 }
+
+// CharacterPortrait コンポーネントが drunkLevel に応じて自動選択
+// 該当レベルの画像がなければ portraitImg → 絵文字の順にフォールバック
 ```
 
 > **画像差分がない時**: CSSフィルタ + 赤みオーバーレイ + 揺れアニメで代用。
@@ -2342,21 +2341,17 @@ assets/
 ### 画像参照パターン
 
 ```ts
-// 静的 import（ビルド時にハッシュ付き URL へ変換される）
-import blazePortrait from '@/assets/characters/blaze/portrait.webp';
+// 画像は public/ ディレクトリに配置し、Vite が静的配信する
+// CharacterTheme.portraitImg / portraitDrunkImgs でパスを定義
+// 例: '/characters/blaze/portrait-drunk-0.webp'
 
-// 動的 import（キャラ ID から動的に読み込む場合）
-// Vite の import.meta.glob を使用
-const characterPortraits = import.meta.glob<{ default: string }>(
-  '@/assets/characters/*/portrait.webp',
-  { eager: true }
-);
-
-// 使用例
-function getPortrait(characterId: string): string {
-  const key = `/src/assets/characters/${characterId}/portrait.webp`;
-  return characterPortraits[key]?.default ?? '';
-}
+// CharacterPortrait コンポーネントが drunkLevel に応じて自動選択
+<CharacterPortrait
+  theme={char.theme}
+  variant="portrait"
+  drunkLevel={drunkLevel}
+  costumeStates={char.costumeStates}
+/>
 ```
 
 ---
