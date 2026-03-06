@@ -103,17 +103,6 @@ const CHARACTER_DATA = {
         ]
       },
       {
-        id: 'blaze_gaze',
-        triggerCard: 'gaze',
-        requiredDrunkLevel: 2,
-        cgColor: '#e85d3a',
-        dialogue: [
-          { speaker: 'ドクター', text: '（じっと見つめる）' },
-          { speaker: 'ブレイズ', text: 'お、おい…そんな見んなよ…' },
-          { speaker: 'ブレイズ', text: '…………心臓うるせぇだろ、ばか' }
-        ]
-      },
-      {
         id: 'blaze_lap',
         triggerCard: 'lap_pillow',
         requiredDrunkLevel: 3,

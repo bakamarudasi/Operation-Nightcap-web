@@ -15,7 +15,6 @@
 
 shoulder_lean.webp    | 耳元でささやく     | Lv.1 |
 headpat.webp          | うなじを撫でる     | Lv.2 |
-gaze.webp             | 唇を見つめる       | Lv.2 |
 breast_touch.webp     | 胸に触れる         | Lv.2 |
 hip_touch.webp        | お尻をなでる       | Lv.2 |
 ear_bite.webp         | 耳を甘噛み         | Lv.3 |

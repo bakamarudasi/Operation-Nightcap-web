@@ -73,11 +73,6 @@ const CARD_DATA = {
     requiredDrunkLevel: 2, drunkDamage: 1,
     description: '酔いLv.2以上で発動。酔い+1 & CG再生', rarity: 4, price: 1500
   },
-  gaze: {
-    id: 'gaze', name: '見つめる', emoji: '👀', type: 'harassment',
-    requiredDrunkLevel: 2, drunkDamage: 2,
-    description: '酔いLv.2以上で発動。酔い+2 & CG再生', rarity: 4, price: 2000
-  },
   lap_pillow: {
     id: 'lap_pillow', name: '膝枕する', emoji: '💕', type: 'harassment',
     requiredDrunkLevel: 3, drunkDamage: 2,

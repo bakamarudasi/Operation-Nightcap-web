@@ -45,7 +45,7 @@ export const SHOP_DATA = {
     'beer', 'wine', 'whiskey', 'baijiu', 'cocktail',
     'nuts', 'yakitori', 'ramen', 'ukon',
     'chug', 'toast', 'spill',
-    'shoulder_lean', 'headpat', 'gaze', 'lap_pillow', 'kiss'
+    'shoulder_lean', 'headpat', 'lap_pillow', 'kiss'
   ]
 } as const;
 
