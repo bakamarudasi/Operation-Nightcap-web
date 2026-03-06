@@ -1264,8 +1264,8 @@ function load() {
 // File existence check
 // ============================================================
 function getAssetPath(item) {
-  if (item.type === 'cg') return `../assets/characters/${currentCharId}/cg/${item.file}`;
-  return `../assets/characters/${currentCharId}/${item.file}`;
+  if (item.type === 'cg') return `../public/characters/${currentCharId}/cg/${item.file}`;
+  return `../public/characters/${currentCharId}/${item.file}`;
 }
 
 function checkFileExists(item) {
@@ -1589,7 +1589,7 @@ async function getSubDir(handle, path) {
 
 async function saveToFolder(blob, item) {
   // Determine target subdirectory based on item type
-  const basePath = `assets/characters/${currentCharId}`;
+  const basePath = `public/characters/${currentCharId}`;
   const subPath = item.type === 'cg' ? `${basePath}/cg` : basePath;
 
   const dir = await getSubDir(projectDirHandle, subPath);
@@ -1740,15 +1740,15 @@ function generateManifest() {
   o += '# ============================================\n\n';
 
   o += `# --- イベントCG (${cgs.length}枚) ---\n`;
-  o += `# 配置先: assets/characters/${currentCharId}/cg/\n\n`;
+  o += `# 配置先: public/characters/${currentCharId}/cg/\n\n`;
   for (const r of cgs) o += `${pad(r.file, 26)}| ${pad(r.trigger, 18)}| ${pad(r.level || '', 6)}| ${r.note || ''}`.replace(/\s+$/, '') + '\n';
 
   o += `\n# --- 立ち絵 (${portraits.length}枚) ---\n`;
-  o += `# 配置先: assets/characters/${currentCharId}/\n\n`;
+  o += `# 配置先: public/characters/${currentCharId}/\n\n`;
   for (const r of portraits) o += `${pad(r.file, 26)}| ${pad(r.trigger, 18)}| ${pad(r.level || '', 6)}| ${r.note || ''}`.replace(/\s+$/, '') + '\n';
 
   o += `\n# --- アイコン (${icons.length}枚) ---\n`;
-  o += `# 配置先: assets/characters/${currentCharId}/\n\n`;
+  o += `# 配置先: public/characters/${currentCharId}/\n\n`;
   for (const r of icons) o += `${pad(r.file, 26)}| ${pad(r.trigger, 18)}| ${r.note || ''}`.replace(/\s+$/, '') + '\n';
 
   o += `\n# ============================================\n`;
@@ -1963,8 +1963,8 @@ function updateAssignInfo() {
   const ext = getDropExt();
   const file = id + ext;
   const path = type === 'cg'
-    ? `assets/characters/${charId}/cg/${file}`
-    : `assets/characters/${charId}/${file}`;
+    ? `public/characters/${charId}/cg/${file}`
+    : `public/characters/${charId}/${file}`;
 
   document.getElementById('assignInfo').innerHTML =
     `自動ファイル名: <span class="auto-name">${esc(file)}</span><br>` +

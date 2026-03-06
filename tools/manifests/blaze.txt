@@ -11,18 +11,31 @@
 # ============================================
 
 # --- イベントCG (8枚) ---
-# 配置先: assets/characters/blaze/cg/
+# 配置先: public/characters/blaze/cg/
 
-shoulder_lean.webp    | 耳元でささやく     | Lv.1 |
-headpat.webp          | うなじを撫でる     | Lv.2 |
-breast_touch.webp     | 胸に触れる         | Lv.2 |
-hip_touch.webp        | お尻をなでる       | Lv.2 |
-ear_bite.webp         | 耳を甘噛み         | Lv.3 |
-lap_pillow.webp       | 太ももに誘う       | Lv.3 |
-kiss.webp             | ディープキス        | Lv.3 | instant_win
+shoulder_lean.webp    | 耳元でささやく     | Lv.1 | 単一フレーム
+headpat.webp          | うなじを撫でる     | Lv.2 | 単一フレーム
+breast_touch_1.webp   | 胸に触れる(1)      | Lv.2 | フレーム1: 手が伸びる
+breast_touch_2.webp   | 胸に触れる(2)      | Lv.2 | フレーム2: 胸に触れる
+breast_touch_3.webp   | 胸に触れる(3)      | Lv.2 | フレーム3: 感じてる表情
+hip_touch.webp        | お尻をなでる       | Lv.2 | 単一フレーム
+ear_bite_1.webp       | 耳を甘噛み(1)      | Lv.3 | フレーム1: 耳に顔を近づける
+ear_bite_2.webp       | 耳を甘噛み(2)      | Lv.3 | フレーム2: 耳たぶを噛む
+ear_bite_3.webp       | 耳を甘噛み(3)      | Lv.3 | フレーム3: 蕩けた表情
+lap_pillow.webp       | 太ももに誘う       | Lv.3 | 単一フレーム
+kiss_1.webp           | ディープキス(1)     | Lv.3 | フレーム1: 腰を引き寄せる
+kiss_2.webp           | ディープキス(2)     | Lv.3 | フレーム2: 唇が近づく
+kiss_3.webp           | ディープキス(3)     | Lv.3 | フレーム3: キス
+kiss_4.webp           | ディープキス(4)     | Lv.3 | フレーム4: 余韻 / instant_win
+foot_tease_1.webp     | 足テーブル下(1)    | Lv.2 | フレーム1: テーブル下の気配
+foot_tease_2.webp     | 足テーブル下(2)    | Lv.2 | フレーム2: 挑発する笑み
+foot_tease_3.webp     | 足テーブル下(3)    | Lv.2 | フレーム3: 攻めるブレイズ
+dirty_talk_1.webp     | 囁き(1)           | Lv.2 | フレーム1: 耳元に近づく
+dirty_talk_2.webp     | 囁き(2)           | Lv.2 | フレーム2: 囁く表情
+dirty_talk_3.webp     | 囁き(3)           | Lv.2 | フレーム3: 満足げな笑み
 
 # --- 立ち絵 / ポートレート (6枚) ---
-# 配置先: assets/characters/blaze/
+# 配置先: public/characters/blaze/
 
 portrait.webp         | 基本立ち絵          |      |
 portrait-drunk-0.webp | 素面                | Lv.0 |
@@ -32,11 +45,11 @@ portrait-drunk-3.webp | べろべろ            | Lv.3 |
 portrait-drunk-4.webp | 潰れ                | Lv.4 |
 
 # --- アイコン (1枚) ---
-# 配置先: assets/characters/blaze/
+# 配置先: public/characters/blaze/
 
 select-icon.webp      | キャラ選択画面用    |      |
 
 # ============================================
-# 合計: 15枚
+# 合計: CG 20枚 + 立ち絵 6枚 + アイコン 1枚 = 27枚
 # ステータス: 全て未作成 (プレースホルダー運用中)
 # ============================================
