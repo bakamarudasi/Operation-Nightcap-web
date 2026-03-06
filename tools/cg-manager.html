@@ -582,6 +582,7 @@
     <button onclick="downloadManifest()">ダウンロード</button>
     <button onclick="checkAllFiles()">ファイル確認</button>
     <button onclick="showCompareView()" style="background:var(--surface2)">キャラ比較</button>
+    <button onclick="showMissingCGModal()" style="background:#2a5a4e;border-color:var(--success)">不足CG出力</button>
   </div>
 </div>
 
@@ -840,6 +841,24 @@
 <!-- Compare Overlay -->
 <div id="compareOverlay" style="display:none"></div>
 
+<!-- Missing CG Export Modal -->
+<div class="modal-overlay hidden" id="missingCGModal">
+  <div class="modal" style="width:700px;max-width:95vw">
+    <h3>不足CGリスト + セリフ出力</h3>
+    <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+      <button id="fmtJson" class="primary" onclick="setMissingFmt('json')">JSON</button>
+      <button id="fmtMd" onclick="setMissingFmt('md')">Markdown</button>
+      <span style="margin-left:auto;font-size:0.72em;color:var(--text-dim)" id="missingStats"></span>
+    </div>
+    <textarea class="import-ta" id="missingCGOutput" readonly style="height:400px;font-family:'Consolas','Monaco',monospace;font-size:0.75em;white-space:pre;tab-size:2"></textarea>
+    <div class="ma">
+      <button onclick="closeModal('missingCGModal')">閉じる</button>
+      <button onclick="copyMissingCG()">コピー</button>
+      <button class="primary" onclick="downloadMissingCG()">ダウンロード</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -860,6 +879,7 @@ let fileExistence = {};
 // ゲームコード (characters.ts + cards.ts) からCG要件を動的取得
 // ============================================================
 let charDataCache = null;   // { charId → { name, nameEn, cgEvents[], costumeStates[] } }
+let charSourceRaw = null;   // characters.ts の生ソースコード
 let cardNameCache = {};     // cardId → 日本語名
 
 // File System Access API でプロジェクト内のファイルを読む
@@ -926,6 +946,20 @@ function extractCGEventBlocks(cgBlock) {
   return blocks;
 }
 
+// Extract balanced [...] content after a key like "cgEvents: [" using bracket counting
+function extractBalancedArrayContent(src, key) {
+  const idx = src.indexOf(key);
+  if (idx < 0) return null;
+  const bracketStart = src.indexOf('[', idx + key.length);
+  if (bracketStart < 0) return null;
+  let depth = 0;
+  for (let i = bracketStart; i < src.length; i++) {
+    if (src[i] === '[') depth++;
+    else if (src[i] === ']') { depth--; if (depth === 0) return src.slice(bracketStart + 1, i); }
+  }
+  return null;
+}
+
 function parseCharacters(src) {
   // キャラIDごとのブロックを抽出
   const charBlockRe = /^\s{2}(\w+):\s*\{/gm;
@@ -948,10 +982,10 @@ function parseCharacters(src) {
     // cgEvents の triggerCard, requiredDrunkLevel, instantWin, dialogue, frames, cgColor
     const cgEvents = [];
 
-    // cgEventsブロックを取得
-    const cgBlockM = block.match(/cgEvents:\s*\[([\s\S]*?)\]\s*,\s*afterEvents/);
-    if (cgBlockM) {
-      const cgBlock = cgBlockM[1];
+    // cgEventsブロックを取得（balanced bracket extraction）
+    const cgBlockContent = extractBalancedArrayContent(block, 'cgEvents:');
+    if (cgBlockContent) {
+      const cgBlock = cgBlockContent;
       // 各イベントブロックを balanced brace で抽出
       const parsedEvents = extractCGEventBlocks(cgBlock);
       for (const evBlock of parsedEvents) {
@@ -959,11 +993,12 @@ function parseCharacters(src) {
         const dlM = evBlock.match(/requiredDrunkLevel:\s*(\d+)/);
         const iwM = evBlock.match(/instantWin:\s*true/);
         const ccM = evBlock.match(/cgColor:\s*'([^']*)'/);
+        const idM = evBlock.match(/id:\s*'([^']+)'/);
         if (!tcM) continue;
 
-        // Parse dialogue
+        // Parse dialogue (handle escaped single quotes via (?:[^'\\]|\\.)*)
         const dialogue = [];
-        const dlgRe = /\{\s*speaker:\s*'([^']*)'\s*,\s*text:\s*'([^']*)'\s*\}/g;
+        const dlgRe = /\{\s*speaker:\s*'((?:[^'\\]|\\.)*)'\s*,\s*text:\s*'((?:[^'\\]|\\.)*)'\s*\}/g;
         let dm;
         while ((dm = dlgRe.exec(evBlock)) !== null) {
           dialogue.push({ speaker: dm[1], text: dm[2] });
@@ -987,6 +1022,7 @@ function parseCharacters(src) {
         }
 
         cgEvents.push({
+          id: idM?.[1] || '',
           triggerCard: tcM[1],
           requiredDrunkLevel: parseInt(dlM?.[1] || '0'),
           instantWin: !!iwM,
@@ -997,14 +1033,62 @@ function parseCharacters(src) {
       }
     }
 
-    // costumeStates のレベル数
+    // costumeStates のレベル数 + 詳細
     const costumeCount = (block.match(/level:\s*\d+.*?dishevelAmount/g) || []).length;
+    const costumeStates = [];
+    const csBlockContent = extractBalancedArrayContent(block, 'costumeStates:');
+    if (csBlockContent) {
+      const csBlocks = extractCGEventBlocks(csBlockContent);
+      for (const csb of csBlocks) {
+        costumeStates.push({
+          level: parseInt(csb.match(/level:\s*(\d+)/)?.[1] || '0'),
+          label: csb.match(/label:\s*'([^']*)'/)?.[1] || '',
+          description: csb.match(/description:\s*'([^']*)'/)?.[1] || '',
+          dishevelAmount: parseFloat(csb.match(/dishevelAmount:\s*([\d.]+)/)?.[1] || '0'),
+        });
+      }
+    }
+
+    // afterEvents の解析
+    const afterEvents = [];
+    const aeBlockContent = extractBalancedArrayContent(block, 'afterEvents:');
+    if (aeBlockContent) {
+      const aeBlocks = extractCGEventBlocks(aeBlockContent);
+      for (const aeb of aeBlocks) {
+        const aeDialogue = [];
+        const dlgRe2 = /\{\s*speaker:\s*'((?:[^'\\]|\\.)*)'\s*,\s*text:\s*'((?:[^'\\]|\\.)*)'\s*\}/g;
+        let dm2;
+        while ((dm2 = dlgRe2.exec(aeb)) !== null) {
+          aeDialogue.push({ speaker: dm2[1], text: dm2[2] });
+        }
+        afterEvents.push({
+          id: aeb.match(/id:\s*'([^']*)'/)?.[1] || '',
+          title: aeb.match(/title:\s*'([^']*)'/)?.[1] || '',
+          requiredCGRate: parseFloat(aeb.match(/requiredCGRate:\s*([\d.]+)/)?.[1] || '0'),
+          requiredWins: parseInt(aeb.match(/requiredWins:\s*(\d+)/)?.[1] || '0'),
+          cgColor: aeb.match(/cgColor:\s*'([^']*)'/)?.[1] || '#e85d3a',
+          dialogue: aeDialogue,
+        });
+      }
+    }
+
+    // theme color — theme: { color: '...' } の先頭に近いcolorフィールドを取得
+    const themeIdx = block.indexOf('theme:');
+    let themeColorM = null;
+    if (themeIdx >= 0) {
+      const themeSlice = block.slice(themeIdx, themeIdx + 200);
+      const cm = themeSlice.match(/color:\s*'(#[^']+)'/);
+      if (cm) themeColorM = cm;
+    }
 
     charDataCache[charId] = {
       name: nameM?.[1] || '',
       nameEn: nameEnM?.[1] || charId.toUpperCase(),
       cgEvents,
       costumeLevels: costumeCount,
+      costumeStates,
+      afterEvents,
+      theme: { color: themeColorM?.[1] || '#e85d3a' },
     };
   }
 }
@@ -1055,6 +1139,7 @@ function getDefaults() {
     const note = ev.instantWin ? 'instant_win' : isReverse ? 'reverse_harassment' : '';
     items.push({
       id: ev.triggerCard,
+      gameId: ev.id || '',
       file: ev.triggerCard + '.webp',
       trigger,
       level: 'Lv.' + ev.requiredDrunkLevel,
@@ -1482,7 +1567,13 @@ function saveMeta() {
   if (!item) return;
   const newFile = document.getElementById('dFile').value.trim();
   const newId = newFile.replace(/\.\w+$/, '');
-  if (newId !== item.id) { item.id = newId; selectedId = newId; }
+  if (newId !== item.id) {
+    if (items.some(i => i.id === newId && i !== item)) {
+      toast(`ID "${newId}" は既に存在します`, 'err');
+      return;
+    }
+    item.id = newId; selectedId = newId;
+  }
   item.file = newFile;
   item.trigger = document.getElementById('dTrigger').value.trim();
   item.level = document.getElementById('dLevel').value;
@@ -1494,9 +1585,9 @@ function saveMeta() {
 function renderPreview(item) {
   const el = document.getElementById('imgPreview');
   if (item.adoptedImage) {
-    el.innerHTML = `<img src="${item.adoptedImage}" alt="${esc(item.trigger)}">`;
+    el.innerHTML = `<img src="${esc(item.adoptedImage)}" alt="${esc(item.trigger)}">`;
   } else if (item.history.length > 0) {
-    el.innerHTML = `<img src="${item.history[item.history.length - 1].url}" alt="${esc(item.trigger)}">`;
+    el.innerHTML = `<img src="${esc(item.history[item.history.length - 1].url)}" alt="${esc(item.trigger)}">`;
   } else if (fileExistence[item.id] === true) {
     el.innerHTML = `<img src="${esc(getAssetPath(item))}" alt="${esc(item.trigger)}"><div style="position:absolute;bottom:8px;right:8px;background:var(--done);color:#000;padding:2px 8px;border-radius:4px;font-size:0.7em">ローカル</div>`;
   } else {
@@ -1511,9 +1602,9 @@ function renderHistory(item) {
     const h = item.history[i];
     const t = document.createElement('div');
     t.className = 'hist-thumb' + (h.adopted ? ' adopted' : '');
-    t.innerHTML = `<img src="${h.url}" alt="${i + 1}">`;
+    t.innerHTML = `<img src="${esc(h.url)}" alt="${i + 1}">`;
     t.onclick = () => {
-      document.getElementById('imgPreview').innerHTML = `<img src="${h.url}" alt="${esc(item.trigger)}">`;
+      document.getElementById('imgPreview').innerHTML = `<img src="${esc(h.url)}" alt="${esc(item.trigger)}">`;
       strip.querySelectorAll('.hist-thumb').forEach(x => x.classList.remove('sel'));
       t.classList.add('sel');
     };
@@ -1614,7 +1705,8 @@ function convertToWebP(srcUrl, quality = 0.90) {
       canvas.toBlob(blob => {
         if (!blob) { reject(new Error('WebP変換失敗')); return; }
         const url = URL.createObjectURL(blob);
-        const origSize = Math.round(srcUrl.length * 3 / 4); // base64概算
+        // base64概算（blob: URLの場合はサイズ不明なので0）
+        const origSize = srcUrl.startsWith('data:') ? Math.round((srcUrl.length - srcUrl.indexOf(',') - 1) * 3 / 4) : 0;
         resolve({ url, blob, origSize, webpSize: blob.size });
       }, 'image/webp', quality);
     };
@@ -1642,19 +1734,19 @@ async function adopt() {
       // フォルダ設定済み → 自動保存
       await saveToFolder(result.blob, item);
       URL.revokeObjectURL(result.url);
-      const pct = Math.round((1 - result.webpSize / result.origSize) * 100);
       const kb = (result.webpSize / 1024).toFixed(0);
       const subPath = item.type === 'cg' ? `cg/${webpFile}` : webpFile;
-      toast(`「${item.trigger}」→ ${subPath} (${kb}KB, ${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`, 'ok');
+      const pctStr = result.origSize > 0 ? (() => { const pct = Math.round((1 - result.webpSize / result.origSize) * 100); return `, ${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%`; })() : '';
+      toast(`「${item.trigger}」→ ${subPath} (${kb}KB${pctStr})`, 'ok');
     } else {
       // 未設定 → 従来のダウンロード
       const a = document.createElement('a');
       a.href = result.url; a.download = webpFile;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(result.url);
-      const pct = Math.round((1 - result.webpSize / result.origSize) * 100);
       const kb = (result.webpSize / 1024).toFixed(0);
-      toast(`「${item.trigger}」採用 → WebP ${kb}KB (${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`, 'ok');
+      const pctStr = result.origSize > 0 ? (() => { const pct = Math.round((1 - result.webpSize / result.origSize) * 100); return ` (${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`; })() : '';
+      toast(`「${item.trigger}」採用 → WebP ${kb}KB${pctStr}`, 'ok');
     }
   } catch (err) {
     // フォールバック: 変換失敗時はそのままダウンロード
@@ -1689,8 +1781,13 @@ function doReject() {
   const item = items.find(i => i.id === selectedId);
   if (!item) return;
   const reason = document.getElementById('rejectReason').value.trim();
-  if (reason) item.feedback.push({ reason, ts: new Date().toISOString(), idx: item.history.length - 1 });
-  if (item.history.length > 1) { item.history.pop(); item.status = 'review'; }
+  // 現在表示中の画像を特定（選択サムネイルまたは最新）
+  const selThumb = document.querySelector('#histStrip .hist-thumb.sel img');
+  const viewingUrl = selThumb ? selThumb.src : (item.history.length > 0 ? item.history[item.history.length - 1].url : null);
+  const viewIdx = viewingUrl ? item.history.findIndex(h => h.url === viewingUrl) : item.history.length - 1;
+  const removeIdx = viewIdx >= 0 ? viewIdx : item.history.length - 1;
+  if (reason) item.feedback.push({ reason, ts: new Date().toISOString(), idx: removeIdx });
+  if (item.history.length > 1) { item.history.splice(removeIdx, 1); item.status = 'review'; }
   else { item.history = []; item.status = 'pending'; }
   closeReject();
   saveAll(); updateCounts(); selectItem(item.id);
@@ -1890,7 +1987,7 @@ function showAssignModal() {
 
   // プレビュー表示
   document.getElementById('assignPreview').innerHTML =
-    `<img src="${pendingDropImage.dataUrl}" alt="preview">`;
+    `<img src="${esc(pendingDropImage.dataUrl)}" alt="preview">`;
 
   // キャラ選択肢
   const charSelect = document.getElementById('assignChar');
@@ -2080,7 +2177,6 @@ function renderGrid(filtered) {
 // ============================================================
 // Game Preview (CGOverlay recreation)
 // ============================================================
-let charSourceRaw = null;
 let gpState = null; // { dialogue, frames, cgColor, currentLine, currentFrame, typeTimer, displayText }
 
 async function fetchCharSourceRaw() {
@@ -2129,7 +2225,7 @@ function extractCGEventData(charId, triggerCard) {
 
   // Parse dialogue
   const dialogue = [];
-  const dlgRe = /\{\s*speaker:\s*'([^']*)'\s*,\s*text:\s*'([^']*)'\s*\}/g;
+  const dlgRe = /\{\s*speaker:\s*'((?:[^'\\]|\\.)*)'\s*,\s*text:\s*'((?:[^'\\]|\\.)*)'\s*\}/g;
   let dm;
   while ((dm = dlgRe.exec(eventBlock)) !== null) {
     dialogue.push({ speaker: dm[1], text: dm[2] });
@@ -2368,7 +2464,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (gpState) closeGamePreview();
     const cmpOverlay = document.getElementById('compareOverlay');
-    if (cmpOverlay.style.display !== 'none') closeCompareView();
+    if (cmpOverlay && cmpOverlay.style.display !== 'none' && cmpOverlay.style.display !== '') closeCompareView();
   }
 });
 
@@ -2805,6 +2901,237 @@ function copyCodeOutput() {
 }
 
 // ============================================================
+// Missing CG List Export (for ComfyUI / Claude)
+// ============================================================
+let missingCGFormat = 'json';
+
+function setMissingFmt(fmt) {
+  missingCGFormat = fmt;
+  document.getElementById('fmtJson').className = fmt === 'json' ? 'primary' : '';
+  document.getElementById('fmtMd').className = fmt === 'md' ? 'primary' : '';
+  renderMissingCGOutput();
+}
+
+function getMissingCGData() {
+  const info = getCharInfo(currentCharId);
+  const data = loadCharData(currentCharId) || {};
+  const charName = data.charName || info?.name || '';
+  const charNameEn = data.charNameEn || info?.nameEn || currentCharId.toUpperCase();
+
+  // Collect all CG items that are NOT done
+  const missingCGs = items.filter(i => i.type === 'cg' && i.status !== 'done');
+  const missingPortraits = items.filter(i => i.type === 'portrait' && i.status !== 'done');
+
+  // Build structured data for CG events
+  const cgEntries = missingCGs.map(cg => {
+    const cardInfo = cardNameCache[cg.triggerCard] || cg.trigger || cg.triggerCard;
+    const entry = {
+      id: cg.gameId || `${currentCharId}_${cg.id}`,
+      filename: cg.file,
+      path: `public/characters/${currentCharId}/cg/${cg.file}`,
+      triggerCard: cg.triggerCard,
+      triggerName: cardInfo,
+      requiredDrunkLevel: parseInt(cg.level?.replace('Lv.', '') || '0'),
+      cgColor: cg.cgColor || '#e85d3a',
+      instantWin: cg.instantWin || false,
+      isReverse: cg.note === 'reverse_harassment',
+      dialogue: (cg.dialogue || []).map((d, i) => ({
+        line: i + 1,
+        speaker: d.speaker || '(ナレーション)',
+        text: d.text
+      })),
+      frames: (cg.frames || []).map((f, i) => ({
+        frame: i + 1,
+        label: f.label || '',
+        dialogueStart: f.dialogueStart || 0,
+        transition: f.transition || 'fade',
+        imagePath: f.src || f.imageUrl || `public/characters/${currentCharId}/cg/${cg.triggerCard}_${i + 1}.webp`
+      }))
+    };
+    return entry;
+  });
+
+  // Build structured data for portraits
+  const portraitEntries = missingPortraits.map(p => {
+    const drunkLevel = p.id === 'portrait' ? -1 : parseInt(p.id.replace('portrait-drunk-', ''));
+    const costumeInfo = drunkLevel >= 0 ? info?.costumeStates?.find(cs => cs.level === drunkLevel) : null;
+    return {
+      id: p.id,
+      filename: p.file,
+      path: `public/characters/${currentCharId}/${p.file}`,
+      trigger: p.trigger,
+      drunkLevel: p.level || 'Lv.0',
+      costumeDescription: costumeInfo?.description || ''
+    };
+  });
+
+  // afterEvents from characters.ts
+  const afterEntries = (info?.afterEvents || []).map(ae => ({
+    id: ae.id,
+    title: ae.title || '',
+    requiredCGRate: ae.requiredCGRate,
+    requiredWins: ae.requiredWins,
+    cgColor: ae.cgColor || '#e85d3a',
+    dialogue: (ae.dialogue || []).map((d, i) => ({
+      line: i + 1,
+      speaker: d.speaker || '(ナレーション)',
+      text: d.text
+    }))
+  }));
+
+  return {
+    character: {
+      id: currentCharId,
+      name: charName,
+      nameEn: charNameEn,
+      themeColor: info?.theme?.color || '#e85d3a'
+    },
+    summary: {
+      totalCGs: items.filter(i => i.type === 'cg').length,
+      missingCGs: missingCGs.length,
+      totalPortraits: items.filter(i => i.type === 'portrait').length,
+      missingPortraits: missingPortraits.length,
+      doneCGs: items.filter(i => i.type === 'cg' && i.status === 'done').length,
+    },
+    costumeStates: (info?.costumeStates || []).map(cs => ({
+      level: cs.level,
+      label: cs.label,
+      description: cs.description,
+      dishevelAmount: cs.dishevelAmount
+    })),
+    missingCGEvents: cgEntries,
+    missingPortraits: portraitEntries,
+    afterEvents: afterEntries,
+  };
+}
+
+function generateMissingJSON(data) {
+  const d = data || getMissingCGData();
+  return JSON.stringify(d, null, 2);
+}
+
+function generateMissingMD(data) {
+  const d = data || getMissingCGData();
+  let md = '';
+  md += `# 不足CGリスト: ${d.character.nameEn} (${d.character.name})\n\n`;
+  md += `- キャラID: \`${d.character.id}\`\n`;
+  md += `- テーマカラー: \`${d.character.themeColor}\`\n`;
+  md += `- CG進捗: ${d.summary.doneCGs}/${d.summary.totalCGs} 完了 / 不足 ${d.summary.missingCGs}枚\n`;
+  md += `- 立ち絵進捗: 不足 ${d.summary.missingPortraits}枚\n\n`;
+
+  // 衣装状態
+  if (d.costumeStates.length > 0) {
+    md += `## 衣装状態 (酔い段階)\n\n`;
+    md += `| Lv | ラベル | 描写 | 乱れ度 |\n`;
+    md += `|----|--------|------|--------|\n`;
+    for (const cs of d.costumeStates) {
+      md += `| ${cs.level} | ${cs.label} | ${cs.description} | ${cs.dishevelAmount} |\n`;
+    }
+    md += '\n';
+  }
+
+  // 不足CG
+  if (d.missingCGEvents.length > 0) {
+    md += `## 不足CGイベント (${d.missingCGEvents.length}枚)\n\n`;
+    for (const cg of d.missingCGEvents) {
+      md += `### ${cg.triggerName} (\`${cg.triggerCard}\`)\n\n`;
+      md += `- ファイル: \`${cg.path}\`\n`;
+      md += `- 酔いLv: ${cg.requiredDrunkLevel}\n`;
+      md += `- CGカラー: \`${cg.cgColor}\`\n`;
+      if (cg.instantWin) md += `- **即勝利 (instantWin)**\n`;
+      if (cg.isReverse) md += `- **逆セクハラ (相手→プレイヤー)**\n`;
+      md += '\n';
+
+      if (cg.dialogue.length > 0) {
+        md += `**セリフ:**\n\n`;
+        for (const dl of cg.dialogue) {
+          const speaker = dl.speaker === '(ナレーション)' ? '(ナレ)' : dl.speaker;
+          md += `${dl.line}. **${speaker}**: ${dl.text}\n`;
+        }
+        md += '\n';
+      }
+
+      if (cg.frames.length > 0) {
+        md += `**フレーム構成:**\n\n`;
+        for (const fr of cg.frames) {
+          md += `- Frame ${fr.frame}: ${fr.label} (セリフ${fr.dialogueStart + 1}行目〜, transition: ${fr.transition})\n`;
+        }
+        md += '\n';
+      }
+      md += '---\n\n';
+    }
+  }
+
+  // 不足立ち絵
+  if (d.missingPortraits.length > 0) {
+    md += `## 不足立ち絵 (${d.missingPortraits.length}枚)\n\n`;
+    for (const p of d.missingPortraits) {
+      md += `### ${p.trigger} (${p.drunkLevel})\n\n`;
+      md += `- ファイル: \`${p.path}\`\n`;
+      if (p.costumeDescription) md += `- 衣装描写: ${p.costumeDescription}\n`;
+      md += '\n';
+    }
+  }
+
+  // afterEvents
+  if (d.afterEvents.length > 0) {
+    md += `## アフターイベント (${d.afterEvents.length}件)\n\n`;
+    for (const ae of d.afterEvents) {
+      md += `### ${ae.title} (\`${ae.id}\`)\n\n`;
+      md += `- CG回収率: ${(ae.requiredCGRate * 100).toFixed(0)}%以上\n`;
+      md += `- 勝利回数: ${ae.requiredWins}回以上\n`;
+      md += `- CGカラー: \`${ae.cgColor}\`\n\n`;
+      if (ae.dialogue.length > 0) {
+        md += `**セリフ:**\n\n`;
+        for (const dl of ae.dialogue) {
+          const speaker = dl.speaker === '(ナレーション)' ? '(ナレ)' : dl.speaker;
+          md += `${dl.line}. **${speaker}**: ${dl.text}\n`;
+        }
+        md += '\n';
+      }
+      md += '---\n\n';
+    }
+  }
+
+  return md;
+}
+
+function renderMissingCGOutput() {
+  const d = getMissingCGData();
+  const output = missingCGFormat === 'json'
+    ? JSON.stringify(d, null, 2)
+    : generateMissingMD(d);
+  document.getElementById('missingCGOutput').value = output;
+  document.getElementById('missingStats').textContent =
+    `不足CG: ${d.summary.missingCGs}枚 / 不足立ち絵: ${d.summary.missingPortraits}枚`;
+}
+
+function showMissingCGModal() {
+  renderMissingCGOutput();
+  document.getElementById('missingCGModal').classList.remove('hidden');
+}
+
+function copyMissingCG() {
+  const text = document.getElementById('missingCGOutput').value;
+  navigator.clipboard.writeText(text)
+    .then(() => toast('コピーしました', 'ok'))
+    .catch(() => toast('コピー失敗', 'err'));
+}
+
+function downloadMissingCG() {
+  const ext = missingCGFormat === 'json' ? 'json' : 'md';
+  const mime = missingCGFormat === 'json' ? 'application/json' : 'text/markdown';
+  const text = document.getElementById('missingCGOutput').value;
+  const blob = new Blob([text], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentCharId}_missing_cg_list.${ext}`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`${ext.toUpperCase()}をダウンロードしました`, 'ok');
+}
+
+// ============================================================
 // Init
 // ============================================================
 async function init() {
@@ -2824,21 +3151,21 @@ async function init() {
   }
 
   const lastChar = localStorage.getItem(LASTCHAR_KEY);
-  const list = getCharList();
-  if (lastChar && list.includes(lastChar)) currentCharId = lastChar;
-  else currentCharId = list[0] || 'blaze';
+  const charList = getCharList();
+  if (lastChar && charList.includes(lastChar)) currentCharId = lastChar;
+  else currentCharId = charList[0] || 'blaze';
 
   // ゲームコードからCG要件を取得してからロード
   await fetchGameData();
 
   // ゲームコードに定義されたキャラをcharListに自動追加
   if (charDataCache) {
-    const list = getCharList();
+    const charList2 = getCharList();
     let changed = false;
     for (const id of Object.keys(charDataCache)) {
-      if (!list.includes(id)) { list.push(id); changed = true; }
+      if (!charList2.includes(id)) { charList2.push(id); changed = true; }
     }
-    if (changed) saveCharList(list);
+    if (changed) saveCharList(charList2);
   }
 
   load();
@@ -2857,12 +3184,13 @@ const EMBEDDED_CHARACTERS_SRC = `
     id: 'blaze',
     name: 'ブレイズ',
     nameEn: 'BLAZE',
+    theme: { color: '#e85d3a' },
     costumeStates: [
-      { level: 0, label: '通常', emoji: '👔', description: '', dishevelAmount: 0 },
-      { level: 1, label: '少し緩む', emoji: '👕', description: '', dishevelAmount: 0.2 },
-      { level: 2, label: '前はだけ', emoji: '💫', description: '', dishevelAmount: 0.5 },
-      { level: 3, label: '大胆に着崩れ', emoji: '🔥', description: '', dishevelAmount: 0.8 },
-      { level: 4, label: 'ほぼ脱げ', emoji: '💋', description: '', dishevelAmount: 1.0 },
+      { level: 0, label: '通常', emoji: '👔', description: 'ロドスの制服をきっちり着ている', dishevelAmount: 0 },
+      { level: 1, label: '少し緩む', emoji: '👕', description: '首元のボタンを外し、肩のラインが少し崩れている', dishevelAmount: 0.2 },
+      { level: 2, label: '前はだけ', emoji: '💫', description: '「暑い」と言いながら前をはだけ、鎖骨と谷間がちらりと見える', dishevelAmount: 0.5 },
+      { level: 3, label: '大胆に着崩れ', emoji: '🔥', description: '肩から服がずり落ち、下着の肩紐が見えている。太ももも露わに', dishevelAmount: 0.8 },
+      { level: 4, label: 'ほぼ脱げ', emoji: '💋', description: '服が完全にはだけて下着姿同然。赤い頬で寝落ちしている', dishevelAmount: 1.0 },
     ],
     cgEvents: [
       { id: 'blaze_shoulder', triggerCard: 'shoulder_lean', requiredDrunkLevel: 1, cgColor: '#e85d3a',
@@ -2962,10 +3290,50 @@ const EMBEDDED_CHARACTERS_SRC = `
         ] }
     ],
     afterEvents: [
-      { id: 'blaze_after_tipsy', requiredCGRate: 0.25, requiredWins: 1, title: 'ほろ酔いお持ち帰り', cgColor: '#e85d3a', emoji: '🌙' },
-      { id: 'blaze_after_drunk', requiredCGRate: 0.5, requiredWins: 3, title: 'ドクターの部屋で', cgColor: '#ff6b8a', emoji: '🛏️' },
-      { id: 'blaze_after_morning', requiredCGRate: 0.75, requiredWins: 5, title: '翌朝', cgColor: '#ffaa66', emoji: '🌅' },
-      { id: 'blaze_after_complete', requiredCGRate: 1.0, requiredWins: 8, title: '今夜は帰さない', cgColor: '#ff3355', emoji: '💕' },
+      { id: 'blaze_after_tipsy', requiredCGRate: 0.25, requiredWins: 1, title: 'ほろ酔いお持ち帰り', cgColor: '#e85d3a', emoji: '🌙',
+        dialogue: [
+          { speaker: '', text: '――バーを出ると、夜風が二人の頬を撫でた。' },
+          { speaker: 'ブレイズ', text: 'んー……外、涼しい……ドクター、肩貸して……ちょっとだけ' },
+          { speaker: 'ドクター', text: '（ブレイズの肩を抱き寄せる）' },
+          { speaker: 'ブレイズ', text: '……えへへ。ドクターの肩、ちょうどいい高さ……' },
+          { speaker: 'ブレイズ', text: '……ねぇ、このまま帰るの？ ……もうちょっとだけ、このままでいたい' },
+          { speaker: 'ブレイズ', text: '……ドクターの匂い、好き……お酒と混ざって……ずるい匂い……' }
+        ] },
+      { id: 'blaze_after_drunk', requiredCGRate: 0.5, requiredWins: 3, title: 'ドクターの部屋で', cgColor: '#ff6b8a', emoji: '🛏️',
+        dialogue: [
+          { speaker: '', text: '――ドクターの部屋。ブレイズをベッドに座らせた。' },
+          { speaker: 'ブレイズ', text: 'ん……ドクターの部屋、いい匂いする……なんか安心する……' },
+          { speaker: 'ブレイズ', text: 'ねぇ……水、ちょうだい……あと、隣に座って……寒い……' },
+          { speaker: 'ドクター', text: '（水を渡し、隣に腰を下ろす）' },
+          { speaker: 'ブレイズ', text: '……ドクター。私さ、酔ってなくても……こうしたかったかも。' },
+          { speaker: 'ブレイズ', text: '……嘘じゃないよ。……信じて。' },
+          { speaker: 'ブレイズ', text: '……もっと近くに来て……ここ、空いてるから……ね？' },
+          { speaker: 'ブレイズ', text: '（ブレイズがドクターの腕を掴み、ベッドに引き倒す）' },
+          { speaker: 'ブレイズ', text: '……逃がさないって、言ったでしょ……？ ……ばか' }
+        ] },
+      { id: 'blaze_after_morning', requiredCGRate: 0.75, requiredWins: 5, title: '翌朝', cgColor: '#ffaa66', emoji: '🌅',
+        dialogue: [
+          { speaker: '', text: '――朝日がカーテンの隙間から差し込む。隣には温もりが残っている。' },
+          { speaker: 'ブレイズ', text: '……ん……んん……まぶしい……' },
+          { speaker: 'ブレイズ', text: '……あれ……ここ、ドクターの部屋……？ え、私なんで……' },
+          { speaker: 'ブレイズ', text: '……っ！！ やっ、なんで私こんな格好……！ ドクター見ないでっ！！' },
+          { speaker: 'ブレイズ', text: '……うそ、昨日のこと……覚えてる……全部……っ' },
+          { speaker: 'ブレイズ', text: '……っ……ばか……私があんなこと言ったの……ドクターのせいだから……' },
+          { speaker: 'ブレイズ', text: '…………でも。' },
+          { speaker: 'ブレイズ', text: '……後悔は、してないよ。……またクロージャの店、行こ。……二人で。' }
+        ] },
+      { id: 'blaze_after_complete', requiredCGRate: 1.0, requiredWins: 8, title: '今夜は帰さない', cgColor: '#ff3355', emoji: '💕',
+        dialogue: [
+          { speaker: '', text: '――いつものバーで。クロージャが気を利かせて個室を用意してくれた。' },
+          { speaker: 'ブレイズ', text: 'ドクター。……今日はさ、飲み比べとかいいよ。' },
+          { speaker: 'ブレイズ', text: '……ただ、一緒に飲みたい。……ドクターと。' },
+          { speaker: 'ドクター', text: '（グラスを合わせる。カチン、と澄んだ音が響く）' },
+          { speaker: 'ブレイズ', text: '……ねぇ。私のこと、どう思ってる？ ……酔ってないよ、今は。' },
+          { speaker: 'ブレイズ', text: '……そっか。……えへへ、やっぱドクターってずるいよね。' },
+          { speaker: 'ブレイズ', text: '……今夜はさ。……帰さないから。覚悟、してね？' },
+          { speaker: 'ブレイズ', text: '……嘘じゃないよ。……こうやって隣にいられるの、私は……すごく、嬉しい。' },
+          { speaker: 'ブレイズ', text: '……ずっと、こうしてたいな。……ドクターと。' }
+        ] },
     ]
   }
 `;
