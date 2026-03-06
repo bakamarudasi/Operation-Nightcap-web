@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CG Inventory Editor - Operation Nightcap</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --accent: #e94560;
+    --accent2: #ff6b8a;
+    --text: #eee;
+    --text-dim: #999;
+    --border: #333;
+    --success: #4ecdc4;
+    --warn: #ffd93d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.6em;
+    margin-bottom: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.85em;
+    margin-bottom: 20px;
+  }
+
+  /* Layout */
+  .container { max-width: 960px; margin: 0 auto; }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--surface);
+    border-radius: 8px;
+    align-items: center;
+  }
+  .toolbar-group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .toolbar-sep {
+    width: 1px;
+    height: 28px;
+    background: var(--border);
+    margin: 0 6px;
+  }
+
+  /* Buttons */
+  button {
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  button:hover { background: var(--accent); border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); }
+  button.primary:hover { background: var(--accent2); }
+  button.success { background: #2a7a6e; border-color: var(--success); }
+  button.success:hover { background: var(--success); color: #000; }
+  button.small { padding: 4px 10px; font-size: 0.8em; }
+  button.danger { border-color: #c0392b; }
+  button.danger:hover { background: #c0392b; }
+
+  /* Character header */
+  .char-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+  .char-header label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8em;
+    color: var(--text-dim);
+  }
+  .char-header input {
+    padding: 6px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 0.95em;
+  }
+
+  /* Sections */
+  .section {
+    margin-bottom: 16px;
+  }
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: 8px 8px 0 0;
+    border-bottom: 2px solid var(--accent);
+  }
+  .section-head h3 { font-size: 0.95em; }
+  .section-body {
+    background: var(--surface);
+    border-radius: 0 0 8px 8px;
+    padding: 10px;
+  }
+
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+  }
+  th {
+    text-align: left;
+    padding: 8px 10px;
+    color: var(--text-dim);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85em;
+  }
+  td {
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    vertical-align: middle;
+  }
+  tr:hover td { background: rgba(233, 69, 96, 0.05); }
+  td input, td select {
+    width: 100%;
+    padding: 5px 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 0.9em;
+  }
+  td select { cursor: pointer; }
+
+  /* Stats */
+  .stats {
+    display: flex;
+    gap: 20px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 0.85em;
+  }
+  .stat-item { display: flex; gap: 6px; align-items: center; }
+  .stat-num {
+    font-weight: bold;
+    font-size: 1.2em;
+    color: var(--accent2);
+  }
+
+  /* Import area */
+  .import-area {
+    display: none;
+    margin-bottom: 16px;
+  }
+  .import-area.show { display: block; }
+  .import-area textarea {
+    width: 100%;
+    height: 200px;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.85em;
+    resize: vertical;
+    margin-bottom: 8px;
+  }
+
+  /* Export preview */
+  .export-preview {
+    display: none;
+    margin-bottom: 16px;
+  }
+  .export-preview.show { display: block; }
+  .export-preview pre {
+    padding: 14px;
+    background: #0d0d1a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.8em;
+    line-height: 1.6;
+    color: #ccc;
+    white-space: pre;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  /* Claude panel */
+  .claude-panel {
+    margin-bottom: 16px;
+    background: var(--surface);
+    border-radius: 8px;
+    border: 1px solid #6c5ce7;
+    overflow: hidden;
+  }
+  .claude-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #6c5ce7 0%, #a855f7 100%);
+    cursor: pointer;
+    user-select: none;
+  }
+  .claude-panel-head h3 { font-size: 0.95em; }
+  .claude-panel-body {
+    display: none;
+    padding: 14px;
+  }
+  .claude-panel-body.show { display: block; }
+  .claude-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .claude-actions button {
+    background: linear-gradient(135deg, #6c5ce7, #a855f7);
+    border: none;
+    font-weight: 600;
+  }
+  .claude-actions button:hover {
+    background: linear-gradient(135deg, #7d6ef0, #b96cf7);
+  }
+  .claude-prompt-preview {
+    display: none;
+    background: #0d0d1a;
+    border: 1px solid #6c5ce7;
+    border-radius: 8px;
+    padding: 14px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.82em;
+    line-height: 1.6;
+    color: #ccc;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 10px;
+  }
+  .claude-prompt-preview.show { display: block; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 0.85em;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    z-index: 100;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .toast.ok { background: var(--success); color: #000; }
+  .toast.err { background: #c0392b; color: #fff; }
+
+  /* Drag handle */
+  .drag-handle {
+    cursor: grab;
+    color: var(--text-dim);
+    user-select: none;
+    padding: 0 4px;
+  }
+  .drag-handle:hover { color: var(--text); }
+
+  /* Character switcher */
+  .char-switcher {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .char-switcher label {
+    font-size: 0.82em;
+    color: var(--text-dim);
+    margin-right: 4px;
+  }
+  .char-tab {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.82em;
+    transition: all 0.15s;
+  }
+  .char-tab:hover { border-color: var(--accent); color: var(--text); }
+  .char-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .char-tab-add {
+    padding: 6px 10px;
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.82em;
+  }
+  .char-tab-add:hover { border-color: var(--success); color: var(--success); background: transparent; }
+
+  /* Image preview */
+  .img-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .img-thumb:hover { transform: scale(2.5); z-index: 10; position: relative; }
+  .img-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7em;
+    color: var(--text-dim);
+  }
+
+  /* Lightbox */
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .lightbox.show { display: flex; }
+  .lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 0 40px rgba(233,69,96,0.3);
+  }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .filter-bar input {
+    flex: 1;
+    padding: 6px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 0.85em;
+  }
+  .filter-bar input:focus { border-color: var(--accent); outline: none; }
+  .filter-bar select {
+    padding: 6px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+  .filter-bar .filter-count {
+    font-size: 0.8em;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  tr.filtered-out { display: none; }
+
+  @media (max-width: 700px) {
+    .char-header { grid-template-columns: 1fr; }
+    .toolbar { flex-direction: column; }
+    body { padding: 10px; }
+    .img-thumb { width: 30px; height: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>CG Inventory Editor</h1>
+  <p class="subtitle">Operation Nightcap - CGマニフェスト管理ツール</p>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <button onclick="toggleImport()" id="btnImport">📥 インポート</button>
+      <button onclick="loadFromFile()">📂 ファイル読み込み</button>
+      <input type="file" id="fileInput" accept=".txt" style="display:none" onchange="handleFileLoad(event)">
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-group">
+      <button class="primary" onclick="showExport()">📤 エクスポート</button>
+      <button class="success" onclick="downloadManifest()">💾 ダウンロード</button>
+      <button onclick="copyToClipboard()">📋 コピー</button>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-group">
+      <button onclick="resetAll()" class="danger">🗑 リセット</button>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-group">
+      <a href="cg-generator.html" style="padding:7px 14px;border:1px solid var(--success);border-radius:6px;color:var(--success);font-size:0.85em;text-decoration:none;display:inline-block">🎨 CG生成パイプライン →</a>
+    </div>
+  </div>
+
+  <!-- Import area -->
+  <div class="import-area" id="importArea">
+    <textarea id="importText" placeholder="マニフェスト (.txt) の内容をここに貼り付け..."></textarea>
+    <div style="display:flex; gap:8px;">
+      <button class="primary" onclick="doImport()">読み込み実行</button>
+      <button onclick="toggleImport()">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- Export preview -->
+  <div class="export-preview" id="exportArea">
+    <pre id="exportText"></pre>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button onclick="copyToClipboard()">📋 クリップボードにコピー</button>
+      <button onclick="hideExport()">閉じる</button>
+    </div>
+  </div>
+
+  <!-- Character switcher -->
+  <div class="char-switcher" id="charSwitcher">
+    <label>キャラ:</label>
+    <!-- tabs rendered by JS -->
+  </div>
+
+  <!-- Character info -->
+  <div class="char-header">
+    <label>
+      キャラID (英字)
+      <input id="charId" value="blaze" oninput="updateStats()">
+    </label>
+    <label>
+      キャラ名 (日本語)
+      <input id="charName" value="ブレイズ" oninput="updateStats()">
+    </label>
+    <label>
+      英名
+      <input id="charNameEn" value="BLAZE" oninput="updateStats()">
+    </label>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats" id="statsBar">
+    <div class="stat-item">イベントCG: <span class="stat-num" id="statCg">0</span></div>
+    <div class="stat-item">立ち絵: <span class="stat-num" id="statPortrait">0</span></div>
+    <div class="stat-item">アイコン: <span class="stat-num" id="statIcon">0</span></div>
+    <div class="stat-item">合計: <span class="stat-num" id="statTotal">0</span></div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <input type="text" id="filterText" placeholder="検索... (ファイル名・トリガー名・備考)" oninput="applyFilter()">
+    <select id="filterLevel" onchange="applyFilter()">
+      <option value="">全Lv</option>
+      <option value="Lv.0">Lv.0</option>
+      <option value="Lv.1">Lv.1</option>
+      <option value="Lv.2">Lv.2</option>
+      <option value="Lv.3">Lv.3</option>
+      <option value="Lv.4">Lv.4</option>
+    </select>
+    <select id="filterType" onchange="applyFilter()">
+      <option value="">全種類</option>
+      <option value="cg">イベントCG</option>
+      <option value="portrait">立ち絵</option>
+      <option value="icon">アイコン</option>
+    </select>
+    <span class="filter-count" id="filterCount"></span>
+  </div>
+
+  <!-- Claude Code 連携パネル -->
+  <div class="claude-panel">
+    <div class="claude-panel-head" onclick="toggleClaudePanel()">
+      <h3>🤖 Claude Code 連携</h3>
+      <span id="claudeToggle">▼</span>
+    </div>
+    <div class="claude-panel-body" id="claudeBody">
+      <p style="font-size:0.82em; color:var(--text-dim); margin-bottom:10px;">
+        現在の編集内容からClaude Code用プロンプトを生成します。コピーしてClaude Codeに貼り付けてください。
+      </p>
+      <div class="claude-actions">
+        <button onclick="claudeScanSource()">🔍 ソースから必要CG抽出</button>
+        <button onclick="claudeGenAll()">📋 全CG生成プロンプト</button>
+        <button onclick="claudeGenMissing()">📋 未作成のみ生成</button>
+        <button onclick="claudeGenSingle()">📋 選択行のみ生成</button>
+        <button onclick="claudeStatusCheck()">📋 ステータス確認</button>
+      </div>
+      <pre class="claude-prompt-preview" id="claudePreview"></pre>
+    </div>
+  </div>
+
+  <!-- Event CGs -->
+  <div class="section">
+    <div class="section-head">
+      <h3>🎭 イベントCG</h3>
+      <button class="small" onclick="addCgRow()">+ 追加</button>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30px"></th>
+            <th style="width:50px">画像</th>
+            <th>ファイル名</th>
+            <th>トリガー名</th>
+            <th style="width:90px">酔いLv</th>
+            <th>備考</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody id="cgTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Portraits -->
+  <div class="section">
+    <div class="section-head">
+      <h3>🖼 立ち絵 / ポートレート</h3>
+      <button class="small" onclick="addPortraitRow()">+ 追加</button>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30px"></th>
+            <th style="width:50px">画像</th>
+            <th>ファイル名</th>
+            <th>説明</th>
+            <th style="width:90px">酔いLv</th>
+            <th>備考</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody id="portraitTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Icons -->
+  <div class="section">
+    <div class="section-head">
+      <h3>✨ アイコン</h3>
+      <button class="small" onclick="addIconRow()">+ 追加</button>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30px"></th>
+            <th style="width:50px">画像</th>
+            <th>ファイル名</th>
+            <th>説明</th>
+            <th>備考</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody id="iconTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('show')">
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+// --- State ---
+let cgRows = [];
+let portraitRows = [];
+let iconRows = [];
+let currentCharId = 'blaze';
+
+// --- Character presets ---
+const CHAR_PRESETS = {
+  blaze: {
+    id: 'blaze', name: 'ブレイズ', nameEn: 'BLAZE',
+    cgRows: [
+      { file: 'shoulder_lean.webp', trigger: '耳元でささやく', level: 'Lv.1', note: '' },
+      { file: 'headpat.webp', trigger: 'うなじを撫でる', level: 'Lv.2', note: '' },
+      { file: 'gaze.webp', trigger: '唇を見つめる', level: 'Lv.2', note: '' },
+      { file: 'breast_touch.webp', trigger: '胸に触れる', level: 'Lv.2', note: '' },
+      { file: 'hip_touch.webp', trigger: 'お尻をなでる', level: 'Lv.2', note: '' },
+      { file: 'ear_bite.webp', trigger: '耳を甘噛み', level: 'Lv.3', note: '' },
+      { file: 'lap_pillow.webp', trigger: '太ももに誘う', level: 'Lv.3', note: '' },
+      { file: 'kiss.webp', trigger: 'ディープキス', level: 'Lv.3', note: 'instant_win' },
+    ],
+    portraitRows: [
+      { file: 'portrait.webp', trigger: '基本立ち絵', level: '', note: '' },
+      { file: 'portrait-drunk-0.webp', trigger: '素面', level: 'Lv.0', note: '' },
+      { file: 'portrait-drunk-1.webp', trigger: 'ほろ酔い', level: 'Lv.1', note: '' },
+      { file: 'portrait-drunk-2.webp', trigger: '酔い', level: 'Lv.2', note: '' },
+      { file: 'portrait-drunk-3.webp', trigger: 'べろべろ', level: 'Lv.3', note: '' },
+      { file: 'portrait-drunk-4.webp', trigger: '潰れ', level: 'Lv.4', note: '' },
+    ],
+    iconRows: [
+      { file: 'select-icon.webp', trigger: 'キャラ選択画面用', note: '' },
+    ],
+  }
+};
+
+// --- Init with defaults ---
+function initDefaults() {
+  const preset = CHAR_PRESETS[currentCharId];
+  if (preset) {
+    cgRows = JSON.parse(JSON.stringify(preset.cgRows));
+    portraitRows = JSON.parse(JSON.stringify(preset.portraitRows));
+    iconRows = JSON.parse(JSON.stringify(preset.iconRows));
+  } else {
+    cgRows = [{ file: 'new_cg.webp', trigger: '新規イベント', level: 'Lv.1', note: '' }];
+    portraitRows = [{ file: 'portrait.webp', trigger: '基本立ち絵', level: '', note: '' }];
+    iconRows = [{ file: 'select-icon.webp', trigger: 'キャラ選択画面用', note: '' }];
+  }
+}
+
+// --- Character switcher ---
+function getCharList() {
+  const raw = localStorage.getItem('nightcap_cg_charlist');
+  if (raw) {
+    try { return JSON.parse(raw); } catch {}
+  }
+  return ['blaze'];
+}
+
+function saveCharList(list) {
+  localStorage.setItem('nightcap_cg_charlist', JSON.stringify(list));
+}
+
+function renderCharSwitcher() {
+  const container = document.getElementById('charSwitcher');
+  const list = getCharList();
+  let html = '<label>キャラ:</label>';
+  list.forEach(id => {
+    const data = loadCharData(id);
+    const label = data ? `${data.charName || id}` : id;
+    const active = id === currentCharId ? ' active' : '';
+    html += `<button class="char-tab${active}" onclick="switchChar('${esc(id)}')">${esc(label)}</button>`;
+  });
+  html += `<button class="char-tab-add" onclick="addNewChar()">+ 追加</button>`;
+  if (list.length > 1) {
+    html += `<button class="small danger" onclick="deleteChar()" style="margin-left:auto">このキャラを削除</button>`;
+  }
+  container.innerHTML = html;
+}
+
+function switchChar(id) {
+  saveLocal(); // save current first
+  currentCharId = id;
+  if (!loadLocalForChar(id)) {
+    initDefaults();
+  }
+  applyCharToUI();
+  render();
+  renderCharSwitcher();
+}
+
+function addNewChar() {
+  const id = prompt('新キャラのID (英字小文字)', '');
+  if (!id || !/^[a-z][a-z0-9_]*$/.test(id)) {
+    if (id !== null) toast('IDは英字小文字で入力してください', 'err');
+    return;
+  }
+  const list = getCharList();
+  if (list.includes(id)) { toast('このIDは既に存在します', 'err'); return; }
+  list.push(id);
+  saveCharList(list);
+  // Save new char with defaults
+  saveLocal();
+  currentCharId = id;
+  document.getElementById('charId').value = id;
+  document.getElementById('charName').value = '';
+  document.getElementById('charNameEn').value = id.toUpperCase();
+  initDefaults();
+  render();
+  saveLocal();
+  renderCharSwitcher();
+  toast(`キャラ「${id}」を追加しました`, 'ok');
+}
+
+function deleteChar() {
+  const list = getCharList();
+  if (list.length <= 1) { toast('最後のキャラは削除できません', 'err'); return; }
+  if (!confirm(`「${currentCharId}」を削除しますか？`)) return;
+  localStorage.removeItem('nightcap_cg_editor_' + currentCharId);
+  const newList = list.filter(id => id !== currentCharId);
+  saveCharList(newList);
+  currentCharId = newList[0];
+  if (!loadLocalForChar(currentCharId)) initDefaults();
+  applyCharToUI();
+  render();
+  renderCharSwitcher();
+  toast('削除しました', 'ok');
+}
+
+function applyCharToUI() {
+  const data = loadCharData(currentCharId);
+  if (data) {
+    document.getElementById('charId').value = data.charId || currentCharId;
+    document.getElementById('charName').value = data.charName || '';
+    document.getElementById('charNameEn').value = data.charNameEn || '';
+  } else {
+    document.getElementById('charId').value = currentCharId;
+    document.getElementById('charName').value = '';
+    document.getElementById('charNameEn').value = currentCharId.toUpperCase();
+  }
+}
+
+// --- Render ---
+function render() {
+  renderTable('cgTable', cgRows, true);
+  renderTable('portraitTable', portraitRows, true);
+  renderTable('iconTable', iconRows, false);
+  updateStats();
+}
+
+function renderTable(tableId, rows, hasLevel) {
+  const tbody = document.getElementById(tableId);
+  tbody.innerHTML = '';
+  const charId = document.getElementById('charId').value.trim() || 'unknown';
+  rows.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.draggable = true;
+    tr.dataset.index = i;
+    tr.dataset.table = tableId;
+    tr.ondragstart = dragStart;
+    tr.ondragover = dragOver;
+    tr.ondrop = drop;
+
+    // Determine image path
+    let imgDir;
+    if (tableId === 'cgTable') {
+      imgDir = `../assets/characters/${charId}/cg/`;
+    } else {
+      imgDir = `../assets/characters/${charId}/`;
+    }
+    const imgSrc = imgDir + row.file;
+
+    let html = `<td><span class="drag-handle">⠿</span></td>`;
+    html += `<td><img class="img-thumb" src="${esc(imgSrc)}" onerror="this.outerHTML='<div class=\\'img-placeholder\\'>---</div>'" onclick="openLightbox('${esc(imgSrc)}')"></td>`;
+    html += `<td><input value="${esc(row.file)}" onchange="updateRow('${tableId}',${i},'file',this.value)"></td>`;
+    html += `<td><input value="${esc(row.trigger)}" onchange="updateRow('${tableId}',${i},'trigger',this.value)"></td>`;
+
+    if (hasLevel) {
+      html += `<td><select onchange="updateRow('${tableId}',${i},'level',this.value)">
+        <option value="" ${row.level===''?'selected':''}>-</option>
+        <option value="Lv.0" ${row.level==='Lv.0'?'selected':''}>Lv.0</option>
+        <option value="Lv.1" ${row.level==='Lv.1'?'selected':''}>Lv.1</option>
+        <option value="Lv.2" ${row.level==='Lv.2'?'selected':''}>Lv.2</option>
+        <option value="Lv.3" ${row.level==='Lv.3'?'selected':''}>Lv.3</option>
+        <option value="Lv.4" ${row.level==='Lv.4'?'selected':''}>Lv.4</option>
+      </select></td>`;
+    }
+
+    html += `<td><input value="${esc(row.note||'')}" onchange="updateRow('${tableId}',${i},'note',this.value)" placeholder="備考"></td>`;
+    html += `<td><button class="small danger" onclick="removeRow('${tableId}',${i})">✕</button></td>`;
+
+    tr.innerHTML = html;
+    tbody.appendChild(tr);
+  });
+}
+
+function openLightbox(src) {
+  const lb = document.getElementById('lightbox');
+  document.getElementById('lightboxImg').src = src;
+  lb.classList.add('show');
+}
+
+function esc(s) { return s.replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+function getRows(tableId) {
+  if (tableId === 'cgTable') return cgRows;
+  if (tableId === 'portraitTable') return portraitRows;
+  return iconRows;
+}
+
+function updateRow(tableId, idx, field, value) {
+  getRows(tableId)[idx][field] = value;
+  saveLocal();
+}
+
+function removeRow(tableId, idx) {
+  getRows(tableId).splice(idx, 1);
+  render();
+  saveLocal();
+}
+
+function addCgRow() {
+  cgRows.push({ file: 'new_cg.webp', trigger: '新規イベント', level: 'Lv.1', note: '' });
+  render();
+  saveLocal();
+}
+function addPortraitRow() {
+  portraitRows.push({ file: 'portrait-new.webp', trigger: '新規立ち絵', level: '', note: '' });
+  render();
+  saveLocal();
+}
+function addIconRow() {
+  iconRows.push({ file: 'new-icon.webp', trigger: '新規アイコン', note: '' });
+  render();
+  saveLocal();
+}
+
+// --- Stats ---
+function updateStats() {
+  document.getElementById('statCg').textContent = cgRows.length;
+  document.getElementById('statPortrait').textContent = portraitRows.length;
+  document.getElementById('statIcon').textContent = iconRows.length;
+  document.getElementById('statTotal').textContent = cgRows.length + portraitRows.length + iconRows.length;
+  saveLocal();
+}
+
+// --- Filter ---
+function applyFilter() {
+  const text = (document.getElementById('filterText').value || '').toLowerCase();
+  const level = document.getElementById('filterLevel').value;
+  const type = document.getElementById('filterType').value;
+
+  let shown = 0, total = 0;
+
+  const filterTable = (tableId, rows, tableType) => {
+    if (type && type !== tableType) {
+      // Hide entire section
+      document.getElementById(tableId).querySelectorAll('tr').forEach(tr => tr.classList.add('filtered-out'));
+      total += rows.length;
+      return;
+    }
+    const tbody = document.getElementById(tableId);
+    const trs = tbody.querySelectorAll('tr');
+    rows.forEach((row, i) => {
+      if (i >= trs.length) return;
+      const matchText = !text ||
+        (row.file || '').toLowerCase().includes(text) ||
+        (row.trigger || '').toLowerCase().includes(text) ||
+        (row.note || '').toLowerCase().includes(text);
+      const matchLevel = !level || row.level === level;
+      total++;
+      if (matchText && matchLevel) {
+        trs[i].classList.remove('filtered-out');
+        shown++;
+      } else {
+        trs[i].classList.add('filtered-out');
+      }
+    });
+  };
+
+  filterTable('cgTable', cgRows, 'cg');
+  filterTable('portraitTable', portraitRows, 'portrait');
+  filterTable('iconTable', iconRows, 'icon');
+
+  const countEl = document.getElementById('filterCount');
+  if (text || level || type) {
+    countEl.textContent = `${shown}/${total}件`;
+  } else {
+    countEl.textContent = '';
+  }
+}
+
+// --- Drag & Drop reorder ---
+let dragIdx = null, dragTable = null;
+function dragStart(e) {
+  dragIdx = +e.currentTarget.dataset.index;
+  dragTable = e.currentTarget.dataset.table;
+  e.dataTransfer.effectAllowed = 'move';
+}
+function dragOver(e) { e.preventDefault(); }
+function drop(e) {
+  e.preventDefault();
+  const toIdx = +e.currentTarget.dataset.index;
+  const toTable = e.currentTarget.dataset.table;
+  if (dragTable !== toTable) return;
+  const rows = getRows(dragTable);
+  const [moved] = rows.splice(dragIdx, 1);
+  rows.splice(toIdx, 0, moved);
+  render();
+  saveLocal();
+}
+
+// --- Export ---
+function generateManifest() {
+  const id = document.getElementById('charId').value.trim() || 'unknown';
+  const name = document.getElementById('charName').value.trim();
+  const nameEn = document.getElementById('charNameEn').value.trim();
+
+  const pad = (s, len) => s + ' '.repeat(Math.max(0, len - s.length));
+  const fmtRow = (row, hasLevel) => {
+    const parts = [pad(row.file, 26), pad(row.trigger, 18)];
+    if (hasLevel) parts.push(pad(row.level || '', 6));
+    parts.push(row.note || '');
+    return parts.join('| ').replace(/\s+$/, '');
+  };
+
+  const total = cgRows.length + portraitRows.length + iconRows.length;
+  let out = '';
+  out += '# ============================================\n';
+  out += `# Operation Nightcap - CG Manifest\n`;
+  out += `# Character: ${nameEn} (${name})\n`;
+  out += '# ============================================\n';
+  out += '#\n';
+  out += '# このファイルは必要なCG画像の一覧です。\n';
+  out += '# 画像の実体(.png/.webp)はリポジトリに含めません。\n';
+  out += '# 画像は外部ストレージ(R2, S3等)で管理してください。\n';
+  out += '#\n';
+  out += '# フォーマット: ファイル名 | トリガー | 酔いLv | 備考\n';
+  out += '# ============================================\n';
+  out += '\n';
+  out += `# --- イベントCG (${cgRows.length}枚) ---\n`;
+  out += `# 配置先: assets/characters/${id}/cg/\n`;
+  out += '\n';
+  cgRows.forEach(r => { out += fmtRow(r, true) + '\n'; });
+  out += '\n';
+  out += `# --- 立ち絵 / ポートレート (${portraitRows.length}枚) ---\n`;
+  out += `# 配置先: assets/characters/${id}/\n`;
+  out += '\n';
+  portraitRows.forEach(r => { out += fmtRow(r, true) + '\n'; });
+  out += '\n';
+  out += `# --- アイコン (${iconRows.length}枚) ---\n`;
+  out += `# 配置先: assets/characters/${id}/\n`;
+  out += '\n';
+  iconRows.forEach(r => { out += fmtRow(r, false) + '\n'; });
+  out += '\n';
+  out += '# ============================================\n';
+  out += `# 合計: ${total}枚\n`;
+  out += '# ステータス: 全て未作成 (プレースホルダー運用中)\n';
+  out += '# ============================================\n';
+  return out;
+}
+
+function showExport() {
+  const area = document.getElementById('exportArea');
+  document.getElementById('exportText').textContent = generateManifest();
+  area.classList.add('show');
+  document.getElementById('importArea').classList.remove('show');
+}
+function hideExport() { document.getElementById('exportArea').classList.remove('show'); }
+
+function downloadManifest() {
+  const id = document.getElementById('charId').value.trim() || 'unknown';
+  const blob = new Blob([generateManifest()], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${id}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('ダウンロード完了', 'ok');
+}
+
+function copyToClipboard() {
+  navigator.clipboard.writeText(generateManifest()).then(() => {
+    toast('クリップボードにコピーしました', 'ok');
+  }).catch(() => toast('コピーに失敗しました', 'err'));
+}
+
+// --- Import ---
+function toggleImport() {
+  const area = document.getElementById('importArea');
+  area.classList.toggle('show');
+  document.getElementById('exportArea').classList.remove('show');
+}
+
+function loadFromFile() {
+  document.getElementById('fileInput').click();
+}
+
+function handleFileLoad(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('importText').value = e.target.result;
+    document.getElementById('importArea').classList.add('show');
+    toast('ファイル読み込み完了 - 「読み込み実行」を押してください', 'ok');
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function doImport() {
+  const text = document.getElementById('importText').value;
+  if (!text.trim()) { toast('テキストが空です', 'err'); return; }
+
+  // Parse character info from header
+  const charMatch = text.match(/# Character:\s*(.+?)\s*\((.+?)\)/);
+  if (charMatch) {
+    document.getElementById('charNameEn').value = charMatch[1].trim();
+    document.getElementById('charName').value = charMatch[2].trim();
+  }
+  const pathMatch = text.match(/assets\/characters\/([a-z_]+)\//);
+  if (pathMatch) {
+    document.getElementById('charId').value = pathMatch[1];
+  }
+
+  // Parse sections
+  const lines = text.split('\n');
+  let section = null;
+  const newCg = [], newPortrait = [], newIcon = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('#') || trimmed === '') {
+      if (trimmed.includes('イベントCG')) section = 'cg';
+      else if (trimmed.includes('立ち絵') || trimmed.includes('ポートレート')) section = 'portrait';
+      else if (trimmed.includes('アイコン')) section = 'icon';
+      else if (trimmed.includes('合計')) section = null;
+      continue;
+    }
+
+    const parts = trimmed.split('|').map(s => s.trim());
+    if (parts.length < 2) continue;
+
+    const file = parts[0] || '';
+    const trigger = parts[1] || '';
+    const level = parts[2] || '';
+    const note = parts[3] || '';
+
+    if (section === 'cg') {
+      newCg.push({ file, trigger, level, note });
+    } else if (section === 'portrait') {
+      newPortrait.push({ file, trigger, level, note });
+    } else if (section === 'icon') {
+      newIcon.push({ file, trigger, note });
+    }
+  }
+
+  cgRows = newCg.length ? newCg : cgRows;
+  portraitRows = newPortrait.length ? newPortrait : portraitRows;
+  iconRows = newIcon.length ? newIcon : iconRows;
+
+  render();
+  saveLocal();
+  document.getElementById('importArea').classList.remove('show');
+  toast(`インポート完了: CG ${newCg.length}件, 立ち絵 ${newPortrait.length}件, アイコン ${newIcon.length}件`, 'ok');
+}
+
+// --- Local Storage (per-character) ---
+function saveLocal() {
+  const data = {
+    charId: document.getElementById('charId').value,
+    charName: document.getElementById('charName').value,
+    charNameEn: document.getElementById('charNameEn').value,
+    cgRows, portraitRows, iconRows
+  };
+  localStorage.setItem('nightcap_cg_editor_' + currentCharId, JSON.stringify(data));
+  // Keep charlist up to date
+  const list = getCharList();
+  if (!list.includes(currentCharId)) {
+    list.push(currentCharId);
+    saveCharList(list);
+  }
+}
+
+function loadCharData(id) {
+  const raw = localStorage.getItem('nightcap_cg_editor_' + id);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+function loadLocalForChar(id) {
+  const data = loadCharData(id);
+  if (!data) return false;
+  cgRows = data.cgRows || [];
+  portraitRows = data.portraitRows || [];
+  iconRows = data.iconRows || [];
+  return true;
+}
+
+function loadLocal() {
+  // Migration: move old single-key data to per-character
+  const oldRaw = localStorage.getItem('nightcap_cg_editor');
+  if (oldRaw) {
+    try {
+      const old = JSON.parse(oldRaw);
+      const oldId = old.charId || 'blaze';
+      localStorage.setItem('nightcap_cg_editor_' + oldId, oldRaw);
+      localStorage.removeItem('nightcap_cg_editor');
+      const list = getCharList();
+      if (!list.includes(oldId)) { list.push(oldId); saveCharList(list); }
+      currentCharId = oldId;
+    } catch {}
+  }
+  // Load last-used char
+  const lastChar = localStorage.getItem('nightcap_cg_lastchar');
+  if (lastChar) currentCharId = lastChar;
+  return loadLocalForChar(currentCharId);
+}
+
+function resetAll() {
+  if (!confirm(`「${currentCharId}」のデータをリセットしますか？`)) return;
+  localStorage.removeItem('nightcap_cg_editor_' + currentCharId);
+  const preset = CHAR_PRESETS[currentCharId];
+  if (preset) {
+    document.getElementById('charId').value = preset.id;
+    document.getElementById('charName').value = preset.name;
+    document.getElementById('charNameEn').value = preset.nameEn;
+  } else {
+    document.getElementById('charId').value = currentCharId;
+    document.getElementById('charName').value = '';
+    document.getElementById('charNameEn').value = currentCharId.toUpperCase();
+  }
+  initDefaults();
+  render();
+  saveLocal();
+  toast('リセットしました', 'ok');
+}
+
+// --- Toast ---
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (type || 'ok');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.className = 'toast'; }, 2500);
+}
+
+// --- Claude Code 連携 ---
+function toggleClaudePanel() {
+  const body = document.getElementById('claudeBody');
+  const toggle = document.getElementById('claudeToggle');
+  body.classList.toggle('show');
+  toggle.textContent = body.classList.contains('show') ? '▲' : '▼';
+}
+
+function getCharInfo() {
+  return {
+    id: document.getElementById('charId').value.trim() || 'unknown',
+    name: document.getElementById('charName').value.trim(),
+    nameEn: document.getElementById('charNameEn').value.trim(),
+  };
+}
+
+function claudeScanSource() {
+  const c = getCharInfo();
+  const prompt = `プロジェクト内のソースコードをスキャンして、キャラクター「${c.name}(${c.nameEn})」(ID: ${c.id}) に必要な全CG画像を洗い出してください。
+
+以下を調べて一覧にしてください:
+1. src/data/characters.ts の cgEvents / afterEvents で参照されている画像
+2. src/ 内で ${c.id} のCGファイルパスを参照しているコード
+3. assets/characters/${c.id}/ で想定されるファイル構成
+4. tools/manifests/${c.id}.txt に記載のファイル
+5. ゲーム内で使われる立ち絵の全バリエーション（酔いレベル別、衣装状態別）
+
+出力フォーマット:
+\`\`\`
+【イベントCG】
+- ファイル名 | トリガー | 酔いLv | 参照元ファイル:行番号
+
+【立ち絵】
+- ファイル名 | 説明 | 酔いLv | 参照元
+
+【アイコン】
+- ファイル名 | 説明 | 参照元
+
+【未定義だが必要と思われるもの】
+- (コードの構造から推測される不足CG)
+\`\`\`
+
+特に「コード内で参照されているが、マニフェストに未記載」のものを重点的に探してください。`;
+  showClaudePrompt(prompt);
+}
+
+function showClaudePrompt(text) {
+  const el = document.getElementById('claudePreview');
+  el.textContent = text;
+  el.classList.add('show');
+  navigator.clipboard.writeText(text).then(() => {
+    toast('プロンプトをクリップボードにコピーしました！Claude Codeに貼り付けてください', 'ok');
+  }).catch(() => {
+    toast('プレビューからコピーしてください', 'err');
+  });
+}
+
+function claudeGenAll() {
+  const c = getCharInfo();
+  const allItems = [
+    ...cgRows.map(r => `  - ${r.file} (イベントCG / ${r.trigger} / ${r.level})`),
+    ...portraitRows.map(r => `  - ${r.file} (立ち絵 / ${r.trigger} / ${r.level || '-'})`),
+    ...iconRows.map(r => `  - ${r.file} (アイコン / ${r.trigger})`),
+  ];
+  const prompt = `キャラクター「${c.name}(${c.nameEn})」(ID: ${c.id}) のCG画像を全て生成してください。
+
+対象ファイル一覧:
+${allItems.join('\n')}
+
+配置先:
+  - イベントCG → assets/characters/${c.id}/cg/
+  - 立ち絵     → assets/characters/${c.id}/
+  - アイコン   → assets/characters/${c.id}/
+
+ComfyUIで生成して、tools/staging/ に出力してください。
+キャラの外見設定は src/data/characters.ts を参照してください。`;
+  showClaudePrompt(prompt);
+}
+
+function claudeGenMissing() {
+  const c = getCharInfo();
+  const prompt = `キャラクター「${c.name}(${c.nameEn})」(ID: ${c.id}) の未作成CGを確認して生成してください。
+
+tools/staging/manifest.json と assets/characters/${c.id}/ を比較して、
+まだ存在しないファイルだけを ComfyUI で生成してください。
+
+マニフェストの全ファイル一覧:
+${[...cgRows, ...portraitRows, ...iconRows].map(r => `  - ${r.file}`).join('\n')}
+
+キャラの外見設定は src/data/characters.ts を参照。
+出力先: tools/staging/`;
+  showClaudePrompt(prompt);
+}
+
+function claudeGenSingle() {
+  const c = getCharInfo();
+  // Collect all rows with index for selection
+  const all = [
+    ...cgRows.map((r,i) => ({...r, type: 'イベントCG', path: `assets/characters/${c.id}/cg/`})),
+    ...portraitRows.map((r,i) => ({...r, type: '立ち絵', path: `assets/characters/${c.id}/`})),
+    ...iconRows.map((r,i) => ({...r, type: 'アイコン', path: `assets/characters/${c.id}/`})),
+  ];
+  // For simplicity, generate for the first CG item or prompt user to pick
+  if (all.length === 0) { toast('行がありません', 'err'); return; }
+
+  const prompt = `キャラクター「${c.name}(${c.nameEn})」の以下のCGを1枚だけ生成してください。
+
+ファイル: ${all[0].file}
+種類: ${all[0].type}
+トリガー: ${all[0].trigger}
+配置先: ${all[0].path}
+
+ComfyUIで生成。キャラ外見は src/data/characters.ts 参照。
+出力先: tools/staging/
+
+※ 別の画像を指定する場合は、ファイル名を変更して貼り直してください。`;
+  showClaudePrompt(prompt);
+}
+
+function claudeStatusCheck() {
+  const c = getCharInfo();
+  const prompt = `キャラクター「${c.name}(${c.nameEn})」(ID: ${c.id}) のCG制作状況を確認してください。
+
+以下をチェック:
+1. assets/characters/${c.id}/ 配下の既存ファイル
+2. tools/staging/ の生成待ちファイル
+3. tools/manifests/${c.id}.txt との差分
+
+マニフェスト上の全ファイル:
+${[...cgRows.map(r => r.file), ...portraitRows.map(r => r.file), ...iconRows.map(r => r.file)].join(', ')}
+
+結果を「完了 / 未作成 / staging中」で一覧表示してください。`;
+  showClaudePrompt(prompt);
+}
+
+// --- Init ---
+if (!loadLocal()) {
+  initDefaults();
+}
+applyCharToUI();
+render();
+renderCharSwitcher();
+// Remember last char on save
+const origSaveLocal = saveLocal;
+saveLocal = function() {
+  origSaveLocal();
+  localStorage.setItem('nightcap_cg_lastchar', currentCharId);
+};
+</script>
+</body>
+</html>
