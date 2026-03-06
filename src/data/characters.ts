@@ -10,7 +10,15 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
       color: '#e85d3a',
       colorDark: '#b8432a',
       colorGlow: 'rgba(232, 93, 58, 0.4)',
-      icon: '🔥'
+      icon: '🔥',
+      portraitImg: '/characters/blaze/portrait-drunk-0.webp',
+      portraitDrunkImgs: {
+        0: '/characters/blaze/portrait-drunk-0.webp',
+        1: '/characters/blaze/portrait-drunk-1.webp',
+        2: '/characters/blaze/portrait-drunk-2.webp',
+        3: '/characters/blaze/portrait-drunk-3.webp',
+        4: '/characters/blaze/portrait-drunk-4.webp',
+      },
     },
     drunkType: 'aggressive',
     drunkMax: 10,
@@ -116,7 +124,15 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: 'ひゃっ……！ ちょ、近い近い……息、当たってるんだけど……' },
           { speaker: 'ブレイズ', text: '……っ、なに、そんな近くで匂い嗅いでんの……変態じゃん……' },
           { speaker: 'ブレイズ', text: '………べ、別に嫌とは言ってないし。……もうちょっとだけ、くっついてていいよ' }
-        ]
+        ],
+        frames: [
+          {
+            src: '/characters/blaze/cg/shoulder_lean.webp',
+            label: '耳元でささやく',
+            dialogueStart: 0,
+            transition: 'fade',
+          },
+        ],
       },
       {
         id: 'blaze_headpat',
@@ -128,7 +144,15 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: 'ひっ……！ そこ、だめ……うなじ弱いの知ってるでしょ……っ' },
           { speaker: 'ブレイズ', text: '……ん、指……冷たい……ぞくぞくする……やめてよ……' },
           { speaker: 'ブレイズ', text: '……やめてって言ってるのに……もっと奥まで触って……ばか' }
-        ]
+        ],
+        frames: [
+          {
+            src: '/characters/blaze/cg/headpat.webp',
+            label: 'うなじを撫でる',
+            dialogueStart: 0,
+            transition: 'fade',
+          },
+        ],
       },
       {
         id: 'blaze_breast',
@@ -144,16 +168,19 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
         frames: [
           {
+            src: '/characters/blaze/cg/breast_touch_1.webp',
             label: '手が伸びる',
             dialogueStart: 0,
             transition: 'fade',
           },
           {
+            src: '/characters/blaze/cg/breast_touch_2.webp',
             label: '胸に触れる',
             dialogueStart: 1,
             transition: 'zoom',
           },
           {
+            src: '/characters/blaze/cg/breast_touch_3.webp',
             label: '感じてる表情',
             dialogueStart: 3,
             transition: 'fade',
@@ -170,7 +197,15 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: 'んっ……！ ちょ、待っ……そこ、お尻……っ！！' },
           { speaker: 'ブレイズ', text: '……信じらんない……こんなとこで何してんのドクター……変態……っ' },
           { speaker: 'ブレイズ', text: '……揉まないでよ……嘘、もうちょっとだけ……ぁ……だめ、声出ちゃう……' }
-        ]
+        ],
+        frames: [
+          {
+            src: '/characters/blaze/cg/hip_touch.webp',
+            label: 'お尻をなでる',
+            dialogueStart: 0,
+            transition: 'fade',
+          },
+        ],
       },
       {
         id: 'blaze_ear',
@@ -186,16 +221,19 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
         frames: [
           {
+            src: '/characters/blaze/cg/ear_bite_1.webp',
             label: '耳に顔を近づける',
             dialogueStart: 0,
             transition: 'slide-left',
           },
           {
+            src: '/characters/blaze/cg/ear_bite_2.webp',
             label: '耳たぶを噛む',
             dialogueStart: 1,
             transition: 'zoom',
           },
           {
+            src: '/characters/blaze/cg/ear_bite_3.webp',
             label: '蕩けた表情',
             dialogueStart: 3,
             transition: 'fade',
@@ -213,7 +251,15 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: 'ドクターの太もも……あったかい……すごい、心臓の音聞こえる……' },
           { speaker: 'ブレイズ', text: '……ねぇ、このまま寝ちゃったら……何する気？ ……してもいいよ、今なら……' },
           { speaker: 'ブレイズ', text: '……ん……もう動けない……ドクターの匂い……好き……zzZ' }
-        ]
+        ],
+        frames: [
+          {
+            src: '/characters/blaze/cg/lap_pillow.webp',
+            label: '太ももに誘う',
+            dialogueStart: 0,
+            transition: 'fade',
+          },
+        ],
       },
       {
         id: 'blaze_kiss',
@@ -230,21 +276,25 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
         frames: [
           {
+            src: '/characters/blaze/cg/kiss_1.webp',
             label: '腰を引き寄せる',
             dialogueStart: 0,
             transition: 'fade',
           },
           {
+            src: '/characters/blaze/cg/kiss_2.webp',
             label: '唇が近づく',
             dialogueStart: 2,
             transition: 'zoom',
           },
           {
+            src: '/characters/blaze/cg/kiss_3.webp',
             label: 'キス',
             dialogueStart: 3,
             transition: 'fade',
           },
           {
+            src: '/characters/blaze/cg/kiss_4.webp',
             label: '余韻',
             dialogueStart: 4,
             transition: 'fade',
@@ -266,16 +316,19 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
         frames: [
           {
+            src: '/characters/blaze/cg/foot_tease_1.webp',
             label: 'テーブル下の気配',
             dialogueStart: 0,
             transition: 'fade',
           },
           {
+            src: '/characters/blaze/cg/foot_tease_2.webp',
             label: '挑発する笑み',
             dialogueStart: 2,
             transition: 'zoom',
           },
           {
+            src: '/characters/blaze/cg/foot_tease_3.webp',
             label: '攻めるブレイズ',
             dialogueStart: 3,
             transition: 'fade',
@@ -296,16 +349,19 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
         frames: [
           {
+            src: '/characters/blaze/cg/dirty_talk_1.webp',
             label: '耳元に近づく',
             dialogueStart: 0,
             transition: 'slide-left',
           },
           {
+            src: '/characters/blaze/cg/dirty_talk_2.webp',
             label: '囁く表情',
             dialogueStart: 2,
             transition: 'zoom',
           },
           {
+            src: '/characters/blaze/cg/dirty_talk_3.webp',
             label: '満足げな笑み',
             dialogueStart: 4,
             transition: 'fade',

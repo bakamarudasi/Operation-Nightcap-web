@@ -92,6 +92,8 @@ export interface CharacterTheme {
   icon: string;
   /** 立ち絵画像パス (例: '/characters/blaze/portrait.png')。未設定ならiconにフォールバック */
   portraitImg?: string;
+  /** 酔いレベル別立ち絵パス (例: { 0: '/characters/blaze/portrait-drunk-0.webp', 1: '...' }) */
+  portraitDrunkImgs?: Record<number, string>;
   /** ミニアイコン画像パス。未設定ならiconにフォールバック */
   iconImg?: string;
 }

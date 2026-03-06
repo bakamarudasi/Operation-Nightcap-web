@@ -61,7 +61,7 @@ echo "==============================="
 echo ""
 
 # 全キャラクターディレクトリを走査
-for char_dir in "$PROJECT_ROOT"/assets/characters/*/; do
+for char_dir in "$PROJECT_ROOT"/public/characters/*/; do
   [ -d "$char_dir" ] && check_character "$char_dir"
 done
 
