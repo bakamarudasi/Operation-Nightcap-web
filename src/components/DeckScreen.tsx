@@ -4,22 +4,26 @@ import { CARD_DATA } from '../data/cards.ts';
 import type { CardDef } from '../data/types.ts';
 import '../styles/deck.css';
 
+/* ── 定数 ── */
+const DRAG_THRESHOLD = 5; // px — これ以上動いたらドラッグ開始
+
 /* ── ドラッグ状態の型 ── */
 interface DragState {
   source: 'deck' | 'inventory';
   cardId: string;
-  /** deck の場合の index */
   deckIndex?: number;
   startX: number;
   startY: number;
   currentX: number;
   currentY: number;
+  /** 閾値を超えてドラッグが有効になったか */
+  active: boolean;
 }
 
 /* ── アニメーション中カード ── */
 interface AnimCard {
   id: number;
-  cardId: string;
+  deckIndex: number;
   type: 'add' | 'remove';
 }
 
@@ -37,11 +41,13 @@ export function DeckScreen() {
   const [previewCard, setPreviewCard] = useState<CardDef | null>(null);
   const [previewPos, setPreviewPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [animCards, setAnimCards] = useState<AnimCard[]>([]);
-  const [drag, setDrag] = useState<DragState | null>(null);
   const [deckReorderTarget, setDeckReorderTarget] = useState<number | null>(null);
 
+  // ドラッグ状態はrefで管理し、レンダリング用にstateも持つ
+  const dragRef = useRef<DragState | null>(null);
+  const [dragRender, setDragRender] = useState<DragState | null>(null);
+
   const longPressTimer = useRef<number | null>(null);
-  const screenRef = useRef<HTMLDivElement>(null);
   const deckGridRef = useRef<HTMLDivElement>(null);
 
   /* ── 戻るボタンの遷移先 ── */
@@ -79,61 +85,73 @@ export function DeckScreen() {
 
   /* ── アニメーション付きカード追加 ── */
   const handleAdd = useCallback((cardId: string) => {
+    const currentDeck = useGameStore.getState().playerDeck;
     const ok = addToDeck(cardId);
     if (ok) {
       const id = ++animIdCounter;
-      setAnimCards(prev => [...prev, { id, cardId, type: 'add' }]);
+      setAnimCards(prev => [...prev, { id, deckIndex: currentDeck.length, type: 'add' }]);
       setTimeout(() => setAnimCards(prev => prev.filter(a => a.id !== id)), 400);
     }
   }, [addToDeck]);
 
   /* ── アニメーション付きカード削除 ── */
   const handleRemove = useCallback((index: number) => {
-    const cardId = playerDeck[index];
     const id = ++animIdCounter;
-    setAnimCards(prev => [...prev, { id, cardId, type: 'remove' }]);
+    setAnimCards(prev => [...prev, { id, deckIndex: index, type: 'remove' }]);
     setTimeout(() => {
       removeFromDeck(index);
       setAnimCards(prev => prev.filter(a => a.id !== id));
     }, 300);
-  }, [playerDeck, removeFromDeck]);
+  }, [removeFromDeck]);
 
-  /* ── カード詳細プレビュー（ホバー） ── */
+  /* ── カード詳細プレビュー ── */
   const showPreview = useCallback((card: CardDef, e: React.MouseEvent) => {
-    if (drag) return;
+    if (dragRef.current) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    // 画面端からはみ出さないよう調整
+    const popupW = 228; // 220 + padding
+    const popupH = 200; // 概算
+    let x = rect.right + 8;
+    let y = rect.top;
+    if (x + popupW > window.innerWidth) x = rect.left - popupW - 8;
+    if (y + popupH > window.innerHeight) y = window.innerHeight - popupH - 8;
+    if (y < 8) y = 8;
     setPreviewCard(card);
-    setPreviewPos({ x: rect.right + 8, y: rect.top });
-  }, [drag]);
-
-  const hidePreview = useCallback(() => {
-    setPreviewCard(null);
+    setPreviewPos({ x, y });
   }, []);
 
-  /* ── ドラッグ開始 (マウス) ── */
-  const startDrag = useCallback((source: 'deck' | 'inventory', cardId: string, deckIndex: number | undefined, e: React.MouseEvent) => {
+  const hidePreview = useCallback(() => setPreviewCard(null), []);
+
+  /* ── ドラッグ: ポインタ下げ (潜在的ドラッグ開始) ── */
+  const pointerDown = useCallback((source: 'deck' | 'inventory', cardId: string, deckIndex: number | undefined, clientX: number, clientY: number) => {
+    dragRef.current = {
+      source, cardId, deckIndex,
+      startX: clientX, startY: clientY,
+      currentX: clientX, currentY: clientY,
+      active: false,
+    };
+    // active=false なのでゴーストはまだ表示しない
+  }, []);
+
+  /* ── マウス用ハンドラ ── */
+  const onMouseDown = useCallback((source: 'deck' | 'inventory', cardId: string, deckIndex: number | undefined, e: React.MouseEvent) => {
     e.preventDefault();
     setPreviewCard(null);
-    setDrag({
-      source, cardId, deckIndex,
-      startX: e.clientX, startY: e.clientY,
-      currentX: e.clientX, currentY: e.clientY,
-    });
-  }, []);
+    pointerDown(source, cardId, deckIndex, e.clientX, e.clientY);
+  }, [pointerDown]);
 
-  /* ── ドラッグ開始 (タッチ - ロングプレス) ── */
-  const startTouchDrag = useCallback((source: 'deck' | 'inventory', cardId: string, deckIndex: number | undefined, e: React.TouchEvent) => {
+  /* ── タッチ用: ロングプレスでドラッグ ── */
+  const onTouchStart = useCallback((source: 'deck' | 'inventory', cardId: string, deckIndex: number | undefined, e: React.TouchEvent) => {
     const touch = e.touches[0];
-    const x = touch.clientX;
-    const y = touch.clientY;
     longPressTimer.current = window.setTimeout(() => {
-      setDrag({
-        source, cardId, deckIndex,
-        startX: x, startY: y,
-        currentX: x, currentY: y,
-      });
+      pointerDown(source, cardId, deckIndex, touch.clientX, touch.clientY);
+      // ロングプレス = 即active
+      if (dragRef.current) {
+        dragRef.current.active = true;
+        setDragRender({ ...dragRef.current });
+      }
     }, 300);
-  }, []);
+  }, [pointerDown]);
 
   const cancelLongPress = useCallback(() => {
     if (longPressTimer.current !== null) {
@@ -142,23 +160,39 @@ export function DeckScreen() {
     }
   }, []);
 
-  /* ── タッチでのカード詳細プレビュー（長押し、ドラッグなし） ── */
-  const handleTouchPreview = useCallback((card: CardDef, e: React.TouchEvent) => {
-    if (drag) return;
+  /* ── タッチプレビュー（ドラッグ未発動時のみ） ── */
+  const showTouchPreview = useCallback((card: CardDef, e: React.TouchEvent) => {
+    // ドラッグ中はプレビューを出さない
+    if (dragRef.current?.active) return;
     const touch = e.touches[0];
+    const x = Math.min(touch.clientX, window.innerWidth - 236);
+    const y = Math.max(8, touch.clientY - 220);
     setPreviewCard(card);
-    setPreviewPos({ x: touch.clientX, y: touch.clientY - 120 });
-  }, [drag]);
+    setPreviewPos({ x, y });
+  }, []);
 
-  /* ── ドラッグ中の移動 ── */
+  /* ── グローバルなポインタ移動・終了リスナー ── */
   useEffect(() => {
-    if (!drag) return;
-
     const onMove = (clientX: number, clientY: number) => {
-      setDrag(prev => prev ? { ...prev, currentX: clientX, currentY: clientY } : null);
+      const d = dragRef.current;
+      if (!d) return;
 
-      // デッキグリッド内の並べ替えターゲットを計算
-      if (drag.source === 'deck' && deckGridRef.current) {
+      d.currentX = clientX;
+      d.currentY = clientY;
+
+      // 閾値チェック
+      if (!d.active) {
+        const dx = clientX - d.startX;
+        const dy = clientY - d.startY;
+        if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+        d.active = true;
+        setPreviewCard(null); // ドラッグ開始でプレビュー消す
+      }
+
+      setDragRender({ ...d });
+
+      // デッキ内並べ替えターゲット
+      if (d.source === 'deck' && deckGridRef.current) {
         const cards = deckGridRef.current.querySelectorAll('.deck-card:not(.deck-card-empty)');
         let target: number | null = null;
         cards.forEach((el, i) => {
@@ -172,46 +206,62 @@ export function DeckScreen() {
       }
     };
 
-    const onMouseMove = (e: MouseEvent) => onMove(e.clientX, e.clientY);
-    const onTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
-      onMove(e.touches[0].clientX, e.touches[0].clientY);
-    };
-
     const onEnd = () => {
-      if (!drag) return;
+      cancelLongPress();
+      const d = dragRef.current;
+      if (!d) return;
 
-      if (drag.source === 'inventory') {
-        // インベントリからデッキエリアにドロップ → 追加
-        if (deckGridRef.current) {
-          const rect = deckGridRef.current.getBoundingClientRect();
-          if (drag.currentX >= rect.left && drag.currentX <= rect.right &&
-              drag.currentY >= rect.top && drag.currentY <= rect.bottom) {
-            handleAdd(drag.cardId);
-          }
-        }
-      } else if (drag.source === 'deck' && drag.deckIndex !== undefined) {
-        if (deckReorderTarget !== null && deckReorderTarget !== drag.deckIndex) {
-          // デッキ内並べ替え
-          const newDeck = [...playerDeck];
-          const [moved] = newDeck.splice(drag.deckIndex, 1);
-          newDeck.splice(deckReorderTarget, 0, moved);
-          // store の playerDeck を直接更新
-          useGameStore.setState({ playerDeck: newDeck });
-        } else {
-          // デッキ外にドロップ → 削除チェック
+      if (d.active) {
+        // ドラッグが有効だった場合のドロップ処理
+        const currentDeck = useGameStore.getState().playerDeck;
+
+        if (d.source === 'inventory') {
           if (deckGridRef.current) {
             const rect = deckGridRef.current.getBoundingClientRect();
-            if (drag.currentX < rect.left || drag.currentX > rect.right ||
-                drag.currentY < rect.top || drag.currentY > rect.bottom) {
-              handleRemove(drag.deckIndex);
+            if (d.currentX >= rect.left && d.currentX <= rect.right &&
+                d.currentY >= rect.top && d.currentY <= rect.bottom) {
+              handleAdd(d.cardId);
+            }
+          }
+        } else if (d.source === 'deck' && d.deckIndex !== undefined) {
+          // reorderTarget の最新値を取得
+          const reorderEl = deckGridRef.current?.querySelectorAll('.deck-card:not(.deck-card-empty)');
+          let dropTarget: number | null = null;
+          reorderEl?.forEach((el, i) => {
+            const rect = el.getBoundingClientRect();
+            if (d.currentX >= rect.left && d.currentX <= rect.right &&
+                d.currentY >= rect.top && d.currentY <= rect.bottom) {
+              dropTarget = i;
+            }
+          });
+
+          if (dropTarget !== null && dropTarget !== d.deckIndex) {
+            const newDeck = [...currentDeck];
+            const [moved] = newDeck.splice(d.deckIndex, 1);
+            newDeck.splice(dropTarget, 0, moved);
+            useGameStore.setState({ playerDeck: newDeck });
+          } else {
+            // デッキグリッド外にドロップ → 削除
+            if (deckGridRef.current) {
+              const rect = deckGridRef.current.getBoundingClientRect();
+              if (d.currentX < rect.left || d.currentX > rect.right ||
+                  d.currentY < rect.top || d.currentY > rect.bottom) {
+                handleRemove(d.deckIndex);
+              }
             }
           }
         }
       }
 
-      setDrag(null);
+      dragRef.current = null;
+      setDragRender(null);
       setDeckReorderTarget(null);
+    };
+
+    const onMouseMove = (e: MouseEvent) => onMove(e.clientX, e.clientY);
+    const onTouchMove = (e: TouchEvent) => {
+      if (dragRef.current?.active) e.preventDefault();
+      onMove(e.touches[0].clientX, e.touches[0].clientY);
     };
 
     window.addEventListener('mousemove', onMouseMove);
@@ -225,7 +275,21 @@ export function DeckScreen() {
       window.removeEventListener('touchmove', onTouchMove);
       window.removeEventListener('touchend', onEnd);
     };
-  }, [drag, deckReorderTarget, playerDeck, handleAdd, handleRemove]);
+  }, [cancelLongPress, handleAdd, handleRemove]);
+
+  /* ── クリック（ドラッグしなかった場合のみ発火） ── */
+  const handleDeckClick = useCallback((index: number) => {
+    // ドラッグがactiveだった場合はクリック扱いしない
+    // mouseupでdragRef.currentはnullになるが、
+    // activeだった場合はonEndで処理済み
+    if (dragRef.current?.active) return;
+    handleRemove(index);
+  }, [handleRemove]);
+
+  const handleInvClick = useCallback((cardId: string, cantAdd: boolean) => {
+    if (cantAdd || dragRef.current?.active) return;
+    handleAdd(cardId);
+  }, [handleAdd]);
 
   /* ── Escキーで戻る ── */
   useEffect(() => {
@@ -236,8 +300,10 @@ export function DeckScreen() {
     return () => window.removeEventListener('keydown', onKey);
   }, [goBack]);
 
+  const isDragActive = dragRender?.active ?? false;
+
   return (
-    <div className="screen active deck-screen" ref={screenRef}>
+    <div className="screen active deck-screen">
       <div className="deck-header">
         <button className="back-btn" onClick={goBack}>← 戻る</button>
         <h2>🃏 デッキ編集</h2>
@@ -251,9 +317,9 @@ export function DeckScreen() {
           {playerDeck.map((cardId, i) => {
             const card = CARD_DATA[cardId];
             if (!card) return null;
-            const isBeingDragged = drag?.source === 'deck' && drag.deckIndex === i;
-            const isReorderTarget = deckReorderTarget === i && drag?.source === 'deck' && drag.deckIndex !== i;
-            const isRemoving = animCards.some(a => a.type === 'remove' && a.cardId === cardId);
+            const isBeingDragged = isDragActive && dragRender?.source === 'deck' && dragRender.deckIndex === i;
+            const isReorderTarget = deckReorderTarget === i && isDragActive && dragRender?.source === 'deck' && dragRender.deckIndex !== i;
+            const isRemoving = animCards.some(a => a.type === 'remove' && a.deckIndex === i);
             return (
               <div
                 key={`deck-${i}`}
@@ -264,13 +330,13 @@ export function DeckScreen() {
                   isReorderTarget ? 'reorder-target' : '',
                   isRemoving ? 'removing' : '',
                 ].filter(Boolean).join(' ')}
-                onClick={() => !drag && handleRemove(i)}
+                onClick={() => handleDeckClick(i)}
                 onMouseEnter={(e) => showPreview(card, e)}
                 onMouseLeave={hidePreview}
-                onMouseDown={(e) => startDrag('deck', cardId, i, e)}
+                onMouseDown={(e) => onMouseDown('deck', cardId, i, e)}
                 onTouchStart={(e) => {
-                  startTouchDrag('deck', cardId, i, e);
-                  handleTouchPreview(card, e);
+                  onTouchStart('deck', cardId, i, e);
+                  showTouchPreview(card, e);
                 }}
                 onTouchEnd={() => { cancelLongPress(); hidePreview(); }}
               >
@@ -330,13 +396,13 @@ export function DeckScreen() {
               <div
                 key={`inv-${cardId}`}
                 className={`inv-card type-${card.type} ${cantAdd ? 'cant-add' : ''}`}
-                onClick={() => !cantAdd && !drag && handleAdd(cardId)}
+                onClick={() => handleInvClick(cardId, cantAdd)}
                 onMouseEnter={(e) => showPreview(card, e)}
                 onMouseLeave={hidePreview}
-                onMouseDown={(e) => !cantAdd && startDrag('inventory', cardId, undefined, e)}
+                onMouseDown={(e) => !cantAdd && onMouseDown('inventory', cardId, undefined, e)}
                 onTouchStart={(e) => {
-                  if (!cantAdd) startTouchDrag('inventory', cardId, undefined, e);
-                  handleTouchPreview(card, e);
+                  if (!cantAdd) onTouchStart('inventory', cardId, undefined, e);
+                  showTouchPreview(card, e);
                 }}
                 onTouchEnd={() => { cancelLongPress(); hidePreview(); }}
               >
@@ -359,7 +425,7 @@ export function DeckScreen() {
       </div>
 
       {/* ── カード詳細プレビューポップアップ ── */}
-      {previewCard && !drag && (
+      {previewCard && !isDragActive && (
         <div
           className="card-preview-popup"
           style={{ left: previewPos.x, top: previewPos.y }}
@@ -381,15 +447,15 @@ export function DeckScreen() {
       )}
 
       {/* ── ドラッグ中のゴースト ── */}
-      {drag && (
+      {isDragActive && dragRender && (
         <div
           className="drag-ghost"
           style={{
-            left: drag.currentX,
-            top: drag.currentY,
+            left: dragRender.currentX,
+            top: dragRender.currentY,
           }}
         >
-          <span>{CARD_DATA[drag.cardId]?.emoji}</span>
+          <span>{CARD_DATA[dragRender.cardId]?.emoji}</span>
         </div>
       )}
     </div>
