@@ -2775,6 +2775,7 @@ function renderDialogue(item) {
       <div class="dlg-btns">
         <button onclick="moveDialogue(${i},-1)" ${i === 0 ? 'disabled' : ''}>▲</button>
         <button onclick="moveDialogue(${i},1)" ${i === item.dialogue.length - 1 ? 'disabled' : ''}>▼</button>
+        <button onclick="insertDialogueAfter(${i})" title="下に行を追加">＋</button>
         <button class="danger" onclick="removeDialogue(${i})">✕</button>
       </div>
     `;
@@ -2796,6 +2797,21 @@ function addDialogueLine() {
   setTimeout(() => {
     const inputs = document.querySelectorAll('#dlgList .dlg-text');
     if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+
+function insertDialogueAfter(idx) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item?.dialogue) return;
+  const info = getCharInfo(currentCharId);
+  const speaker = info?.name || currentCharId;
+  item.dialogue.splice(idx + 1, 0, { speaker, text: '' });
+  saveAll();
+  renderDialogue(item);
+  // Focus the newly inserted text input
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#dlgList .dlg-text');
+    if (inputs[idx + 1]) inputs[idx + 1].focus();
   }, 50);
 }
 
