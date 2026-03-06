@@ -131,18 +131,6 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ]
       },
       {
-        id: 'blaze_gaze',
-        triggerCard: 'gaze',
-        requiredDrunkLevel: 2,
-        cgColor: '#e85d3a',
-        dialogue: [
-          { speaker: 'ドクター', text: '（顎を持ち上げ、濡れた唇をじっと見つめる）' },
-          { speaker: 'ブレイズ', text: '……っ！ くち、見んな……恥ずかしいだろ……' },
-          { speaker: 'ブレイズ', text: '……唇、乾いちゃうじゃん……そんなに見られたら……っ' },
-          { speaker: 'ブレイズ', text: '……ねぇ。見てるだけじゃなくて……してよ、早く' }
-        ]
-      },
-      {
         id: 'blaze_breast',
         triggerCard: 'breast_touch',
         requiredDrunkLevel: 2,
