@@ -41,7 +41,7 @@ interface GameStore {
   initBattle: (opponentId: string) => void;
   drawHands: () => void;
   selectCard: (cardId: string) => void;
-  playRound: () => { messages: string[]; cgEvent: CGEvent | null; opponentCgEvent: CGEvent | null; instantWin: boolean; opponentCardId: string; playerDamage: number; opponentDamage: number; playerHeal: number; opponentHeal: number } | null;
+  playRound: () => { messages: string[]; cgEvent: CGEvent | null; opponentCgEvent: CGEvent | null; instantWin: boolean; opponentCardId: string; playerDamage: number; opponentDamage: number; playerHeal: number; opponentHeal: number; revealedHand?: string[]; rumorActive?: boolean } | null;
   checkGameEnd: () => 'player_win' | 'opponent_win' | 'draw' | null;
   endBattle: (result: 'player_win' | 'opponent_win' | 'draw') => number;
 
@@ -88,6 +88,7 @@ const initialBattle: BattleState = {
   playerBuffs: [],
   opponentBuffs: [],
   corruptedSlots: [],
+  rumorActive: false,
 };
 
 export const useGameStore = create<GameStore>()(
@@ -172,6 +173,15 @@ export const useGameStore = create<GameStore>()(
             oRemaining.push(discardedCard);
           }
 
+          // rumor: 相手の手札1枚をデッキからランダムに差し替え
+          if (b.rumorActive && oHand.length > 0 && oRemaining.length > 0) {
+            const replaceIdx = Math.floor(Math.random() * oHand.length);
+            const replacedCard = oHand[replaceIdx];
+            const newCardIdx = Math.floor(Math.random() * oRemaining.length);
+            oHand[replaceIdx] = oRemaining[newCardIdx];
+            oRemaining[newCardIdx] = replacedCard;
+          }
+
           return {
             battle: {
               ...b,
@@ -182,6 +192,7 @@ export const useGameStore = create<GameStore>()(
               selectedCard: null,
               isProcessing: false,
               opponentDiscardNext: false,
+              rumorActive: false,
             },
           };
         });
@@ -203,12 +214,23 @@ export const useGameStore = create<GameStore>()(
 
         const result = BattleEngine.resolveRound(b.selectedCard, opponentCardId, b);
 
+        // BUG-006: 汚染カード使用時の自分へのダメージ処理
+        const selectedIdx = b.playerHand.indexOf(b.selectedCard);
+        if (selectedIdx >= 0 && b.corruptedSlots[selectedIdx]) {
+          result.playerDamage += 1;
+          result.messages.push('🔥 発情状態のカードを使った…自分に酔い+1！');
+        }
+
         // === プレイヤーのセクハラ成功時 → CGイベント検索 ===
         const pCard = CARD_DATA[b.selectedCard];
         if (pCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
           const targetDrunk = b.opponentDrunk;
           const targetLevel = get().getDrunkLevel(targetDrunk);
-          if (targetLevel >= (pCard.requiredDrunkLevel ?? 0)) {
+          // バフによる必要Lv補正を考慮
+          let adjustedRequired = pCard.requiredDrunkLevel ?? 0;
+          if (b.playerBuffs.some(bf => bf.id === 'dimlight')) adjustedRequired = Math.max(0, adjustedRequired - 1);
+          if (b.playerBuffs.some(bf => bf.id === 'excuse')) adjustedRequired = Math.max(0, adjustedRequired - 1);
+          if (targetLevel >= adjustedRequired) {
             const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === b.selectedCard);
             if (cgEvent) {
               result.cgEvent = cgEvent;
@@ -220,10 +242,14 @@ export const useGameStore = create<GameStore>()(
         const oCard = CARD_DATA[opponentCardId];
         let opponentCgEvent: CGEvent | null = null;
         if (oCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
-          const opponentDrunk = b.opponentDrunk;
-          const opponentLevel = get().getDrunkLevel(opponentDrunk);
-          if (opponentLevel >= (oCard.requiredDrunkLevel ?? 0)) {
-            // 相手のセクハラカードIDでCGイベントを検索
+          // BUG-012修正: 相手のセクハラはプレイヤーの酔い度で判定
+          const playerDrunk = b.playerDrunk;
+          const playerLevel = get().getDrunkLevel(playerDrunk);
+          // バフによる必要Lv補正を考慮
+          let adjustedRequired = oCard.requiredDrunkLevel ?? 0;
+          if (b.opponentBuffs.some(bf => bf.id === 'dimlight')) adjustedRequired = Math.max(0, adjustedRequired - 1);
+          if (b.opponentBuffs.some(bf => bf.id === 'excuse')) adjustedRequired = Math.max(0, adjustedRequired - 1);
+          if (playerLevel >= adjustedRequired) {
             const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === opponentCardId);
             if (cgEvent) {
               opponentCgEvent = cgEvent;
@@ -288,6 +314,7 @@ export const useGameStore = create<GameStore>()(
             playerBuffs: newPlayerBuffs,
             opponentBuffs: newOpponentBuffs,
             corruptedSlots,
+            rumorActive: result.rumorActive ?? false,
           },
         }));
 
@@ -301,6 +328,8 @@ export const useGameStore = create<GameStore>()(
           opponentDamage: result.opponentDamage,
           playerHeal: result.playerHeal,
           opponentHeal: result.opponentHeal,
+          revealedHand: result.revealedHand,
+          rumorActive: result.rumorActive,
         };
       },
 
@@ -380,17 +409,23 @@ export const useGameStore = create<GameStore>()(
         // 結果を反映
         let moneyDelta = -cost;
         const newInventory = [...state.inventory];
+        const newDeck = [...state.playerDeck];
         for (const r of results) {
           if (r.isDuplicate) {
             moneyDelta += r.refund;
           } else {
             newInventory.push(r.cardId);
+            // デッキに空きがあれば追加（最大12枚）
+            if (newDeck.length < 12) {
+              newDeck.push(r.cardId);
+            }
           }
         }
 
         set({
           money: state.money + moneyDelta,
           inventory: newInventory,
+          playerDeck: newDeck,
         });
 
         return results;

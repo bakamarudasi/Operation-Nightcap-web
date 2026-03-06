@@ -121,7 +121,7 @@ export function BattleScreen() {
         setDialogue({ speaker: currentOpponent.name, text: line });
       }
     }
-  }, []);
+  }, [battle.playerHand.length, battle.isProcessing, gameResult, drawHands, currentOpponent]);
 
   // タイピングエフェクト
   useEffect(() => {
@@ -595,6 +595,7 @@ export function BattleScreen() {
             const isPlaying = playingCardIdx === i;
             const isDisabled = (battle.isProcessing || playingCardIdx !== null) && !isPlaying;
             const isSelected = battle.selectedCard === cardId && !isPlaying;
+            const isCorrupted = battle.corruptedSlots[i] === true;
             const valText = card.type === 'food' ? (card.heal === 99 ? 'MAX回復' : `回復 ${card.heal}`) :
                             card.type === 'drink' ? (card.damage === -1 ? '1~3' : `${card.damage}`) :
                             card.type === 'chug' ? '特殊' :
@@ -604,7 +605,7 @@ export function BattleScreen() {
               <div
                 key={`${cardId}-${i}`}
                 ref={el => { handCardRefs.current[i] = el; }}
-                className={`hand-card type-${card.type} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${isDisabled ? 'disabled' : ''}`}
+                className={`hand-card type-${card.type} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${isDisabled ? 'disabled' : ''} ${isCorrupted ? 'corrupted' : ''}`}
                 onClick={() => handleCardClick(cardId, i)}
               >
                 <div className="hand-tooltip">

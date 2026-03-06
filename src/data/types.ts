@@ -173,6 +173,8 @@ export interface BattleState {
   opponentBuffs: Buff[];
   /** 手札の汚染状態 (カードindex → true で「発情」状態) */
   corruptedSlots: boolean[];
+  /** rumor: 次ラウンドの相手手札をランダム差替 */
+  rumorActive: boolean;
 }
 
 export interface RoundResult {
