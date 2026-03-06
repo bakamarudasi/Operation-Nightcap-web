@@ -329,14 +329,23 @@ export function SelectScreen() {
               <div className="sel-detail-quote">
                 「{currentChar.drunkLevels[0].lines[0]}」
               </div>
-              <button
-                className="sel-drink-btn"
-                disabled={isAnim || money < DRINK_COST}
-                onClick={startDrink}
-              >
-                <span>🍶 この相手と飲む</span>
-                <span className="sel-drink-cost">{DRINK_COST} 龍門幣</span>
-              </button>
+              <div className="sel-detail-actions">
+                <button
+                  className="sel-deck-btn"
+                  disabled={isAnim}
+                  onClick={() => setScreen('deck')}
+                >
+                  🃏 デッキ編集
+                </button>
+                <button
+                  className="sel-drink-btn"
+                  disabled={isAnim || money < DRINK_COST}
+                  onClick={startDrink}
+                >
+                  <span>🍶 この相手と飲む</span>
+                  <span className="sel-drink-cost">{DRINK_COST} 龍門幣</span>
+                </button>
+              </div>
             </div>
           )}
         </div>

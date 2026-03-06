@@ -286,6 +286,39 @@
   text-align: center;
 }
 
+/* --- Action buttons row --- */
+.sel-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* --- Deck edit button --- */
+.sel-deck-btn {
+  padding: 12px 20px;
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--paper);
+  background: linear-gradient(135deg, var(--wood-light) 0%, var(--wood-mid) 100%);
+  border: 1px solid var(--wood-surface);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sel-deck-btn:hover:not(:disabled) {
+  border-color: var(--amber);
+  box-shadow: 0 0 16px rgba(212, 165, 116, 0.2);
+  transform: translateY(-2px);
+}
+
+.sel-deck-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* --- Drink button --- */
 .sel-drink-btn {
   display: flex;
