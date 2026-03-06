@@ -415,59 +415,135 @@ let filter = 'all';
 let fileExistence = {};
 
 // ============================================================
-// Manifest parser — manifests/{charId}.txt を読んでデフォルト一覧にする
+// ゲームコード (characters.ts + cards.ts) からCG要件を動的取得
 // ============================================================
-let manifestCache = {}; // charId → { charName, charNameEn, items[] }
+let charDataCache = null;   // { charId → { name, nameEn, cgEvents[], costumeStates[] } }
+let cardNameCache = {};     // cardId → 日本語名
 
-function parseManifest(text) {
-  const result = { charName: '', charNameEn: '', items: [] };
-  const cm = text.match(/# Character:\s*(.+?)\s*\((.+?)\)/);
-  if (cm) { result.charNameEn = cm[1].trim(); result.charName = cm[2].trim(); }
-
-  let section = null;
-  for (const line of text.split('\n')) {
-    const t = line.trim();
-    if (t.startsWith('#') || t === '') {
-      if (t.includes('イベントCG')) section = 'cg';
-      else if (t.includes('立ち絵') || t.includes('ポートレート')) section = 'portrait';
-      else if (t.includes('アイコン')) section = 'icon';
-      else if (t.includes('合計')) section = null;
-      continue;
-    }
-    if (!section) continue;
-    const parts = t.split('|').map(s => s.trim());
-    if (parts.length < 2) continue;
-    const file = parts[0], trigger = parts[1], level = parts[2] || '', note = parts[3] || '';
-    const id = file.replace(/\.\w+$/, '');
-    result.items.push({ id, file, trigger, level, type: section, note });
-  }
-  return result;
+async function fetchGameData() {
+  if (charDataCache) return;
+  charDataCache = {};
+  try {
+    // characters.ts と cards.ts を並列fetch
+    const [charRes, cardRes] = await Promise.all([
+      fetch('../src/data/characters.ts?t=' + Date.now()),
+      fetch('../src/data/cards.ts?t=' + Date.now()),
+    ]);
+    if (charRes.ok) parseCharacters(await charRes.text());
+    if (cardRes.ok) parseCards(await cardRes.text());
+  } catch {}
 }
 
-async function fetchManifest(charId) {
-  if (manifestCache[charId]) return manifestCache[charId];
-  try {
-    const res = await fetch(`manifests/${charId}.txt?t=${Date.now()}`);
-    if (!res.ok) return null;
-    const text = await res.text();
-    const parsed = parseManifest(text);
-    if (parsed.items.length > 0) {
-      manifestCache[charId] = parsed;
-      return parsed;
+function parseCharacters(src) {
+  // キャラIDごとのブロックを抽出
+  const charBlockRe = /^\s{2}(\w+):\s*\{/gm;
+  let match;
+  const charStarts = [];
+  while ((match = charBlockRe.exec(src)) !== null) {
+    charStarts.push({ id: match[1], pos: match.index });
+  }
+
+  for (let ci = 0; ci < charStarts.length; ci++) {
+    const charId = charStarts[ci].id;
+    const start = charStarts[ci].pos;
+    const end = ci + 1 < charStarts.length ? charStarts[ci + 1].pos : src.length;
+    const block = src.slice(start, end);
+
+    // name, nameEn
+    const nameM = block.match(/name:\s*'([^']+)'/);
+    const nameEnM = block.match(/nameEn:\s*'([^']+)'/);
+
+    // cgEvents の triggerCard, requiredDrunkLevel, instantWin
+    const cgEvents = [];
+    const cgRe = /triggerCard:\s*'([^']+)'/g;
+    const drunkRe = /requiredDrunkLevel:\s*(\d+)/g;
+    const winRe = /instantWin:\s*true/g;
+
+    // cgEventsブロックを取得
+    const cgBlockM = block.match(/cgEvents:\s*\[([\s\S]*?)\]\s*,\s*afterEvents/);
+    if (cgBlockM) {
+      const cgBlock = cgBlockM[1];
+      // 各イベント { ... } を個別パース
+      const eventRe = /\{[^{}]*triggerCard:\s*'([^']+)'[^{}]*requiredDrunkLevel:\s*(\d+)[^{}]*(instantWin:\s*true)?/g;
+      let em;
+      while ((em = eventRe.exec(cgBlock)) !== null) {
+        cgEvents.push({
+          triggerCard: em[1],
+          requiredDrunkLevel: parseInt(em[2]),
+          instantWin: !!em[3],
+        });
+      }
     }
-  } catch {}
-  return null;
+
+    // costumeStates のレベル数
+    const costumeCount = (block.match(/level:\s*\d+.*?dishevelAmount/g) || []).length;
+
+    charDataCache[charId] = {
+      name: nameM?.[1] || '',
+      nameEn: nameEnM?.[1] || charId.toUpperCase(),
+      cgEvents,
+      costumeLevels: costumeCount,
+    };
+  }
+}
+
+function parseCards(src) {
+  // id: 'xxx', name: 'yyy' のペアを抽出
+  const re = /id:\s*'([^']+)',\s*name:\s*'([^']+)'/g;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    cardNameCache[m[1]] = m[2];
+  }
+}
+
+function getCharInfo(charId) {
+  return charDataCache?.[charId] || null;
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function getDefaults() {
-  const cached = manifestCache[currentCharId];
-  if (cached) return cached.items;
-  return [
-    { id: 'portrait', file: 'portrait.webp', trigger: '基本立ち絵', level: '', type: 'portrait', note: '' },
-    { id: 'select-icon', file: 'select-icon.webp', trigger: 'キャラ選択画面用', level: '', type: 'icon', note: '' },
-  ];
+  const info = getCharInfo(currentCharId);
+  if (!info) {
+    return [
+      { id: 'portrait', file: 'portrait.webp', trigger: '基本立ち絵', level: '', type: 'portrait', note: '' },
+      { id: 'select-icon', file: 'select-icon.webp', trigger: 'キャラ選択画面用', level: '', type: 'icon', note: '' },
+    ];
+  }
+
+  const items = [];
+
+  // イベントCG — characters.ts の cgEvents から
+  for (const ev of info.cgEvents) {
+    const trigger = cardNameCache[ev.triggerCard] || ev.triggerCard;
+    items.push({
+      id: ev.triggerCard,
+      file: ev.triggerCard + '.webp',
+      trigger,
+      level: 'Lv.' + ev.requiredDrunkLevel,
+      type: 'cg',
+      note: ev.instantWin ? 'instant_win' : '',
+    });
+  }
+
+  // 立ち絵 — 基本 + 酔い段階
+  items.push({ id: 'portrait', file: 'portrait.webp', trigger: '基本立ち絵', level: '', type: 'portrait', note: '' });
+  const drunkLabels = ['素面', 'ほろ酔い', '酔い', 'べろべろ', '潰れ'];
+  for (let i = 0; i < info.costumeLevels; i++) {
+    items.push({
+      id: `portrait-drunk-${i}`,
+      file: `portrait-drunk-${i}.webp`,
+      trigger: drunkLabels[i] || `酔いLv${i}`,
+      level: `Lv.${i}`,
+      type: 'portrait',
+      note: '',
+    });
+  }
+
+  // アイコン
+  items.push({ id: 'select-icon', file: 'select-icon.webp', trigger: 'キャラ選択画面用', level: '', type: 'icon', note: '' });
+
+  return items;
 }
 
 function makeItem(def) {
@@ -496,8 +572,8 @@ function renderCharTabs() {
   let html = '<label>キャラ:</label>';
   list.forEach(id => {
     const data = loadCharData(id);
-    const manifest = manifestCache[id];
-    const label = data?.charName || manifest?.charName || id;
+    const info = getCharInfo(id);
+    const label = data?.charName || info?.name || id;
     const active = id === currentCharId ? ' active' : '';
     html += `<button class="char-tab${active}" onclick="switchChar('${esc(id)}')">${esc(label)}</button>`;
   });
@@ -514,7 +590,6 @@ async function switchChar(id) {
   localStorage.setItem(LASTCHAR_KEY, id);
   selectedId = null;
   fileExistence = {};
-  await fetchManifest(id);
   load();
   renderCharTabs();
   renderList();
@@ -536,8 +611,6 @@ async function addNewChar() {
   saveAll();
   currentCharId = id;
   localStorage.setItem(LASTCHAR_KEY, id);
-  // マニフェストがあれば自動読み込み
-  const manifest = await fetchManifest(id);
   items = getDefaults().map(makeItem);
   selectedId = null;
   fileExistence = {};
@@ -546,8 +619,9 @@ async function addNewChar() {
   renderList();
   updateCounts();
   showEmpty();
-  const msg = manifest
-    ? `「${id}」を追加（マニフェストから${manifest.items.length}件読み込み）`
+  const info = getCharInfo(id);
+  const msg = info
+    ? `「${id}」を追加（ゲームコードから${info.cgEvents.length}件のCG検出）`
     : `「${id}」を追加しました`;
   toast(msg, 'ok');
   checkAllFiles();
@@ -569,11 +643,11 @@ function deleteChar() {
 // ============================================================
 function saveAll() {
   const existing = loadCharData(currentCharId);
-  const manifest = manifestCache[currentCharId];
+  const info = getCharInfo(currentCharId);
   const data = {
     charId: currentCharId,
-    charName: existing?.charName || manifest?.charName || '',
-    charNameEn: existing?.charNameEn || manifest?.charNameEn || currentCharId.toUpperCase(),
+    charName: existing?.charName || info?.name || '',
+    charNameEn: existing?.charNameEn || info?.nameEn || currentCharId.toUpperCase(),
     items: items.map(it => ({
       id: it.id, file: it.file, trigger: it.trigger, level: it.level,
       type: it.type, note: it.note, status: it.status,
@@ -877,9 +951,9 @@ function handleFileLoad(event) {
 
 function generateManifest() {
   const data = loadCharData(currentCharId) || {};
-  const manifest = manifestCache[currentCharId];
-  const charName = data.charName || manifest?.charName || '';
-  const charNameEn = data.charNameEn || manifest?.charNameEn || currentCharId.toUpperCase();
+  const info = getCharInfo(currentCharId);
+  const charName = data.charName || info?.name || '';
+  const charNameEn = data.charNameEn || info?.nameEn || currentCharId.toUpperCase();
   const pad = (s, n) => s + ' '.repeat(Math.max(0, n - s.length));
 
   const cgs = items.filter(i => i.type === 'cg');
@@ -925,7 +999,7 @@ function copyManifest() {
 
 function downloadManifest() {
   const data = loadCharData(currentCharId) || {};
-  const en = data.charNameEn || manifestCache[currentCharId]?.charNameEn || currentCharId;
+  const en = data.charNameEn || getCharInfo(currentCharId)?.nameEn || currentCharId;
   const blob = new Blob([generateManifest()], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1014,8 +1088,19 @@ async function init() {
   if (lastChar && list.includes(lastChar)) currentCharId = lastChar;
   else currentCharId = list[0] || 'blaze';
 
-  // マニフェストを fetch してからロード
-  await fetchManifest(currentCharId);
+  // ゲームコードからCG要件を取得してからロード
+  await fetchGameData();
+
+  // ゲームコードに定義されたキャラをcharListに自動追加
+  if (charDataCache) {
+    const list = getCharList();
+    let changed = false;
+    for (const id of Object.keys(charDataCache)) {
+      if (!list.includes(id)) { list.push(id); changed = true; }
+    }
+    if (changed) saveCharList(list);
+  }
+
   load();
   renderCharTabs();
   renderList();
