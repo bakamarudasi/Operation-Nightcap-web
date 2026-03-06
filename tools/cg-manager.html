@@ -362,10 +362,19 @@
     width: 70px; padding: 3px 5px; background: var(--surface); border: 1px solid var(--border);
     border-radius: 3px; color: var(--accent2); font-size: 0.78em; font-weight: 600;
   }
-  .dlg-line input.dlg-text {
-    flex: 1; padding: 3px 5px; background: var(--surface); border: 1px solid var(--border);
-    border-radius: 3px; color: var(--text); font-size: 0.78em;
+  .dlg-text-wrap {
+    flex: 1; position: relative;
   }
+  .dlg-line input.dlg-text {
+    width: 100%; padding: 3px 38px 3px 5px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; color: var(--text); font-size: 0.78em; box-sizing: border-box;
+  }
+  .dlg-charcount {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    font-size: 0.65em; color: var(--text-dim); pointer-events: none;
+  }
+  .dlg-charcount.warn { color: #e8a33a; }
+  .dlg-charcount.over { color: #e85d3a; }
   .dlg-line .dlg-btns { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
   .dlg-line:hover .dlg-btns { opacity: 1; }
   .dlg-line .dlg-btns button { padding: 1px 4px; font-size: 0.65em; }
@@ -1302,7 +1311,30 @@ function deleteChar() {
 // ============================================================
 // Persistence
 // ============================================================
+// Undo history
+const undoStack = [];
+const UNDO_MAX = 30;
+
+function pushUndo() {
+  const snapshot = localStorage.getItem(STORAGE_PREFIX + currentCharId);
+  if (snapshot) {
+    undoStack.push({ charId: currentCharId, data: snapshot, selectedId });
+    if (undoStack.length > UNDO_MAX) undoStack.shift();
+  }
+}
+
+function undo() {
+  if (!undoStack.length) { toast('これ以上戻せません', 'err'); return; }
+  const entry = undoStack.pop();
+  localStorage.setItem(STORAGE_PREFIX + entry.charId, entry.data);
+  if (entry.charId !== currentCharId) switchChar(entry.charId);
+  else { load(); renderList(); }
+  if (entry.selectedId) { selectedId = entry.selectedId; selectItem(selectedId); }
+  toast('元に戻しました');
+}
+
 function saveAll() {
+  pushUndo();
   const existing = loadCharData(currentCharId);
   const info = getCharInfo(currentCharId);
   const data = {
@@ -2466,12 +2498,19 @@ function closeGamePreview() {
   overlay.innerHTML = '';
 }
 
-// ESCキーでプレビューを閉じる
+// キーボードショートカット
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (gpState) closeGamePreview();
     const cmpOverlay = document.getElementById('compareOverlay');
     if (cmpOverlay && cmpOverlay.style.display !== 'none' && cmpOverlay.style.display !== '') closeCompareView();
+  }
+  // Ctrl+Z で元に戻す（入力欄にフォーカス中はブラウザ標準のundoを優先）
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    e.preventDefault();
+    undo();
   }
 });
 
@@ -2771,7 +2810,10 @@ function renderDialogue(item) {
           style="display:${showCustom ? 'block' : 'none'}"
           onchange="updateDialogue(${i},'speaker',this.value)" placeholder="話者名">
       </div>
-      <input class="dlg-text" value="${esc(d.text)}" onchange="updateDialogue(${i},'text',this.value)" placeholder="セリフ">
+      <div class="dlg-text-wrap">
+        <input class="dlg-text" value="${esc(d.text)}" onchange="updateDialogue(${i},'text',this.value)" oninput="updateCharCount(this)" placeholder="セリフ">
+        <span class="dlg-charcount ${d.text.length > 60 ? 'over' : d.text.length > 45 ? 'warn' : ''}">${d.text.length}</span>
+      </div>
       <div class="dlg-btns">
         <button onclick="moveDialogue(${i},-1)" ${i === 0 ? 'disabled' : ''}>▲</button>
         <button onclick="moveDialogue(${i},1)" ${i === item.dialogue.length - 1 ? 'disabled' : ''}>▼</button>
@@ -2831,6 +2873,14 @@ function moveDialogue(idx, dir) {
   [item.dialogue[idx], item.dialogue[newIdx]] = [item.dialogue[newIdx], item.dialogue[idx]];
   saveAll();
   renderDialogue(item);
+}
+
+function updateCharCount(input) {
+  const count = input.value.length;
+  const span = input.parentElement.querySelector('.dlg-charcount');
+  if (!span) return;
+  span.textContent = count;
+  span.className = 'dlg-charcount' + (count > 60 ? ' over' : count > 45 ? ' warn' : '');
 }
 
 function updateDialogue(idx, key, val) {
