@@ -165,6 +165,9 @@
   .badge.pending { background: var(--surface2); color: var(--text-dim); }
   .badge.review { background: rgba(243,156,18,0.2); color: var(--review); }
   .badge.done { background: rgba(39,174,96,0.2); color: var(--done); }
+  .badge.reverse { background: rgba(186,85,211,0.2); color: #c77dff; font-size: 0.55em; }
+  .cg-card.reverse-card { border-left: 3px solid #c77dff; }
+  .cg-card.reverse-card.selected { background: rgba(186,85,211,0.1); border-color: #c77dff; }
 
   /* Right panel */
   .right-panel { overflow-y: auto; padding: 16px; }
@@ -594,24 +597,29 @@ function getDefaults() {
 
   const items = [];
 
+  // 逆セクハラカードIDのセット（高速判定用）
+  const reverseIds = new Set(reverseHarassCards.map(rc => rc.id));
+
   // イベントCG — characters.ts の cgEvents から
   for (const ev of info.cgEvents) {
+    const isReverse = reverseIds.has(ev.triggerCard);
     const trigger = cardNameCache[ev.triggerCard] || ev.triggerCard;
+    const note = ev.instantWin ? 'instant_win' : isReverse ? 'reverse_harassment' : '';
     items.push({
       id: ev.triggerCard,
       file: ev.triggerCard + '.webp',
       trigger,
       level: 'Lv.' + ev.requiredDrunkLevel,
       type: 'cg',
-      note: ev.instantWin ? 'instant_win' : '',
+      note,
     });
   }
 
-  // 逆セクハラCG — cards.ts の sanityDamage 持ちカードから
+  // 逆セクハラCG — cards.ts の sanityDamage 持ちカードで characters.ts に未定義のもの
   const existingIds = new Set(items.map(i => i.id));
   for (const rc of reverseHarassCards) {
     if (existingIds.has(rc.id)) continue;
-    const trigger = (cardNameCache[rc.id] || rc.id) + '（逆セクハラ）';
+    const trigger = (cardNameCache[rc.id] || rc.id);
     items.push({
       id: rc.id,
       file: rc.id + '.webp',
@@ -849,17 +857,19 @@ function renderList() {
     list.appendChild(hdr);
 
     for (const item of arr) {
+      const isReverse = item.note === 'reverse_harassment';
       const card = document.createElement('div');
-      card.className = 'cg-card' + (item.id === selectedId ? ' selected' : '');
+      card.className = 'cg-card' + (item.id === selectedId ? ' selected' : '') + (isReverse ? ' reverse-card' : '');
       card.onclick = () => selectItem(item.id);
 
       const badgeCls = { pending: 'pending', review: 'review', done: 'done' }[item.status] || 'pending';
       const badgeText = { pending: '未作成', review: 'レビュー', done: '採用済' }[item.status] || '未作成';
       const feDot = fileExistence[item.id] === true ? 'exists' : fileExistence[item.id] === false ? 'missing' : 'unknown';
+      const reverseTag = isReverse ? ' <span class="badge reverse">&#x1F525; 逆セクハラ</span>' : '';
 
       card.innerHTML = `
         <div class="cg-top">
-          <span>${esc(item.trigger)}</span>
+          <span>${esc(item.trigger)}${reverseTag}</span>
           <span class="badge ${badgeCls}">${badgeText}</span>
         </div>
         <div class="cg-bot">
@@ -1357,20 +1367,23 @@ function onAssignCharChange() {
   let opts = '';
 
   // CGイベント
+  const reverseIdSet = new Set(reverseHarassCards.map(rc => rc.id));
   if (info) {
     for (const ev of info.cgEvents) {
       const cardName = cardNameCache[ev.triggerCard] || ev.triggerCard;
-      const label = `${cardName} (Lv.${ev.requiredDrunkLevel})${ev.instantWin ? ' ★' : ''}`;
+      const isRev = reverseIdSet.has(ev.triggerCard);
+      const suffix = ev.instantWin ? ' ★' : isRev ? ' \uD83D\uDD25逆セクハラ' : '';
+      const label = `${cardName} (Lv.${ev.requiredDrunkLevel})${suffix}`;
       opts += `<option value="cg:${esc(ev.triggerCard)}">${esc(label)}</option>`;
     }
   }
 
-  // 逆セクハラCG
+  // 逆セクハラCG（characters.ts に未定義のもの）
   const existingTriggers = new Set(info?.cgEvents.map(e => e.triggerCard) || []);
   for (const rc of reverseHarassCards) {
     if (existingTriggers.has(rc.id)) continue;
     const cardName = cardNameCache[rc.id] || rc.id;
-    const label = `${cardName}（逆セクハラ / Lv.${rc.requiredDrunkLevel}）`;
+    const label = `${cardName} \uD83D\uDD25逆セクハラ (Lv.${rc.requiredDrunkLevel})`;
     opts += `<option value="cg:${esc(rc.id)}">${esc(label)}</option>`;
   }
 
