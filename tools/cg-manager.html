@@ -1235,11 +1235,18 @@ function onAssignCharChange() {
   sceneSelect.onchange = updateAssignInfo;
 }
 
+function getDropExt() {
+  if (!pendingDropImage?.fileName) return '.png';
+  const m = pendingDropImage.fileName.match(/\.\w+$/);
+  return m ? m[0] : '.png';
+}
+
 function updateAssignInfo() {
   const charId = document.getElementById('assignChar').value;
   const sceneVal = document.getElementById('assignScene').value;
   const [type, id] = sceneVal.split(':');
-  const file = id + '.webp';
+  const ext = getDropExt();
+  const file = id + ext;
   const path = type === 'cg'
     ? `assets/characters/${charId}/cg/${file}`
     : `assets/characters/${charId}/${file}`;
@@ -1273,7 +1280,7 @@ function doAssign() {
       ? (cardNameCache[id] || id)
       : type === 'portrait' ? (id === 'portrait' ? '基本立ち絵' : id)
       : 'キャラ選択画面用';
-    item = makeItem({ id, file: id + '.webp', trigger, level: '', type, note: '' });
+    item = makeItem({ id, file: id + getDropExt(), trigger, level: '', type, note: '' });
     items.push(item);
   }
 
