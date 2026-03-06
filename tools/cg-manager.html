@@ -879,6 +879,7 @@ let fileExistence = {};
 // ゲームコード (characters.ts + cards.ts) からCG要件を動的取得
 // ============================================================
 let charDataCache = null;   // { charId → { name, nameEn, cgEvents[], costumeStates[] } }
+let charSourceRaw = null;   // characters.ts の生ソースコード
 let cardNameCache = {};     // cardId → 日本語名
 
 // File System Access API でプロジェクト内のファイルを読む
@@ -945,6 +946,20 @@ function extractCGEventBlocks(cgBlock) {
   return blocks;
 }
 
+// Extract balanced [...] content after a key like "cgEvents: [" using bracket counting
+function extractBalancedArrayContent(src, key) {
+  const idx = src.indexOf(key);
+  if (idx < 0) return null;
+  const bracketStart = src.indexOf('[', idx + key.length);
+  if (bracketStart < 0) return null;
+  let depth = 0;
+  for (let i = bracketStart; i < src.length; i++) {
+    if (src[i] === '[') depth++;
+    else if (src[i] === ']') { depth--; if (depth === 0) return src.slice(bracketStart + 1, i); }
+  }
+  return null;
+}
+
 function parseCharacters(src) {
   // キャラIDごとのブロックを抽出
   const charBlockRe = /^\s{2}(\w+):\s*\{/gm;
@@ -967,10 +982,10 @@ function parseCharacters(src) {
     // cgEvents の triggerCard, requiredDrunkLevel, instantWin, dialogue, frames, cgColor
     const cgEvents = [];
 
-    // cgEventsブロックを取得
-    const cgBlockM = block.match(/cgEvents:\s*\[([\s\S]*?)\]\s*,\s*afterEvents/);
-    if (cgBlockM) {
-      const cgBlock = cgBlockM[1];
+    // cgEventsブロックを取得（balanced bracket extraction）
+    const cgBlockContent = extractBalancedArrayContent(block, 'cgEvents:');
+    if (cgBlockContent) {
+      const cgBlock = cgBlockContent;
       // 各イベントブロックを balanced brace で抽出
       const parsedEvents = extractCGEventBlocks(cgBlock);
       for (const evBlock of parsedEvents) {
@@ -978,11 +993,12 @@ function parseCharacters(src) {
         const dlM = evBlock.match(/requiredDrunkLevel:\s*(\d+)/);
         const iwM = evBlock.match(/instantWin:\s*true/);
         const ccM = evBlock.match(/cgColor:\s*'([^']*)'/);
+        const idM = evBlock.match(/id:\s*'([^']+)'/);
         if (!tcM) continue;
 
-        // Parse dialogue
+        // Parse dialogue (handle escaped single quotes via (?:[^'\\]|\\.)*)
         const dialogue = [];
-        const dlgRe = /\{\s*speaker:\s*'([^']*)'\s*,\s*text:\s*'([^']*)'\s*\}/g;
+        const dlgRe = /\{\s*speaker:\s*'((?:[^'\\]|\\.)*)'\s*,\s*text:\s*'((?:[^'\\]|\\.)*)'\s*\}/g;
         let dm;
         while ((dm = dlgRe.exec(evBlock)) !== null) {
           dialogue.push({ speaker: dm[1], text: dm[2] });
@@ -1006,6 +1022,7 @@ function parseCharacters(src) {
         }
 
         cgEvents.push({
+          id: idM?.[1] || '',
           triggerCard: tcM[1],
           requiredDrunkLevel: parseInt(dlM?.[1] || '0'),
           instantWin: !!iwM,
@@ -1019,9 +1036,9 @@ function parseCharacters(src) {
     // costumeStates のレベル数 + 詳細
     const costumeCount = (block.match(/level:\s*\d+.*?dishevelAmount/g) || []).length;
     const costumeStates = [];
-    const csBlockM = block.match(/costumeStates:\s*\[([\s\S]*?)\]\s*,\s*drunkLevels/);
-    if (csBlockM) {
-      const csBlocks = extractCGEventBlocks(csBlockM[1]);
+    const csBlockContent = extractBalancedArrayContent(block, 'costumeStates:');
+    if (csBlockContent) {
+      const csBlocks = extractCGEventBlocks(csBlockContent);
       for (const csb of csBlocks) {
         costumeStates.push({
           level: parseInt(csb.match(/level:\s*(\d+)/)?.[1] || '0'),
@@ -1034,12 +1051,12 @@ function parseCharacters(src) {
 
     // afterEvents の解析
     const afterEvents = [];
-    const aeBlockM = block.match(/afterEvents:\s*\[([\s\S]*?)\]\s*(?:,\s*\w|\})/);
-    if (aeBlockM) {
-      const aeBlocks = extractCGEventBlocks(aeBlockM[1]);
+    const aeBlockContent = extractBalancedArrayContent(block, 'afterEvents:');
+    if (aeBlockContent) {
+      const aeBlocks = extractCGEventBlocks(aeBlockContent);
       for (const aeb of aeBlocks) {
         const aeDialogue = [];
-        const dlgRe2 = /\{\s*speaker:\s*'([^']*)'\s*,\s*text:\s*'([^']*)'\s*\}/g;
+        const dlgRe2 = /\{\s*speaker:\s*'((?:[^'\\]|\\.)*)'\s*,\s*text:\s*'((?:[^'\\]|\\.)*)'\s*\}/g;
         let dm2;
         while ((dm2 = dlgRe2.exec(aeb)) !== null) {
           aeDialogue.push({ speaker: dm2[1], text: dm2[2] });
@@ -1055,8 +1072,14 @@ function parseCharacters(src) {
       }
     }
 
-    // theme color
-    const themeColorM = block.match(/color:\s*'(#[^']+)'/);
+    // theme color — theme: { color: '...' } の先頭に近いcolorフィールドを取得
+    const themeIdx = block.indexOf('theme:');
+    let themeColorM = null;
+    if (themeIdx >= 0) {
+      const themeSlice = block.slice(themeIdx, themeIdx + 200);
+      const cm = themeSlice.match(/color:\s*'(#[^']+)'/);
+      if (cm) themeColorM = cm;
+    }
 
     charDataCache[charId] = {
       name: nameM?.[1] || '',
@@ -1116,6 +1139,7 @@ function getDefaults() {
     const note = ev.instantWin ? 'instant_win' : isReverse ? 'reverse_harassment' : '';
     items.push({
       id: ev.triggerCard,
+      gameId: ev.id || '',
       file: ev.triggerCard + '.webp',
       trigger,
       level: 'Lv.' + ev.requiredDrunkLevel,
@@ -1543,7 +1567,13 @@ function saveMeta() {
   if (!item) return;
   const newFile = document.getElementById('dFile').value.trim();
   const newId = newFile.replace(/\.\w+$/, '');
-  if (newId !== item.id) { item.id = newId; selectedId = newId; }
+  if (newId !== item.id) {
+    if (items.some(i => i.id === newId && i !== item)) {
+      toast(`ID "${newId}" は既に存在します`, 'err');
+      return;
+    }
+    item.id = newId; selectedId = newId;
+  }
   item.file = newFile;
   item.trigger = document.getElementById('dTrigger').value.trim();
   item.level = document.getElementById('dLevel').value;
@@ -1555,9 +1585,9 @@ function saveMeta() {
 function renderPreview(item) {
   const el = document.getElementById('imgPreview');
   if (item.adoptedImage) {
-    el.innerHTML = `<img src="${item.adoptedImage}" alt="${esc(item.trigger)}">`;
+    el.innerHTML = `<img src="${esc(item.adoptedImage)}" alt="${esc(item.trigger)}">`;
   } else if (item.history.length > 0) {
-    el.innerHTML = `<img src="${item.history[item.history.length - 1].url}" alt="${esc(item.trigger)}">`;
+    el.innerHTML = `<img src="${esc(item.history[item.history.length - 1].url)}" alt="${esc(item.trigger)}">`;
   } else if (fileExistence[item.id] === true) {
     el.innerHTML = `<img src="${esc(getAssetPath(item))}" alt="${esc(item.trigger)}"><div style="position:absolute;bottom:8px;right:8px;background:var(--done);color:#000;padding:2px 8px;border-radius:4px;font-size:0.7em">ローカル</div>`;
   } else {
@@ -1572,9 +1602,9 @@ function renderHistory(item) {
     const h = item.history[i];
     const t = document.createElement('div');
     t.className = 'hist-thumb' + (h.adopted ? ' adopted' : '');
-    t.innerHTML = `<img src="${h.url}" alt="${i + 1}">`;
+    t.innerHTML = `<img src="${esc(h.url)}" alt="${i + 1}">`;
     t.onclick = () => {
-      document.getElementById('imgPreview').innerHTML = `<img src="${h.url}" alt="${esc(item.trigger)}">`;
+      document.getElementById('imgPreview').innerHTML = `<img src="${esc(h.url)}" alt="${esc(item.trigger)}">`;
       strip.querySelectorAll('.hist-thumb').forEach(x => x.classList.remove('sel'));
       t.classList.add('sel');
     };
@@ -1675,7 +1705,8 @@ function convertToWebP(srcUrl, quality = 0.90) {
       canvas.toBlob(blob => {
         if (!blob) { reject(new Error('WebP変換失敗')); return; }
         const url = URL.createObjectURL(blob);
-        const origSize = Math.round(srcUrl.length * 3 / 4); // base64概算
+        // base64概算（blob: URLの場合はサイズ不明なので0）
+        const origSize = srcUrl.startsWith('data:') ? Math.round((srcUrl.length - srcUrl.indexOf(',') - 1) * 3 / 4) : 0;
         resolve({ url, blob, origSize, webpSize: blob.size });
       }, 'image/webp', quality);
     };
@@ -1703,19 +1734,19 @@ async function adopt() {
       // フォルダ設定済み → 自動保存
       await saveToFolder(result.blob, item);
       URL.revokeObjectURL(result.url);
-      const pct = Math.round((1 - result.webpSize / result.origSize) * 100);
       const kb = (result.webpSize / 1024).toFixed(0);
       const subPath = item.type === 'cg' ? `cg/${webpFile}` : webpFile;
-      toast(`「${item.trigger}」→ ${subPath} (${kb}KB, ${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`, 'ok');
+      const pctStr = result.origSize > 0 ? (() => { const pct = Math.round((1 - result.webpSize / result.origSize) * 100); return `, ${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%`; })() : '';
+      toast(`「${item.trigger}」→ ${subPath} (${kb}KB${pctStr})`, 'ok');
     } else {
       // 未設定 → 従来のダウンロード
       const a = document.createElement('a');
       a.href = result.url; a.download = webpFile;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(result.url);
-      const pct = Math.round((1 - result.webpSize / result.origSize) * 100);
       const kb = (result.webpSize / 1024).toFixed(0);
-      toast(`「${item.trigger}」採用 → WebP ${kb}KB (${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`, 'ok');
+      const pctStr = result.origSize > 0 ? (() => { const pct = Math.round((1 - result.webpSize / result.origSize) * 100); return ` (${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`; })() : '';
+      toast(`「${item.trigger}」採用 → WebP ${kb}KB${pctStr}`, 'ok');
     }
   } catch (err) {
     // フォールバック: 変換失敗時はそのままダウンロード
@@ -1750,8 +1781,13 @@ function doReject() {
   const item = items.find(i => i.id === selectedId);
   if (!item) return;
   const reason = document.getElementById('rejectReason').value.trim();
-  if (reason) item.feedback.push({ reason, ts: new Date().toISOString(), idx: item.history.length - 1 });
-  if (item.history.length > 1) { item.history.pop(); item.status = 'review'; }
+  // 現在表示中の画像を特定（選択サムネイルまたは最新）
+  const selThumb = document.querySelector('#histStrip .hist-thumb.sel img');
+  const viewingUrl = selThumb ? selThumb.src : (item.history.length > 0 ? item.history[item.history.length - 1].url : null);
+  const viewIdx = viewingUrl ? item.history.findIndex(h => h.url === viewingUrl) : item.history.length - 1;
+  const removeIdx = viewIdx >= 0 ? viewIdx : item.history.length - 1;
+  if (reason) item.feedback.push({ reason, ts: new Date().toISOString(), idx: removeIdx });
+  if (item.history.length > 1) { item.history.splice(removeIdx, 1); item.status = 'review'; }
   else { item.history = []; item.status = 'pending'; }
   closeReject();
   saveAll(); updateCounts(); selectItem(item.id);
@@ -1951,7 +1987,7 @@ function showAssignModal() {
 
   // プレビュー表示
   document.getElementById('assignPreview').innerHTML =
-    `<img src="${pendingDropImage.dataUrl}" alt="preview">`;
+    `<img src="${esc(pendingDropImage.dataUrl)}" alt="preview">`;
 
   // キャラ選択肢
   const charSelect = document.getElementById('assignChar');
@@ -2141,7 +2177,6 @@ function renderGrid(filtered) {
 // ============================================================
 // Game Preview (CGOverlay recreation)
 // ============================================================
-let charSourceRaw = null;
 let gpState = null; // { dialogue, frames, cgColor, currentLine, currentFrame, typeTimer, displayText }
 
 async function fetchCharSourceRaw() {
@@ -2190,7 +2225,7 @@ function extractCGEventData(charId, triggerCard) {
 
   // Parse dialogue
   const dialogue = [];
-  const dlgRe = /\{\s*speaker:\s*'([^']*)'\s*,\s*text:\s*'([^']*)'\s*\}/g;
+  const dlgRe = /\{\s*speaker:\s*'((?:[^'\\]|\\.)*)'\s*,\s*text:\s*'((?:[^'\\]|\\.)*)'\s*\}/g;
   let dm;
   while ((dm = dlgRe.exec(eventBlock)) !== null) {
     dialogue.push({ speaker: dm[1], text: dm[2] });
@@ -2429,7 +2464,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (gpState) closeGamePreview();
     const cmpOverlay = document.getElementById('compareOverlay');
-    if (cmpOverlay.style.display !== 'none') closeCompareView();
+    if (cmpOverlay && cmpOverlay.style.display !== 'none' && cmpOverlay.style.display !== '') closeCompareView();
   }
 });
 
@@ -2891,7 +2926,7 @@ function getMissingCGData() {
   const cgEntries = missingCGs.map(cg => {
     const cardInfo = cardNameCache[cg.triggerCard] || cg.trigger || cg.triggerCard;
     const entry = {
-      id: cg.id,
+      id: cg.gameId || `${currentCharId}_${cg.id}`,
       filename: cg.file,
       path: `public/characters/${currentCharId}/cg/${cg.file}`,
       triggerCard: cg.triggerCard,
@@ -2918,9 +2953,8 @@ function getMissingCGData() {
 
   // Build structured data for portraits
   const portraitEntries = missingPortraits.map(p => {
-    const costumeInfo = info?.costumeStates?.find(cs =>
-      p.id === 'portrait' ? cs.level === 0 : cs.level === parseInt(p.id.replace('portrait-drunk-', ''))
-    );
+    const drunkLevel = p.id === 'portrait' ? -1 : parseInt(p.id.replace('portrait-drunk-', ''));
+    const costumeInfo = drunkLevel >= 0 ? info?.costumeStates?.find(cs => cs.level === drunkLevel) : null;
     return {
       id: p.id,
       filename: p.file,
@@ -2971,12 +3005,13 @@ function getMissingCGData() {
   };
 }
 
-function generateMissingJSON() {
-  return JSON.stringify(getMissingCGData(), null, 2);
+function generateMissingJSON(data) {
+  const d = data || getMissingCGData();
+  return JSON.stringify(d, null, 2);
 }
 
-function generateMissingMD() {
-  const d = getMissingCGData();
+function generateMissingMD(data) {
+  const d = data || getMissingCGData();
   let md = '';
   md += `# 不足CGリスト: ${d.character.nameEn} (${d.character.name})\n\n`;
   md += `- キャラID: \`${d.character.id}\`\n`;
@@ -3062,9 +3097,11 @@ function generateMissingMD() {
 }
 
 function renderMissingCGOutput() {
-  const output = missingCGFormat === 'json' ? generateMissingJSON() : generateMissingMD();
-  document.getElementById('missingCGOutput').value = output;
   const d = getMissingCGData();
+  const output = missingCGFormat === 'json'
+    ? JSON.stringify(d, null, 2)
+    : generateMissingMD(d);
+  document.getElementById('missingCGOutput').value = output;
   document.getElementById('missingStats').textContent =
     `不足CG: ${d.summary.missingCGs}枚 / 不足立ち絵: ${d.summary.missingPortraits}枚`;
 }
@@ -3082,14 +3119,13 @@ function copyMissingCG() {
 }
 
 function downloadMissingCG() {
-  const d = getMissingCGData();
   const ext = missingCGFormat === 'json' ? 'json' : 'md';
   const mime = missingCGFormat === 'json' ? 'application/json' : 'text/markdown';
   const text = document.getElementById('missingCGOutput').value;
   const blob = new Blob([text], { type: mime });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${d.character.id}_missing_cg_list.${ext}`;
+  a.download = `${currentCharId}_missing_cg_list.${ext}`;
   a.click();
   URL.revokeObjectURL(a.href);
   toast(`${ext.toUpperCase()}をダウンロードしました`, 'ok');
@@ -3115,21 +3151,21 @@ async function init() {
   }
 
   const lastChar = localStorage.getItem(LASTCHAR_KEY);
-  const list = getCharList();
-  if (lastChar && list.includes(lastChar)) currentCharId = lastChar;
-  else currentCharId = list[0] || 'blaze';
+  const charList = getCharList();
+  if (lastChar && charList.includes(lastChar)) currentCharId = lastChar;
+  else currentCharId = charList[0] || 'blaze';
 
   // ゲームコードからCG要件を取得してからロード
   await fetchGameData();
 
   // ゲームコードに定義されたキャラをcharListに自動追加
   if (charDataCache) {
-    const list = getCharList();
+    const charList2 = getCharList();
     let changed = false;
     for (const id of Object.keys(charDataCache)) {
-      if (!list.includes(id)) { list.push(id); changed = true; }
+      if (!charList2.includes(id)) { charList2.push(id); changed = true; }
     }
-    if (changed) saveCharList(list);
+    if (changed) saveCharList(charList2);
   }
 
   load();
@@ -3148,6 +3184,7 @@ const EMBEDDED_CHARACTERS_SRC = `
     id: 'blaze',
     name: 'ブレイズ',
     nameEn: 'BLAZE',
+    theme: { color: '#e85d3a' },
     costumeStates: [
       { level: 0, label: '通常', emoji: '👔', description: 'ロドスの制服をきっちり着ている', dishevelAmount: 0 },
       { level: 1, label: '少し緩む', emoji: '👕', description: '首元のボタンを外し、肩のラインが少し崩れている', dishevelAmount: 0.2 },
