@@ -301,6 +301,102 @@
     color: var(--success); font-weight: 600; font-family: monospace;
   }
 
+  /* ============================================
+     Frame Manager
+     ============================================ */
+  .frame-list { display: flex; flex-direction: column; gap: 6px; }
+  .frame-card {
+    background: var(--bg); border-radius: 6px; padding: 8px 10px;
+    border: 1px solid var(--border); display: flex; gap: 8px; align-items: center;
+    transition: all 0.15s; position: relative;
+  }
+  .frame-card:hover { border-color: var(--accent); }
+  .frame-card.active-frame { border-color: var(--accent); background: rgba(233,69,96,0.08); }
+  .frame-thumb {
+    width: 60px; height: 60px; border-radius: 4px; overflow: hidden;
+    background: var(--surface2); display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 1.5em; color: var(--text-dim); cursor: pointer;
+  }
+  .frame-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .frame-thumb:hover { opacity: 0.8; }
+  .frame-fields { flex: 1; display: grid; grid-template-columns: 1fr 80px 100px; gap: 6px; align-items: center; }
+  .frame-fields input, .frame-fields select {
+    padding: 4px 6px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; color: var(--text); font-size: 0.78em; width: 100%;
+  }
+  .frame-fields label { font-size: 0.65em; color: var(--text-dim); display: block; margin-bottom: 1px; }
+  .frame-order-btns { display: flex; flex-direction: column; gap: 2px; }
+  .frame-order-btns button { padding: 2px 5px; font-size: 0.65em; }
+  .frame-del { position: absolute; top: 3px; right: 3px; opacity: 0; font-size: 0.65em; padding: 1px 4px; }
+  .frame-card:hover .frame-del { opacity: 0.6; }
+  .frame-del:hover { opacity: 1 !important; }
+  .frame-add-btn {
+    border: 1px dashed var(--border); border-radius: 6px; padding: 8px;
+    text-align: center; cursor: pointer; color: var(--text-dim); font-size: 0.8em;
+    transition: all 0.15s;
+  }
+  .frame-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .frame-num {
+    font-size: 0.7em; color: var(--text-dim); font-weight: 700; width: 18px; text-align: center; flex-shrink: 0;
+  }
+
+  /* ============================================
+     Dialogue Editor
+     ============================================ */
+  .dlg-list { display: flex; flex-direction: column; gap: 4px; max-height: 400px; overflow-y: auto; }
+  .dlg-line {
+    display: flex; gap: 6px; align-items: center; padding: 4px 6px;
+    background: var(--bg); border-radius: 4px; border: 1px solid transparent;
+    transition: border-color 0.15s; position: relative;
+  }
+  .dlg-line:hover { border-color: var(--border); }
+  .dlg-line .dlg-num { font-size: 0.65em; color: var(--text-dim); font-weight: 700; width: 16px; flex-shrink: 0; text-align: center; }
+  .dlg-line input.dlg-speaker {
+    width: 80px; padding: 3px 5px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; color: var(--accent2); font-size: 0.78em; font-weight: 600; flex-shrink: 0;
+  }
+  .dlg-line input.dlg-text {
+    flex: 1; padding: 3px 5px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; color: var(--text); font-size: 0.78em;
+  }
+  .dlg-line .dlg-btns { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+  .dlg-line:hover .dlg-btns { opacity: 1; }
+  .dlg-line .dlg-btns button { padding: 1px 4px; font-size: 0.65em; }
+  .dlg-add-btn {
+    border: 1px dashed var(--border); border-radius: 4px; padding: 6px;
+    text-align: center; cursor: pointer; color: var(--text-dim); font-size: 0.78em;
+    transition: all 0.15s;
+  }
+  .dlg-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ============================================
+     Event Properties
+     ============================================ */
+  .event-props { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .event-props .field { display: flex; align-items: center; gap: 4px; }
+  .event-props label { font-size: 0.72em; color: var(--text-dim); }
+  .event-props input[type="color"] {
+    width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 4px;
+    background: transparent; cursor: pointer; padding: 0;
+  }
+  .event-props input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+
+  /* ============================================
+     Code Generator
+     ============================================ */
+  .code-output {
+    width: 100%; min-height: 200px; max-height: 400px; padding: 10px;
+    background: #0d0d1a; border: 1px solid var(--border); border-radius: 5px;
+    color: #a6e3a1; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.75em;
+    resize: vertical; white-space: pre; overflow: auto; tab-size: 2;
+  }
+  .code-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+  /* ============================================
+     New Event Modal
+     ============================================ */
+  .new-event-modal .field-grid { grid-template-columns: 1fr 1fr; }
+
   @media (max-width: 800px) {
     .main { grid-template-columns: 1fr; }
     .left-panel { max-height: 40vh; }
@@ -552,6 +648,32 @@
         </div>
       </div>
 
+      <!-- Event Properties (CG only) -->
+      <div class="panel" id="eventPropsPanel" style="display:none">
+        <h3>イベント設定</h3>
+        <div class="event-props">
+          <div class="field">
+            <label>cgColor</label>
+            <input type="color" id="dCgColor" value="#e85d3a" onchange="saveEventProps()">
+          </div>
+          <div class="field">
+            <label>triggerCard</label>
+            <input id="dTriggerCard" style="width:130px;padding:4px 6px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:0.8em" onchange="saveEventProps()">
+          </div>
+          <div class="field">
+            <label>requiredDrunkLevel</label>
+            <select id="dDrunkLevel" onchange="saveEventProps()" style="padding:4px 6px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:0.8em">
+              <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+              <option value="3">3</option><option value="4">4</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>instantWin</label>
+            <input type="checkbox" id="dInstantWin" onchange="saveEventProps()">
+          </div>
+        </div>
+      </div>
+
       <!-- Preview & Review -->
       <div class="panel">
         <h3>プレビュー</h3>
@@ -561,6 +683,37 @@
           <button class="success" onclick="adopt()">採用</button>
           <button class="danger" onclick="reject()">却下</button>
         </div>
+      </div>
+
+      <!-- Frame Manager (CG only) -->
+      <div class="panel" id="framePanel" style="display:none">
+        <h3 style="display:flex;justify-content:space-between;align-items:center">
+          フレーム管理
+          <span style="font-size:0.7em;color:var(--text-dim);font-weight:400" id="frameCount">0 フレーム</span>
+        </h3>
+        <div class="frame-list" id="frameList"></div>
+        <div class="frame-add-btn" onclick="addFrame()">+ フレーム追加</div>
+      </div>
+
+      <!-- Dialogue Editor (CG only) -->
+      <div class="panel" id="dialoguePanel" style="display:none">
+        <h3 style="display:flex;justify-content:space-between;align-items:center">
+          セリフ編集
+          <span style="font-size:0.7em;color:var(--text-dim);font-weight:400" id="dlgCount">0 行</span>
+        </h3>
+        <div class="dlg-list" id="dlgList"></div>
+        <div class="dlg-add-btn" onclick="addDialogueLine()">+ セリフ追加</div>
+      </div>
+
+      <!-- Code Generator (CG only) -->
+      <div class="panel" id="codeGenPanel" style="display:none">
+        <h3>コード生成</h3>
+        <div class="code-actions" style="margin-bottom:8px">
+          <button onclick="generateEventCode()">このイベントのコード</button>
+          <button onclick="generateAllEventsCode()">全イベントのコード</button>
+          <button class="sm" onclick="copyCodeOutput()">コピー</button>
+        </div>
+        <textarea class="code-output" id="codeOutput" readonly placeholder="上のボタンでコードを生成..."></textarea>
       </div>
     </div>
   </div>
@@ -644,6 +797,43 @@
   </div>
 </div>
 
+<!-- New CG Event Modal -->
+<div class="modal-overlay hidden" id="newEventModal">
+  <div class="modal new-event-modal">
+    <h3>新規CGイベント作成</h3>
+    <div class="field-grid">
+      <div class="field">
+        <label>トリガーカードID</label>
+        <input id="newEvTriggerCard" placeholder="例: shoulder_lean">
+      </div>
+      <div class="field">
+        <label>表示名</label>
+        <input id="newEvTriggerName" placeholder="例: 耳元でささやく">
+      </div>
+      <div class="field">
+        <label>requiredDrunkLevel</label>
+        <select id="newEvDrunkLevel">
+          <option value="0">0</option><option value="1">1</option><option value="2" selected>2</option>
+          <option value="3">3</option><option value="4">4</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>cgColor</label>
+        <input type="color" id="newEvColor" value="#e85d3a">
+      </div>
+    </div>
+    <div style="margin:8px 0">
+      <label style="font-size:0.78em;color:var(--text-dim);display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="newEvInstantWin"> instantWin（即勝利）
+      </label>
+    </div>
+    <div class="ma">
+      <button onclick="closeModal('newEventModal')">キャンセル</button>
+      <button class="primary" onclick="doCreateEvent()">作成</button>
+    </div>
+  </div>
+</div>
+
 <!-- Game Preview Overlay -->
 <div id="gamePreviewOverlay" style="display:none"></div>
 
@@ -723,6 +913,17 @@ async function fetchGameData() {
   if (cardSrc) parseCards(cardSrc);
 }
 
+function extractCGEventBlocks(cgBlock) {
+  // Extract each top-level { ... } block from the cgEvents array content
+  const blocks = [];
+  let depth = 0, start = -1;
+  for (let i = 0; i < cgBlock.length; i++) {
+    if (cgBlock[i] === '{') { if (depth === 0) start = i; depth++; }
+    else if (cgBlock[i] === '}') { depth--; if (depth === 0 && start >= 0) { blocks.push(cgBlock.slice(start, i + 1)); start = -1; } }
+  }
+  return blocks;
+}
+
 function parseCharacters(src) {
   // キャラIDごとのブロックを抽出
   const charBlockRe = /^\s{2}(\w+):\s*\{/gm;
@@ -742,24 +943,54 @@ function parseCharacters(src) {
     const nameM = block.match(/name:\s*'([^']+)'/);
     const nameEnM = block.match(/nameEn:\s*'([^']+)'/);
 
-    // cgEvents の triggerCard, requiredDrunkLevel, instantWin
+    // cgEvents の triggerCard, requiredDrunkLevel, instantWin, dialogue, frames, cgColor
     const cgEvents = [];
-    const cgRe = /triggerCard:\s*'([^']+)'/g;
-    const drunkRe = /requiredDrunkLevel:\s*(\d+)/g;
-    const winRe = /instantWin:\s*true/g;
 
     // cgEventsブロックを取得
     const cgBlockM = block.match(/cgEvents:\s*\[([\s\S]*?)\]\s*,\s*afterEvents/);
     if (cgBlockM) {
       const cgBlock = cgBlockM[1];
-      // 各イベント { ... } を個別パース
-      const eventRe = /\{[^{}]*triggerCard:\s*'([^']+)'[^{}]*requiredDrunkLevel:\s*(\d+)[^{}]*(instantWin:\s*true)?/g;
-      let em;
-      while ((em = eventRe.exec(cgBlock)) !== null) {
+      // 各イベントブロックを balanced brace で抽出
+      const parsedEvents = extractCGEventBlocks(cgBlock);
+      for (const evBlock of parsedEvents) {
+        const tcM = evBlock.match(/triggerCard:\s*'([^']+)'/);
+        const dlM = evBlock.match(/requiredDrunkLevel:\s*(\d+)/);
+        const iwM = evBlock.match(/instantWin:\s*true/);
+        const ccM = evBlock.match(/cgColor:\s*'([^']*)'/);
+        if (!tcM) continue;
+
+        // Parse dialogue
+        const dialogue = [];
+        const dlgRe = /\{\s*speaker:\s*'([^']*)'\s*,\s*text:\s*'([^']*)'\s*\}/g;
+        let dm;
+        while ((dm = dlgRe.exec(evBlock)) !== null) {
+          dialogue.push({ speaker: dm[1], text: dm[2] });
+        }
+
+        // Parse frames
+        const frames = [];
+        const framesM = evBlock.match(/frames:\s*\[([\s\S]*?)\]/);
+        if (framesM) {
+          const fRe = /\{([^}]*)\}/g;
+          let fm;
+          while ((fm = fRe.exec(framesM[1])) !== null) {
+            const fb = fm[1];
+            frames.push({
+              label: fb.match(/label:\s*'([^']*)'/) ?.[1] || '',
+              dialogueStart: parseInt(fb.match(/dialogueStart:\s*(\d+)/)?.[1] || '0'),
+              transition: fb.match(/transition:\s*'([^']*)'/) ?.[1] || 'fade',
+              imageUrl: null,
+            });
+          }
+        }
+
         cgEvents.push({
-          triggerCard: em[1],
-          requiredDrunkLevel: parseInt(em[2]),
-          instantWin: !!em[3],
+          triggerCard: tcM[1],
+          requiredDrunkLevel: parseInt(dlM?.[1] || '0'),
+          instantWin: !!iwM,
+          cgColor: ccM?.[1] || '#e85d3a',
+          dialogue,
+          frames,
         });
       }
     }
@@ -827,6 +1058,11 @@ function getDefaults() {
       level: 'Lv.' + ev.requiredDrunkLevel,
       type: 'cg',
       note,
+      triggerCard: ev.triggerCard,
+      cgColor: ev.cgColor || '#e85d3a',
+      instantWin: ev.instantWin || false,
+      dialogue: ev.dialogue || [],
+      frames: ev.frames || [],
     });
   }
 
@@ -866,7 +1102,19 @@ function getDefaults() {
 }
 
 function makeItem(def) {
-  return { ...def, status: 'pending', history: [], feedback: [], adoptedImage: null };
+  return {
+    ...def,
+    status: 'pending',
+    history: [],
+    feedback: [],
+    adoptedImage: null,
+    // CG event data (editable in manager)
+    dialogue: def.dialogue || [],
+    frames: def.frames || [],
+    cgColor: def.cgColor || '#e85d3a',
+    instantWin: def.instantWin || false,
+    triggerCard: def.triggerCard || def.id || '',
+  };
 }
 
 // ============================================================
@@ -971,6 +1219,9 @@ function saveAll() {
       id: it.id, file: it.file, trigger: it.trigger, level: it.level,
       type: it.type, note: it.note, status: it.status,
       history: it.history, feedback: it.feedback, adoptedImage: it.adoptedImage,
+      dialogue: it.dialogue || [], frames: it.frames || [],
+      cgColor: it.cgColor || '#e85d3a', instantWin: it.instantWin || false,
+      triggerCard: it.triggerCard || it.id || '',
     })),
   };
   localStorage.setItem(STORAGE_PREFIX + currentCharId, JSON.stringify(data));
@@ -984,7 +1235,7 @@ function load() {
   }
   items = data.items.map(s => ({ ...makeItem(s), ...s }));
 
-  // ゲームコードに新規追加されたCGイベントを自動マージ
+  // ゲームコードに新規追加されたCGイベントを自動マージ + 既存アイテムにデータを補完
   const defaults = getDefaults();
   const existingIds = new Set(items.map(i => i.id));
   let added = false;
@@ -992,6 +1243,16 @@ function load() {
     if (!existingIds.has(def.id)) {
       items.push(makeItem(def));
       added = true;
+    } else {
+      // 既存アイテムにダイアログ・フレームが未設定なら characters.ts のデータで補完
+      const item = items.find(i => i.id === def.id);
+      if (item && item.type === 'cg') {
+        if (!item.dialogue?.length && def.dialogue?.length) item.dialogue = def.dialogue;
+        if (!item.frames?.length && def.frames?.length) item.frames = def.frames;
+        if (!item.cgColor || item.cgColor === '#e85d3a') item.cgColor = def.cgColor || '#e85d3a';
+        if (item.instantWin === undefined) item.instantWin = def.instantWin || false;
+        if (!item.triggerCard) item.triggerCard = def.triggerCard || def.id;
+      }
     }
   }
   if (added) saveAll();
@@ -1070,7 +1331,8 @@ function renderList() {
     if (arr.length === 0 && filter !== 'all') continue;
     const hdr = document.createElement('div');
     hdr.className = 'group-hdr';
-    hdr.innerHTML = `<span>${labels[type]} (${arr.length})</span><button class="sm" onclick="addItem('${type}')">+ 追加</button>`;
+    const addAction = type === 'cg' ? `showNewEventModal()` : `addItem('${type}')`;
+    hdr.innerHTML = `<span>${labels[type]} (${arr.length})</span><button class="sm" onclick="${addAction}">+ 追加</button>`;
     list.appendChild(hdr);
 
     for (const item of arr) {
@@ -1162,6 +1424,22 @@ function selectItem(id) {
     (item.status === 'review' || item.history.length > 0) ? 'flex' : 'none';
   // Show game preview button only for CG type items
   document.getElementById('previewBtn').style.display = item.type === 'cg' ? 'inline-block' : 'none';
+
+  // Event properties panel
+  const isCG = item.type === 'cg';
+  document.getElementById('eventPropsPanel').style.display = isCG ? 'block' : 'none';
+  document.getElementById('codeGenPanel').style.display = isCG ? 'block' : 'none';
+  if (isCG) {
+    document.getElementById('dCgColor').value = item.cgColor || '#e85d3a';
+    document.getElementById('dTriggerCard').value = item.triggerCard || item.id;
+    document.getElementById('dDrunkLevel').value = String(parseInt(item.level?.replace('Lv.', '') || '0'));
+    document.getElementById('dInstantWin').checked = !!item.instantWin;
+  }
+
+  // Frame & dialogue panels
+  renderFrames(item);
+  renderDialogue(item);
+
   renderList();
 }
 
@@ -1871,8 +2149,14 @@ async function openGamePreview() {
   const item = items.find(i => i.id === selectedId);
   if (!item || item.type !== 'cg') return;
 
-  await fetchCharSourceRaw();
-  const eventData = extractCGEventData(currentCharId, item.id);
+  // ローカルに保存されたデータを優先、なければ characters.ts からパース
+  let eventData = null;
+  if (item.dialogue?.length) {
+    eventData = { dialogue: item.dialogue, frames: item.frames || [], cgColor: item.cgColor || '#e85d3a' };
+  } else {
+    await fetchCharSourceRaw();
+    eventData = extractCGEventData(currentCharId, item.id);
+  }
 
   if (!eventData || eventData.dialogue.length === 0) {
     toast('このCGのセリフデータが見つかりません', 'err');
@@ -1912,6 +2196,8 @@ function renderGamePreview() {
   if (hasFrames) {
     const frame = frames[currentFrame];
     const frameLabel = frame?.label || '';
+    // Use frame-specific image if available, fallback to item image
+    const frameImgSrc = frame?.imageUrl || imgSrc;
     // Build frame dot indicators
     let dotsHtml = '';
     if (frames.length > 1) {
@@ -1923,10 +2209,10 @@ function renderGamePreview() {
       dotsHtml += '</div>';
     }
 
-    if (imgSrc) {
+    if (frameImgSrc) {
       imageHtml = `
         <div class="gp-image">
-          <div class="gp-seq-frame gp-seq-enter-fade" style="background:url('${imgSrc}') center/cover no-repeat; width:100%; height:100%;">
+          <div class="gp-seq-frame gp-seq-enter-fade" style="background:url('${frameImgSrc}') center/cover no-repeat; width:100%; height:100%;">
           </div>
           ${dotsHtml}
         </div>`;
@@ -2180,6 +2466,311 @@ function closeCompareView() {
   const overlay = document.getElementById('compareOverlay');
   overlay.style.display = 'none';
   overlay.innerHTML = '';
+}
+
+// ============================================================
+// Event Properties
+// ============================================================
+function saveEventProps() {
+  const item = items.find(i => i.id === selectedId);
+  if (!item || item.type !== 'cg') return;
+  item.cgColor = document.getElementById('dCgColor').value;
+  item.triggerCard = document.getElementById('dTriggerCard').value.trim();
+  item.instantWin = document.getElementById('dInstantWin').checked;
+  const dlVal = document.getElementById('dDrunkLevel').value;
+  item.level = 'Lv.' + dlVal;
+  // Sync the level select
+  document.getElementById('dLevel').value = item.level;
+  saveAll();
+}
+
+// ============================================================
+// Frame Management
+// ============================================================
+function renderFrames(item) {
+  const panel = document.getElementById('framePanel');
+  const list = document.getElementById('frameList');
+  const count = document.getElementById('frameCount');
+
+  if (!item || item.type !== 'cg') { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  if (!item.frames) item.frames = [];
+  count.textContent = item.frames.length + ' フレーム';
+  list.innerHTML = '';
+
+  for (let i = 0; i < item.frames.length; i++) {
+    const f = item.frames[i];
+    const card = document.createElement('div');
+    card.className = 'frame-card';
+
+    const thumbContent = f.imageUrl
+      ? `<img src="${f.imageUrl}" alt="F${i + 1}">`
+      : '🖼';
+
+    card.innerHTML = `
+      <span class="frame-num">#${i + 1}</span>
+      <div class="frame-thumb" onclick="pickFrameImage(${i})" title="クリックで画像設定">${thumbContent}</div>
+      <div class="frame-fields">
+        <div>
+          <label>ラベル</label>
+          <input value="${esc(f.label || '')}" onchange="updateFrame(${i},'label',this.value)" placeholder="シーン説明">
+        </div>
+        <div>
+          <label>開始行</label>
+          <input type="number" min="0" value="${f.dialogueStart || 0}" onchange="updateFrame(${i},'dialogueStart',parseInt(this.value)||0)">
+        </div>
+        <div>
+          <label>トランジション</label>
+          <select onchange="updateFrame(${i},'transition',this.value)">
+            <option value="fade"${f.transition === 'fade' ? ' selected' : ''}>fade</option>
+            <option value="slide-left"${f.transition === 'slide-left' ? ' selected' : ''}>slide-left</option>
+            <option value="zoom"${f.transition === 'zoom' ? ' selected' : ''}>zoom</option>
+            <option value="none"${f.transition === 'none' ? ' selected' : ''}>none</option>
+          </select>
+        </div>
+      </div>
+      <div class="frame-order-btns">
+        <button onclick="moveFrame(${i},-1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <button onclick="moveFrame(${i},1)" ${i === item.frames.length - 1 ? 'disabled' : ''}>▼</button>
+      </div>
+      <button class="sm danger frame-del" onclick="event.stopPropagation();removeFrame(${i})">✕</button>
+    `;
+    list.appendChild(card);
+  }
+}
+
+function addFrame() {
+  const item = items.find(i => i.id === selectedId);
+  if (!item) return;
+  if (!item.frames) item.frames = [];
+  item.frames.push({ label: '', dialogueStart: item.dialogue?.length ? item.frames.length : 0, transition: 'fade', imageUrl: null });
+  saveAll();
+  renderFrames(item);
+}
+
+function removeFrame(idx) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item?.frames) return;
+  item.frames.splice(idx, 1);
+  saveAll();
+  renderFrames(item);
+}
+
+function moveFrame(idx, dir) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item?.frames) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= item.frames.length) return;
+  [item.frames[idx], item.frames[newIdx]] = [item.frames[newIdx], item.frames[idx]];
+  saveAll();
+  renderFrames(item);
+}
+
+function updateFrame(idx, key, val) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item?.frames?.[idx]) return;
+  item.frames[idx][key] = val;
+  saveAll();
+}
+
+function pickFrameImage(idx) {
+  // Create file input to pick image for this frame
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const item = items.find(i => i.id === selectedId);
+      if (!item?.frames?.[idx]) return;
+      item.frames[idx].imageUrl = ev.target.result;
+      saveAll();
+      renderFrames(item);
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+// ============================================================
+// Dialogue Editor
+// ============================================================
+function renderDialogue(item) {
+  const panel = document.getElementById('dialoguePanel');
+  const list = document.getElementById('dlgList');
+  const count = document.getElementById('dlgCount');
+
+  if (!item || item.type !== 'cg') { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  if (!item.dialogue) item.dialogue = [];
+  count.textContent = item.dialogue.length + ' 行';
+  list.innerHTML = '';
+
+  for (let i = 0; i < item.dialogue.length; i++) {
+    const d = item.dialogue[i];
+    const line = document.createElement('div');
+    line.className = 'dlg-line';
+    line.innerHTML = `
+      <span class="dlg-num">${i}</span>
+      <input class="dlg-speaker" value="${esc(d.speaker)}" onchange="updateDialogue(${i},'speaker',this.value)" placeholder="話者">
+      <input class="dlg-text" value="${esc(d.text)}" onchange="updateDialogue(${i},'text',this.value)" placeholder="セリフ">
+      <div class="dlg-btns">
+        <button onclick="moveDialogue(${i},-1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <button onclick="moveDialogue(${i},1)" ${i === item.dialogue.length - 1 ? 'disabled' : ''}>▼</button>
+        <button class="danger" onclick="removeDialogue(${i})">✕</button>
+      </div>
+    `;
+    list.appendChild(line);
+  }
+}
+
+function addDialogueLine() {
+  const item = items.find(i => i.id === selectedId);
+  if (!item) return;
+  if (!item.dialogue) item.dialogue = [];
+  // Default speaker from character name
+  const info = getCharInfo(currentCharId);
+  const speaker = info?.name || currentCharId;
+  item.dialogue.push({ speaker, text: '' });
+  saveAll();
+  renderDialogue(item);
+  // Focus the new text input
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#dlgList .dlg-text');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+
+function removeDialogue(idx) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item?.dialogue) return;
+  item.dialogue.splice(idx, 1);
+  saveAll();
+  renderDialogue(item);
+}
+
+function moveDialogue(idx, dir) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item?.dialogue) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= item.dialogue.length) return;
+  [item.dialogue[idx], item.dialogue[newIdx]] = [item.dialogue[newIdx], item.dialogue[idx]];
+  saveAll();
+  renderDialogue(item);
+}
+
+function updateDialogue(idx, key, val) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item?.dialogue?.[idx]) return;
+  item.dialogue[idx][key] = val;
+  saveAll();
+}
+
+// ============================================================
+// New CG Event Creation
+// ============================================================
+function showNewEventModal() {
+  document.getElementById('newEvTriggerCard').value = '';
+  document.getElementById('newEvTriggerName').value = '';
+  document.getElementById('newEvDrunkLevel').value = '2';
+  document.getElementById('newEvColor').value = '#e85d3a';
+  document.getElementById('newEvInstantWin').checked = false;
+  document.getElementById('newEventModal').classList.remove('hidden');
+}
+
+function doCreateEvent() {
+  const triggerCard = document.getElementById('newEvTriggerCard').value.trim();
+  const triggerName = document.getElementById('newEvTriggerName').value.trim();
+  const drunkLevel = parseInt(document.getElementById('newEvDrunkLevel').value);
+  const cgColor = document.getElementById('newEvColor').value;
+  const instantWin = document.getElementById('newEvInstantWin').checked;
+
+  if (!triggerCard) { toast('トリガーカードIDを入力してください', 'err'); return; }
+  if (items.find(i => i.id === triggerCard)) { toast('このIDは既に存在します', 'err'); return; }
+
+  const item = makeItem({
+    id: triggerCard,
+    file: triggerCard + '.webp',
+    trigger: triggerName || triggerCard,
+    level: 'Lv.' + drunkLevel,
+    type: 'cg',
+    note: '',
+    triggerCard,
+    cgColor,
+    instantWin,
+    dialogue: [],
+    frames: [],
+  });
+  items.push(item);
+  closeModal('newEventModal');
+  saveAll();
+  renderList();
+  updateCounts();
+  selectItem(triggerCard);
+  toast(`CGイベント「${triggerName || triggerCard}」を作成`, 'ok');
+}
+
+// ============================================================
+// Code Generation
+// ============================================================
+function generateSingleEventCode(item) {
+  if (!item || item.type !== 'cg') return '';
+  const indent = '      ';
+  let code = `${indent}{ id: '${item.triggerCard || item.id}_cg', triggerCard: '${item.triggerCard || item.id}', requiredDrunkLevel: ${parseInt(item.level?.replace('Lv.','') || '0')}, cgColor: '${item.cgColor || '#e85d3a'}'`;
+  if (item.instantWin) code += `, instantWin: true`;
+  code += `,\n`;
+
+  // dialogue
+  if (item.dialogue?.length) {
+    code += `${indent}  dialogue: [\n`;
+    for (const d of item.dialogue) {
+      code += `${indent}    { speaker: '${escCode(d.speaker)}', text: '${escCode(d.text)}' },\n`;
+    }
+    code += `${indent}  ]`;
+  } else {
+    code += `${indent}  dialogue: []`;
+  }
+
+  // frames
+  if (item.frames?.length) {
+    code += `,\n${indent}  frames: [\n`;
+    for (const f of item.frames) {
+      code += `${indent}    { label: '${escCode(f.label || '')}', dialogueStart: ${f.dialogueStart || 0}, transition: '${f.transition || 'fade'}' },\n`;
+    }
+    code += `${indent}  ]`;
+  }
+
+  code += ` }`;
+  return code;
+}
+
+function escCode(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function generateEventCode() {
+  const item = items.find(i => i.id === selectedId);
+  if (!item || item.type !== 'cg') { toast('CGイベントを選択してください', 'err'); return; }
+  document.getElementById('codeOutput').value = generateSingleEventCode(item);
+}
+
+function generateAllEventsCode() {
+  const cgItems = items.filter(i => i.type === 'cg');
+  if (!cgItems.length) { toast('CGイベントがありません', 'err'); return; }
+  const code = `    cgEvents: [\n${cgItems.map(i => generateSingleEventCode(i)).join(',\n')}\n    ],`;
+  document.getElementById('codeOutput').value = code;
+}
+
+function copyCodeOutput() {
+  const text = document.getElementById('codeOutput').value;
+  if (!text) { toast('コードがありません', 'err'); return; }
+  navigator.clipboard.writeText(text)
+    .then(() => toast('コピーしました', 'ok'))
+    .catch(() => toast('コピー失敗', 'err'));
 }
 
 // ============================================================
