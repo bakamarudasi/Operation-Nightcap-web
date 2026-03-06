@@ -1016,7 +1016,7 @@ function parseCharacters(src) {
               label: fb.match(/label:\s*'([^']*)'/) ?.[1] || '',
               dialogueStart: parseInt(fb.match(/dialogueStart:\s*(\d+)/)?.[1] || '0'),
               transition: fb.match(/transition:\s*'([^']*)'/) ?.[1] || 'fade',
-              imageUrl: null,
+              src: fb.match(/src:\s*'([^']*)'/) ?.[1] || null,
             });
           }
         }
@@ -2324,7 +2324,7 @@ function renderGamePreview() {
     const frame = frames[currentFrame];
     const frameLabel = frame?.label || '';
     // Use frame-specific image if available, fallback to item image
-    const frameImgSrc = frame?.imageUrl || imgSrc;
+    const frameImgSrc = frame?.src || imgSrc;
     // Build frame dot indicators
     let dotsHtml = '';
     if (frames.length > 1) {
@@ -2631,8 +2631,8 @@ function renderFrames(item) {
     const card = document.createElement('div');
     card.className = 'frame-card';
 
-    const thumbContent = f.imageUrl
-      ? `<img src="${f.imageUrl}" alt="F${i + 1}">`
+    const thumbContent = f.src
+      ? `<img src="${f.src}" alt="F${i + 1}">`
       : '🖼';
 
     card.innerHTML = `
@@ -2671,7 +2671,7 @@ function addFrame() {
   const item = items.find(i => i.id === selectedId);
   if (!item) return;
   if (!item.frames) item.frames = [];
-  item.frames.push({ label: '', dialogueStart: item.dialogue?.length ? item.frames.length : 0, transition: 'fade', imageUrl: null });
+  item.frames.push({ label: '', dialogueStart: item.dialogue?.length ? item.frames.length : 0, transition: 'fade', src: null });
   saveAll();
   renderFrames(item);
 }
@@ -2713,7 +2713,7 @@ function pickFrameImage(idx) {
     reader.onload = (ev) => {
       const item = items.find(i => i.id === selectedId);
       if (!item?.frames?.[idx]) return;
-      item.frames[idx].imageUrl = ev.target.result;
+      item.frames[idx].src = ev.target.result;
       saveAll();
       renderFrames(item);
     };
@@ -2866,7 +2866,7 @@ function generateSingleEventCode(item) {
   if (item.frames?.length) {
     code += `,\n${indent}  frames: [\n`;
     for (const f of item.frames) {
-      code += `${indent}    { label: '${escCode(f.label || '')}', dialogueStart: ${f.dialogueStart || 0}, transition: '${f.transition || 'fade'}' },\n`;
+      code += `${indent}    { ${f.src ? `src: '${escCode(f.src)}', ` : ''}label: '${escCode(f.label || '')}', dialogueStart: ${f.dialogueStart || 0}, transition: '${f.transition || 'fade'}' },\n`;
     }
     code += `${indent}  ]`;
   }
@@ -2945,7 +2945,7 @@ function getMissingCGData() {
         label: f.label || '',
         dialogueStart: f.dialogueStart || 0,
         transition: f.transition || 'fade',
-        imagePath: f.src || f.imageUrl || `public/characters/${currentCharId}/cg/${cg.triggerCard}_${i + 1}.webp`
+        imagePath: f.src || `public/characters/${currentCharId}/cg/${cg.triggerCard}_${i + 1}.webp`
       }))
     };
     return entry;
