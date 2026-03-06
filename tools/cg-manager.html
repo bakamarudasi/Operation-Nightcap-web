@@ -47,6 +47,11 @@
   .header-actions {
     display: flex; gap: 5px; margin-left: auto;
   }
+  .folder-status {
+    font-size: 0.75em; color: var(--text-dim); white-space: nowrap;
+    max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .folder-status.active { color: var(--success); }
 
   /* Buttons */
   button {
@@ -305,6 +310,8 @@
 <div class="header">
   <h1>CG Manager</h1>
   <div class="header-actions">
+    <button onclick="pickProjectFolder()">フォルダ設定</button>
+    <span class="folder-status" id="folderStatus">未設定</span>
     <button onclick="showImportModal()">インポート</button>
     <button onclick="showExportModal()">エクスポート</button>
     <button onclick="downloadManifest()">ダウンロード</button>
@@ -945,6 +952,48 @@ function renderFeedback(item) {
 }
 
 // ============================================================
+// Auto-save folder (File System Access API)
+// ============================================================
+let projectDirHandle = null;
+
+async function pickProjectFolder() {
+  if (!window.showDirectoryPicker) {
+    toast('このブラウザはフォルダ選択に対応していません（Chrome/Edgeを使用してください）', 'err');
+    return;
+  }
+  try {
+    projectDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const el = document.getElementById('folderStatus');
+    el.textContent = projectDirHandle.name;
+    el.classList.add('active');
+    toast(`出力先: ${projectDirHandle.name}/`, 'ok');
+  } catch (e) {
+    if (e.name !== 'AbortError') toast('フォルダ選択失敗', 'err');
+  }
+}
+
+async function getSubDir(handle, path) {
+  const parts = path.split('/').filter(Boolean);
+  let dir = handle;
+  for (const p of parts) {
+    dir = await dir.getDirectoryHandle(p, { create: true });
+  }
+  return dir;
+}
+
+async function saveToFolder(blob, item) {
+  // Determine target subdirectory based on item type
+  const basePath = `assets/characters/${currentCharId}`;
+  const subPath = item.type === 'cg' ? `${basePath}/cg` : basePath;
+
+  const dir = await getSubDir(projectDirHandle, subPath);
+  const fileHandle = await dir.getFileHandle(item.file, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(blob);
+  await writable.close();
+}
+
+// ============================================================
 // Review
 // ============================================================
 function convertToWebP(srcUrl, quality = 0.90) {
@@ -977,22 +1026,31 @@ async function adopt() {
   item.adoptedImage = srcUrl;
   item.status = 'done';
 
-  // WebP変換してダウンロード
+  // WebP変換して保存
   const webpFile = item.id + '.webp';
   try {
     const result = await convertToWebP(srcUrl);
-    const a = document.createElement('a');
-    a.href = result.url; a.download = webpFile;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(result.url);
-
-    // ファイル名を.webpに更新
     item.file = webpFile;
 
-    const pct = Math.round((1 - result.webpSize / result.origSize) * 100);
-    const kb = (result.webpSize / 1024).toFixed(0);
-    toast(`「${item.trigger}」採用 → WebP ${kb}KB (${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`, 'ok');
-  } catch {
+    if (projectDirHandle) {
+      // フォルダ設定済み → 自動保存
+      await saveToFolder(result.blob, item);
+      URL.revokeObjectURL(result.url);
+      const pct = Math.round((1 - result.webpSize / result.origSize) * 100);
+      const kb = (result.webpSize / 1024).toFixed(0);
+      const subPath = item.type === 'cg' ? `cg/${webpFile}` : webpFile;
+      toast(`「${item.trigger}」→ ${subPath} (${kb}KB, ${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`, 'ok');
+    } else {
+      // 未設定 → 従来のダウンロード
+      const a = document.createElement('a');
+      a.href = result.url; a.download = webpFile;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(result.url);
+      const pct = Math.round((1 - result.webpSize / result.origSize) * 100);
+      const kb = (result.webpSize / 1024).toFixed(0);
+      toast(`「${item.trigger}」採用 → WebP ${kb}KB (${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`, 'ok');
+    }
+  } catch (err) {
     // フォールバック: 変換失敗時はそのままダウンロード
     const a = document.createElement('a');
     a.href = srcUrl; a.download = item.file;
