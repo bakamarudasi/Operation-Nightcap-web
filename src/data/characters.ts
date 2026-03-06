@@ -10,7 +10,15 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
       color: '#e85d3a',
       colorDark: '#b8432a',
       colorGlow: 'rgba(232, 93, 58, 0.4)',
-      icon: '🔥'
+      icon: '🔥',
+      portraitImg: '/characters/blaze/portrait-drunk-0.webp',
+      portraitDrunkImgs: {
+        0: '/characters/blaze/portrait-drunk-0.webp',
+        1: '/characters/blaze/portrait-drunk-1.webp',
+        2: '/characters/blaze/portrait-drunk-2.webp',
+        3: '/characters/blaze/portrait-drunk-3.webp',
+        4: '/characters/blaze/portrait-drunk-4.webp',
+      },
     },
     drunkType: 'aggressive',
     drunkMax: 10,

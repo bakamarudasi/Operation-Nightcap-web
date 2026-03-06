@@ -18,8 +18,18 @@ interface PortraitProps {
  * drunkLevelを渡すと衣装崩れのオーバーレイが表示される
  */
 export function CharacterPortrait({ theme, variant, className = '', style, drunkLevel = 0, costumeStates }: PortraitProps) {
-  const imgSrc = variant === 'portrait' ? theme.portraitImg : theme.iconImg;
+  // 酔いレベル別立ち絵があればそちらを優先、なければ通常portraitImgにフォールバック
+  const imgSrc = variant === 'portrait'
+    ? (theme.portraitDrunkImgs?.[drunkLevel] ?? theme.portraitImg)
+    : theme.iconImg;
   const [imgError, setImgError] = useState(false);
+  const [imgErrorSrc, setImgErrorSrc] = useState<string | undefined>();
+
+  // 画像ソースが変わったらエラー状態をリセット
+  if (imgError && imgErrorSrc !== imgSrc) {
+    setImgError(false);
+    setImgErrorSrc(undefined);
+  }
 
   const showImage = imgSrc && !imgError;
   const costume = costumeStates?.find(c => c.level === drunkLevel);
@@ -44,7 +54,7 @@ export function CharacterPortrait({ theme, variant, className = '', style, drunk
       alt=""
       className={`char-img ${className}`}
       style={{ ...style, ...costumeVars }}
-      onError={() => setImgError(true)}
+      onError={() => { setImgError(true); setImgErrorSrc(imgSrc); }}
       draggable={false}
     />
   ) : (
