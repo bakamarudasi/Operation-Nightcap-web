@@ -262,6 +262,67 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
             transition: 'fade',
           },
         ],
+      },
+      // 逆セクハラCG（相手→プレイヤー）
+      {
+        id: 'blaze_foot_tease',
+        triggerCard: 'foot_tease',
+        requiredDrunkLevel: 2,
+        cgColor: '#ff5577',
+        dialogue: [
+          { speaker: '', text: '――テーブルの下で、何かが足に触れた。' },
+          { speaker: 'ブレイズ', text: '……ん？ どうしたのドクター、顔赤いよ？ お酒のせい？' },
+          { speaker: 'ブレイズ', text: '……ふふ、違うよね。……わかってるくせに' },
+          { speaker: 'ブレイズ', text: '（足先をゆっくり這わせながら）……ここ、弱いんだ？ ……知らなかったなぁ' },
+          { speaker: 'ブレイズ', text: '……逃げないでよ。……私が飽きるまで、ね？' }
+        ],
+        frames: [
+          {
+            label: 'テーブル下の気配',
+            dialogueStart: 0,
+            transition: 'fade',
+          },
+          {
+            label: '挑発する笑み',
+            dialogueStart: 2,
+            transition: 'zoom',
+          },
+          {
+            label: '攻めるブレイズ',
+            dialogueStart: 3,
+            transition: 'fade',
+          },
+        ],
+      },
+      {
+        id: 'blaze_dirty_talk',
+        triggerCard: 'dirty_talk',
+        requiredDrunkLevel: 2,
+        cgColor: '#ff4488',
+        dialogue: [
+          { speaker: 'ブレイズ', text: '（耳元に唇を寄せて）……ねぇ、ドクター' },
+          { speaker: 'ブレイズ', text: '……今夜さ、帰れると思ってる？ ……甘いよ' },
+          { speaker: 'ブレイズ', text: '……私がどれだけ我慢してたか……わかんないでしょ……' },
+          { speaker: 'ブレイズ', text: '……このまま連れて帰っちゃうから。……覚悟、してね？' },
+          { speaker: 'ブレイズ', text: '……あは、耳真っ赤。……可愛いなぁドクター' }
+        ],
+        frames: [
+          {
+            label: '耳元に近づく',
+            dialogueStart: 0,
+            transition: 'slide-left',
+          },
+          {
+            label: '囁く表情',
+            dialogueStart: 2,
+            transition: 'zoom',
+          },
+          {
+            label: '満足げな笑み',
+            dialogueStart: 4,
+            transition: 'fade',
+          },
+        ],
       }
     ],
     afterEvents: [
