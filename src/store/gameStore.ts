@@ -306,9 +306,13 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
-        // 使用済みカードを除いた残り手札をデッキに戻す
-        const unusedPlayerCards = b.playerHand.filter(id => id !== b.selectedCard);
-        const unusedOpponentCards = b.opponentHand.filter(id => id !== opponentCardId);
+        // 使用済みカードを1枚だけ除いた残り手札をデッキに戻す
+        const unusedPlayerCards = [...b.playerHand];
+        const pIdx = unusedPlayerCards.indexOf(b.selectedCard!);
+        if (pIdx >= 0) unusedPlayerCards.splice(pIdx, 1);
+        const unusedOpponentCards = [...b.opponentHand];
+        const oIdx = unusedOpponentCards.indexOf(opponentCardId);
+        if (oIdx >= 0) unusedOpponentCards.splice(oIdx, 1);
 
         set((state) => {
           const pDeckReturn = [...state.battle.playerDeckRemaining, ...unusedPlayerCards];

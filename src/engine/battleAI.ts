@@ -16,7 +16,7 @@ function hasBuff(buffs: { id: string }[], id: string): boolean {
 
 /** プレイヤーがつまみばかり使っているか判定 */
 function isPlayerStalling(battle: BattleState): boolean {
-  return battle.round >= 3 && battle.opponentDrunk <= 1;
+  return battle.round >= 3 && battle.playerDrunk <= 1;
 }
 
 export const BattleAI = {
