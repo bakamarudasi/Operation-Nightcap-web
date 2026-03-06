@@ -297,6 +297,32 @@
     font-size: 0.78em; color: var(--text-dim); padding: 8px;
     background: var(--bg); border-radius: 5px; margin-bottom: 10px;
   }
+  /* Batch assign modal */
+  .batch-modal { width: 640px; max-height: 85vh; display: flex; flex-direction: column; }
+  .batch-modal .batch-list { flex: 1; overflow-y: auto; max-height: 50vh; }
+  .batch-modal .batch-item {
+    display: grid; grid-template-columns: 80px 1fr 1fr; gap: 8px;
+    align-items: center; padding: 8px; border-bottom: 1px solid var(--border);
+  }
+  .batch-modal .batch-thumb {
+    width: 80px; height: 60px; object-fit: contain;
+    background: #0d0d1a; border-radius: 5px;
+  }
+  .batch-modal .batch-item select {
+    width: 100%; padding: 5px 6px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text); font-size: 0.82em;
+  }
+  .batch-modal .batch-item .batch-fname {
+    font-size: 0.7em; color: var(--text-dim); margin-top: 2px; text-align: center;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px;
+  }
+  .batch-modal .batch-controls {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 10px;
+  }
+  .batch-modal .batch-controls label { font-size: 0.75em; color: var(--text-dim); }
+  .batch-modal .batch-count { font-size: 0.8em; color: var(--accent2); margin-bottom: 8px; }
+
   .assign-modal .assign-info .auto-name {
     color: var(--success); font-weight: 600; font-family: monospace;
   }
@@ -788,7 +814,7 @@
 <!-- Drop zone overlay -->
 <div class="drop-overlay" id="dropOverlay">
   <div class="drop-icon">🖼️</div>
-  <div class="drop-text">画像をドロップして追加</div>
+  <div class="drop-text">画像をドロップして追加（複数可）</div>
 </div>
 
 <!-- Assignment modal -->
@@ -810,6 +836,25 @@
     <div class="ma">
       <button onclick="closeModal('assignModal'); pendingDropImage = null;">キャンセル</button>
       <button class="primary" onclick="doAssign()">割り当て</button>
+    </div>
+  </div>
+</div>
+
+<!-- Batch Assignment Modal -->
+<div class="modal-overlay hidden" id="batchAssignModal">
+  <div class="modal batch-modal">
+    <h3>一括画像割り当て</h3>
+    <div class="batch-controls">
+      <div>
+        <label>キャラクター（全体）</label>
+        <select id="batchChar" onchange="onBatchCharChange()"></select>
+      </div>
+    </div>
+    <div class="batch-count" id="batchCount"></div>
+    <div class="batch-list" id="batchList"></div>
+    <div class="ma">
+      <button onclick="closeModal('batchAssignModal'); pendingBatchImages = [];">キャンセル</button>
+      <button class="primary" onclick="doBatchAssign()">一括割り当て</button>
     </div>
   </div>
 </div>
@@ -1971,6 +2016,7 @@ function toast(msg, type) {
 // Drag & Drop → キャラ/シーン選択 → 自動割り当て
 // ============================================================
 let pendingDropImage = null; // { dataUrl, fileName }
+let pendingBatchImages = []; // [{ dataUrl, fileName }]
 
 // ドラッグオーバーレイ
 (function setupDragDrop() {
@@ -1996,9 +2042,13 @@ let pendingDropImage = null; // { dataUrl, fileName }
     e.preventDefault();
     dragCounter = 0;
     overlay().classList.remove('active');
-    const file = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'));
-    if (!file) { toast('画像ファイルのみ対応', 'err'); return; }
-    handleDroppedImage(file);
+    const imageFiles = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) { toast('画像ファイルのみ対応', 'err'); return; }
+    if (imageFiles.length === 1) {
+      handleDroppedImage(imageFiles[0]);
+    } else {
+      handleDroppedImages(imageFiles);
+    }
   });
 })();
 
@@ -2006,10 +2056,14 @@ let pendingDropImage = null; // { dataUrl, fileName }
 document.addEventListener('paste', e => {
   // テキスト入力中は無視
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  const file = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
-  if (!file) return;
+  const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
+  if (files.length === 0) return;
   e.preventDefault();
-  handleDroppedImage(file);
+  if (files.length === 1) {
+    handleDroppedImage(files[0]);
+  } else {
+    handleDroppedImages(files);
+  }
 });
 
 function handleDroppedImage(file) {
@@ -2019,6 +2073,162 @@ function handleDroppedImage(file) {
     showAssignModal();
   };
   reader.readAsDataURL(file);
+}
+
+// 複数画像の一括処理
+function handleDroppedImages(files) {
+  pendingBatchImages = [];
+  let loaded = 0;
+  const sorted = [...files].sort((a, b) => a.name.localeCompare(b.name));
+  for (const file of sorted) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      pendingBatchImages.push({ dataUrl: e.target.result, fileName: file.name });
+      loaded++;
+      if (loaded === sorted.length) {
+        pendingBatchImages.sort((a, b) => a.fileName.localeCompare(b.fileName));
+        showBatchAssignModal();
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function showBatchAssignModal() {
+  // キャラ選択肢
+  const charSelect = document.getElementById('batchChar');
+  const list = getCharList();
+  charSelect.innerHTML = list.map(id => {
+    const info = getCharInfo(id);
+    const data = loadCharData(id);
+    const label = data?.charName || info?.name || id;
+    return `<option value="${esc(id)}"${id === currentCharId ? ' selected' : ''}>${esc(label)} (${esc(id)})</option>`;
+  }).join('');
+
+  onBatchCharChange();
+  document.getElementById('batchAssignModal').classList.remove('hidden');
+}
+
+function onBatchCharChange() {
+  const charId = document.getElementById('batchChar').value;
+  const info = getCharInfo(charId);
+  const container = document.getElementById('batchList');
+  container.innerHTML = '';
+
+  document.getElementById('batchCount').textContent = `${pendingBatchImages.length} 件の画像`;
+
+  // シーン選択肢を構築
+  function buildSceneOptions(autoMatchId) {
+    let opts = '';
+    const reverseIdSet = new Set(reverseHarassCards.map(rc => rc.id));
+    if (info) {
+      for (const ev of info.cgEvents) {
+        const cardName = cardNameCache[ev.triggerCard] || ev.triggerCard;
+        const isRev = reverseIdSet.has(ev.triggerCard);
+        const suffix = ev.instantWin ? ' \u2605' : isRev ? ' \uD83D\uDD25逆セクハラ' : '';
+        const label = `${cardName} (Lv.${ev.requiredDrunkLevel})${suffix}`;
+        const sel = (autoMatchId && ev.triggerCard === autoMatchId) ? ' selected' : '';
+        opts += `<option value="cg:${esc(ev.triggerCard)}"${sel}>${esc(label)}</option>`;
+      }
+    }
+    const existingTriggers = new Set(info?.cgEvents.map(e => e.triggerCard) || []);
+    for (const rc of reverseHarassCards) {
+      if (existingTriggers.has(rc.id)) continue;
+      const cardName = cardNameCache[rc.id] || rc.id;
+      const label = `${cardName} \uD83D\uDD25逆セクハラ (Lv.${rc.requiredDrunkLevel})`;
+      const sel = (autoMatchId && rc.id === autoMatchId) ? ' selected' : '';
+      opts += `<option value="cg:${esc(rc.id)}"${sel}>${esc(label)}</option>`;
+    }
+    opts += `<option value="portrait:portrait">基本立ち絵</option>`;
+    const drunkLabels = ['素面', 'ほろ酔い', '酔い', 'べろべろ', '潰れ'];
+    const levels = info ? info.costumeLevels : 5;
+    for (let i = 0; i < levels; i++) {
+      opts += `<option value="portrait:portrait-drunk-${i}">${drunkLabels[i] || 'Lv.' + i} 立ち絵</option>`;
+    }
+    opts += `<option value="icon:select-icon">選択アイコン</option>`;
+    return opts;
+  }
+
+  for (let i = 0; i < pendingBatchImages.length; i++) {
+    const img = pendingBatchImages[i];
+    // ファイル名からカードIDを推測（拡張子除去）
+    const baseName = img.fileName.replace(/\.\w+$/, '');
+    const autoMatch = tryMatchCardId(baseName, info);
+
+    const row = document.createElement('div');
+    row.className = 'batch-item';
+    row.innerHTML = `
+      <div>
+        <img class="batch-thumb" src="${esc(img.dataUrl)}" alt="">
+        <div class="batch-fname">${esc(img.fileName)}</div>
+      </div>
+      <select id="batchScene_${i}">${buildSceneOptions(autoMatch)}</select>
+    `;
+    container.appendChild(row);
+  }
+}
+
+function tryMatchCardId(name, info) {
+  if (!info) return null;
+  // 完全一致
+  for (const ev of info.cgEvents) {
+    if (ev.triggerCard === name) return ev.triggerCard;
+  }
+  // 部分一致（ファイル名にカードIDが含まれる）
+  for (const ev of info.cgEvents) {
+    if (name.includes(ev.triggerCard)) return ev.triggerCard;
+  }
+  for (const rc of reverseHarassCards) {
+    if (name === rc.id || name.includes(rc.id)) return rc.id;
+  }
+  return null;
+}
+
+function doBatchAssign() {
+  if (pendingBatchImages.length === 0) return;
+  const charId = document.getElementById('batchChar').value;
+
+  // 対象キャラに切り替え
+  if (charId !== currentCharId) {
+    saveAll();
+    currentCharId = charId;
+    localStorage.setItem(LASTCHAR_KEY, charId);
+    selectedId = null;
+    fileExistence = {};
+    load();
+  }
+
+  let count = 0;
+  for (let i = 0; i < pendingBatchImages.length; i++) {
+    const img = pendingBatchImages[i];
+    const sceneSelect = document.getElementById('batchScene_' + i);
+    if (!sceneSelect) continue;
+    const sceneVal = sceneSelect.value;
+    const [type, id] = sceneVal.split(':');
+    const ext = (img.fileName.match(/\.\w+$/) || ['.png'])[0];
+
+    let item = items.find(it => it.id === id);
+    if (!item) {
+      const trigger = type === 'cg'
+        ? (cardNameCache[id] || id)
+        : type === 'portrait' ? (id === 'portrait' ? '基本立ち絵' : id)
+        : 'キャラ選択画面用';
+      item = makeItem({ id, file: id + ext, trigger, level: '', type, note: '' });
+      items.push(item);
+    }
+    item.history.push({ url: img.dataUrl, ts: new Date().toISOString(), adopted: false });
+    item.status = 'review';
+    count++;
+  }
+
+  pendingBatchImages = [];
+  closeModal('batchAssignModal');
+  saveAll();
+  renderCharTabs();
+  renderList();
+  updateCounts();
+  toast(`${count} 件の画像を一括割り当て → レビュー待ち`, 'ok');
+  checkAllFiles();
 }
 
 function showAssignModal() {
