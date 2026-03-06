@@ -258,6 +258,41 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+  /* Drop zone overlay */
+  .drop-overlay {
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(233,69,96,0.15);
+    border: 4px dashed var(--accent);
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px;
+    backdrop-filter: blur(4px);
+  }
+  .drop-overlay.active { display: flex; }
+  .drop-overlay .drop-icon { font-size: 4em; opacity: 0.6; }
+  .drop-overlay .drop-text { font-size: 1.2em; color: var(--accent2); font-weight: 600; }
+
+  /* Assignment modal */
+  .assign-modal .assign-preview {
+    width: 100%; max-height: 200px; background: #0d0d1a;
+    border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; overflow: hidden; margin-bottom: 12px;
+  }
+  .assign-modal .assign-preview img { max-width: 100%; max-height: 200px; object-fit: contain; }
+  .assign-modal .assign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .assign-modal .assign-grid label { font-size: 0.75em; color: var(--text-dim); margin-bottom: 3px; display: block; }
+  .assign-modal .assign-grid select {
+    width: 100%; padding: 6px 8px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text); font-size: 0.85em;
+  }
+  .assign-modal .assign-info {
+    font-size: 0.78em; color: var(--text-dim); padding: 8px;
+    background: var(--bg); border-radius: 5px; margin-bottom: 10px;
+  }
+  .assign-modal .assign-info .auto-name {
+    color: var(--success); font-weight: 600; font-family: monospace;
+  }
+
   @media (max-width: 800px) {
     .main { grid-template-columns: 1fr; }
     .left-panel { max-height: 40vh; }
@@ -394,6 +429,35 @@
       <button onclick="closeModal('exportModal')">閉じる</button>
       <button onclick="copyManifest()">コピー</button>
       <button class="primary" onclick="downloadManifest()">ダウンロード</button>
+    </div>
+  </div>
+</div>
+
+<!-- Drop zone overlay -->
+<div class="drop-overlay" id="dropOverlay">
+  <div class="drop-icon">🖼️</div>
+  <div class="drop-text">画像をドロップして追加</div>
+</div>
+
+<!-- Assignment modal -->
+<div class="modal-overlay hidden" id="assignModal">
+  <div class="modal assign-modal">
+    <h3>CG画像を割り当て</h3>
+    <div class="assign-preview" id="assignPreview"></div>
+    <div class="assign-grid">
+      <div>
+        <label>キャラクター</label>
+        <select id="assignChar" onchange="onAssignCharChange()"></select>
+      </div>
+      <div>
+        <label>シーン（CGスロット）</label>
+        <select id="assignScene"></select>
+      </div>
+    </div>
+    <div class="assign-info" id="assignInfo"></div>
+    <div class="ma">
+      <button onclick="closeModal('assignModal'); pendingDropImage = null;">キャンセル</button>
+      <button class="primary" onclick="doAssign()">割り当て</button>
     </div>
   </div>
 </div>
@@ -1062,6 +1126,169 @@ function toast(msg, type) {
   el.className = 'toast show ' + (type || 'ok');
   clearTimeout(el._t);
   el._t = setTimeout(() => el.className = 'toast', 2500);
+}
+
+// ============================================================
+// Drag & Drop → キャラ/シーン選択 → 自動割り当て
+// ============================================================
+let pendingDropImage = null; // { dataUrl, fileName }
+
+// ドラッグオーバーレイ
+(function setupDragDrop() {
+  let dragCounter = 0;
+  const overlay = () => document.getElementById('dropOverlay');
+
+  document.addEventListener('dragenter', e => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    dragCounter++;
+    overlay().classList.add('active');
+  });
+  document.addEventListener('dragleave', e => {
+    dragCounter--;
+    if (dragCounter <= 0) { dragCounter = 0; overlay().classList.remove('active'); }
+  });
+  document.addEventListener('dragover', e => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    dragCounter = 0;
+    overlay().classList.remove('active');
+    const file = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'));
+    if (!file) { toast('画像ファイルのみ対応', 'err'); return; }
+    handleDroppedImage(file);
+  });
+})();
+
+// ペースト対応
+document.addEventListener('paste', e => {
+  // テキスト入力中は無視
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const file = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
+  if (!file) return;
+  e.preventDefault();
+  handleDroppedImage(file);
+});
+
+function handleDroppedImage(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    pendingDropImage = { dataUrl: e.target.result, fileName: file.name };
+    showAssignModal();
+  };
+  reader.readAsDataURL(file);
+}
+
+function showAssignModal() {
+  if (!pendingDropImage) return;
+
+  // プレビュー表示
+  document.getElementById('assignPreview').innerHTML =
+    `<img src="${pendingDropImage.dataUrl}" alt="preview">`;
+
+  // キャラ選択肢
+  const charSelect = document.getElementById('assignChar');
+  const list = getCharList();
+  charSelect.innerHTML = list.map(id => {
+    const info = getCharInfo(id);
+    const data = loadCharData(id);
+    const label = data?.charName || info?.name || id;
+    return `<option value="${esc(id)}"${id === currentCharId ? ' selected' : ''}>${esc(label)} (${esc(id)})</option>`;
+  }).join('');
+
+  onAssignCharChange();
+  document.getElementById('assignModal').classList.remove('hidden');
+}
+
+function onAssignCharChange() {
+  const charId = document.getElementById('assignChar').value;
+  const sceneSelect = document.getElementById('assignScene');
+  const info = getCharInfo(charId);
+
+  let opts = '';
+
+  // CGイベント
+  if (info) {
+    for (const ev of info.cgEvents) {
+      const cardName = cardNameCache[ev.triggerCard] || ev.triggerCard;
+      const label = `${cardName} (Lv.${ev.requiredDrunkLevel})${ev.instantWin ? ' ★' : ''}`;
+      opts += `<option value="cg:${esc(ev.triggerCard)}">${esc(label)}</option>`;
+    }
+  }
+
+  // 立ち絵
+  opts += `<option value="portrait:portrait">基本立ち絵</option>`;
+  const drunkLabels = ['素面', 'ほろ酔い', '酔い', 'べろべろ', '潰れ'];
+  const levels = info ? info.costumeLevels : 5;
+  for (let i = 0; i < levels; i++) {
+    opts += `<option value="portrait:portrait-drunk-${i}">${drunkLabels[i] || 'Lv.' + i} 立ち絵</option>`;
+  }
+
+  // アイコン
+  opts += `<option value="icon:select-icon">選択アイコン</option>`;
+
+  sceneSelect.innerHTML = opts;
+  updateAssignInfo();
+  sceneSelect.onchange = updateAssignInfo;
+}
+
+function updateAssignInfo() {
+  const charId = document.getElementById('assignChar').value;
+  const sceneVal = document.getElementById('assignScene').value;
+  const [type, id] = sceneVal.split(':');
+  const file = id + '.webp';
+  const path = type === 'cg'
+    ? `assets/characters/${charId}/cg/${file}`
+    : `assets/characters/${charId}/${file}`;
+
+  document.getElementById('assignInfo').innerHTML =
+    `自動ファイル名: <span class="auto-name">${esc(file)}</span><br>` +
+    `配置先: <span class="auto-name">${esc(path)}</span>`;
+}
+
+function doAssign() {
+  if (!pendingDropImage) return;
+
+  const charId = document.getElementById('assignChar').value;
+  const sceneVal = document.getElementById('assignScene').value;
+  const [type, id] = sceneVal.split(':');
+
+  // 対象キャラに切り替え
+  if (charId !== currentCharId) {
+    saveAll();
+    currentCharId = charId;
+    localStorage.setItem(LASTCHAR_KEY, charId);
+    selectedId = null;
+    fileExistence = {};
+    load();
+  }
+
+  // 対象アイテムを探す（なければ作成）
+  let item = items.find(i => i.id === id);
+  if (!item) {
+    const trigger = type === 'cg'
+      ? (cardNameCache[id] || id)
+      : type === 'portrait' ? (id === 'portrait' ? '基本立ち絵' : id)
+      : 'キャラ選択画面用';
+    item = makeItem({ id, file: id + '.webp', trigger, level: '', type, note: '' });
+    items.push(item);
+  }
+
+  // 画像をhistoryに追加してレビュー状態に
+  item.history.push({ url: pendingDropImage.dataUrl, ts: new Date().toISOString(), adopted: false });
+  item.status = 'review';
+
+  pendingDropImage = null;
+  closeModal('assignModal');
+  saveAll();
+  renderCharTabs();
+  renderList();
+  updateCounts();
+  selectItem(item.id);
+  toast(`「${item.trigger}」に画像を追加 → レビュー待ち`, 'ok');
 }
 
 // ============================================================
