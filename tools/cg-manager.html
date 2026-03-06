@@ -570,10 +570,10 @@ function parseCards(src) {
 
   // 逆セクハラカード（sanityDamage を持つ harassment カード）を検出
   reverseHarassCards = [];
-  const blockRe = /(\w+):\s*\{[^}]*id:\s*'([^']+)'[^}]*type:\s*'harassment'[^}]*sanityDamage:\s*(\d+)[^}]*requiredDrunkLevel:\s*(\d+)/g;
+  const blockRe = /(\w+):\s*\{[^}]*id:\s*'([^']+)'[^}]*type:\s*'harassment'[^}]*requiredDrunkLevel:\s*(\d+)[^}]*sanityDamage:\s*(\d+)/g;
   let bm;
   while ((bm = blockRe.exec(src)) !== null) {
-    reverseHarassCards.push({ id: bm[2], requiredDrunkLevel: parseInt(bm[4]) });
+    reverseHarassCards.push({ id: bm[2], requiredDrunkLevel: parseInt(bm[3]) });
   }
 }
 
@@ -760,6 +760,18 @@ function load() {
     return;
   }
   items = data.items.map(s => ({ ...makeItem(s), ...s }));
+
+  // ゲームコードに新規追加されたCGイベントを自動マージ
+  const defaults = getDefaults();
+  const existingIds = new Set(items.map(i => i.id));
+  let added = false;
+  for (const def of defaults) {
+    if (!existingIds.has(def.id)) {
+      items.push(makeItem(def));
+      added = true;
+    }
+  }
+  if (added) saveAll();
 }
 
 // ============================================================
