@@ -112,6 +112,7 @@ export function BattleScreen() {
   const fieldRef = useRef<HTMLDivElement>(null);
   const tiltRef = useRef<HTMLDivElement>(null);
   const blurRef = useRef<HTMLDivElement>(null);
+  const cardPlayLock = useRef(false);
 
   // 最初の手札を配る
   useEffect(() => {
@@ -176,7 +177,8 @@ export function BattleScreen() {
   const handCardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const handleCardClick = (cardId: string, idx: number) => {
-    if (battle.isProcessing || gameResult || playingCardIdx !== null) return;
+    if (battle.isProcessing || gameResult || playingCardIdx !== null || cardPlayLock.current) return;
+    cardPlayLock.current = true;
 
     // cardToField アニメーション用に --tx/--ty を計算
     const cardEl = handCardRefs.current[idx];
@@ -287,6 +289,7 @@ export function BattleScreen() {
           // 即勝利
           if (result.instantWin) {
             setTimeout(() => {
+              cardPlayLock.current = false;
               const reward = endBattle('player_win');
               setResultReward(reward);
               setGameResult('player_win');
@@ -296,10 +299,12 @@ export function BattleScreen() {
             return;
           }
 
-          // 勝敗チェック
+          // 勝敗チェック（CG表示中は待つ）
+          const endCheckDelay = hasCG ? cgDelay : 1500;
           setTimeout(() => {
             const end = checkGameEnd();
             if (end) {
+              cardPlayLock.current = false;
               const reward = endBattle(end);
               setResultReward(reward);
               setGameResult(end);
@@ -328,6 +333,7 @@ export function BattleScreen() {
               setPlayerFlipped(false);
               setOppFlipped(false);
               setPlayingCardIdx(null);
+              cardPlayLock.current = false;
               drawHands();
 
               // 相手のセリフ更新
@@ -340,7 +346,7 @@ export function BattleScreen() {
                 }
               }
             }
-          }, 1500);
+          }, endCheckDelay);
         }, 400);
       }, 400);
     }, 800);
