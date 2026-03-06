@@ -19,7 +19,7 @@ gaze.webp             | 唇を見つめる       | Lv.2 |
 breast_touch.webp     | 胸に触れる         | Lv.2 |
 hip_touch.webp        | お尻をなでる       | Lv.2 |
 ear_bite.webp         | 耳を甘噛み         | Lv.3 |
-lap_pillow.webp       | 太ももに誘う       | Lv.3 |
+lap_pillow.webp       | 太ももに誘われる   | Lv.3 |
 kiss.webp             | ディープキス        | Lv.3 | instant_win
 
 # --- 立ち絵 / ポートレート (6枚) ---

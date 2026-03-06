@@ -289,7 +289,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   lap_pillow: {
     id: 'lap_pillow', name: '膝枕', emoji: '🛌', type: 'harassment',
     requiredDrunkLevel: 3, drunkDamage: 2,
-    description: '相手の頭をそっと膝に導く。「…ここで寝ちゃっていいよ」酔いLv.3以上で発動。酔い+2 & CG再生', rarity: 5, price: 3000
+    description: '酔った相手が自分の太ももに誘ってくる。「…ほら、おいで」酔いLv.3以上で発動。酔い+2 & CG再生', rarity: 5, price: 3000
   },
 
   // === 逆セクハラカード（相手→プレイヤーへの理性攻撃） ===
