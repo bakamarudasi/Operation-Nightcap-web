@@ -940,6 +940,57 @@ let filter = 'all';
 let fileExistence = {};
 
 // ============================================================
+// IndexedDB – フレーム画像の保存用（localStorageの5MB制限回避）
+// ============================================================
+const IDB_NAME = 'nightcap_cg_manager';
+const IDB_STORE = 'frame_images';
+const IDB_VERSION = 1;
+
+function openImageDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = () => { req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveFrameImage(key, dataUrl) {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(dataUrl, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadFrameImage(key) {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function deleteFrameImage(key) {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// フレーム画像のIndexedDBキーを生成
+function frameImageKey(charId, itemId, frameIdx) {
+  return `${charId}/${itemId}/frame_${frameIdx}`;
+}
+
+// ============================================================
 // ゲームコード (characters.ts + cards.ts) からCG要件を動的取得
 // ============================================================
 let charDataCache = null;   // { charId → { name, nameEn, cgEvents[], costumeStates[] } }
@@ -1308,7 +1359,7 @@ async function switchChar(id) {
   localStorage.setItem(LASTCHAR_KEY, id);
   selectedId = null;
   fileExistence = {};
-  load();
+  await load();
   renderCharTabs();
   renderList();
   updateCounts();
@@ -1371,12 +1422,12 @@ function pushUndo() {
   }
 }
 
-function undo() {
+async function undo() {
   if (!undoStack.length) { toast('これ以上戻せません', 'err'); return; }
   const entry = undoStack.pop();
   localStorage.setItem(STORAGE_PREFIX + entry.charId, entry.data);
   if (entry.charId !== currentCharId) switchChar(entry.charId);
-  else { load(); renderList(); }
+  else { await load(); renderList(); }
   if (entry.selectedId) { selectedId = entry.selectedId; selectItem(selectedId); }
   toast('元に戻しました');
 }
@@ -1385,29 +1436,67 @@ function saveAll() {
   pushUndo();
   const existing = loadCharData(currentCharId);
   const info = getCharInfo(currentCharId);
+
+  // フレーム画像をIndexedDBに分離保存（localStorageの5MB制限回避）
+  const imagePromises = [];
+  const serializedItems = items.map(it => {
+    const frames = (it.frames || []).map((f, fi) => {
+      const frameCopy = { ...f };
+      if (f.src && f.src.startsWith('data:')) {
+        // base64画像はIndexedDBに保存し、localStorageにはフラグだけ残す
+        const key = frameImageKey(currentCharId, it.id, fi);
+        imagePromises.push(saveFrameImage(key, f.src));
+        frameCopy.src = `idb:${key}`;
+      }
+      return frameCopy;
+    });
+    return {
+      id: it.id, file: it.file, trigger: it.trigger, level: it.level,
+      type: it.type, note: it.note, status: it.status,
+      history: it.history, feedback: it.feedback, adoptedImage: it.adoptedImage,
+      dialogue: it.dialogue || [], frames,
+      cgColor: it.cgColor || '#e85d3a', instantWin: it.instantWin || false,
+      triggerCard: it.triggerCard || it.id || '',
+    };
+  });
+
   const data = {
     charId: currentCharId,
     charName: existing?.charName || info?.name || '',
     charNameEn: existing?.charNameEn || info?.nameEn || currentCharId.toUpperCase(),
-    items: items.map(it => ({
-      id: it.id, file: it.file, trigger: it.trigger, level: it.level,
-      type: it.type, note: it.note, status: it.status,
-      history: it.history, feedback: it.feedback, adoptedImage: it.adoptedImage,
-      dialogue: it.dialogue || [], frames: it.frames || [],
-      cgColor: it.cgColor || '#e85d3a', instantWin: it.instantWin || false,
-      triggerCard: it.triggerCard || it.id || '',
-    })),
+    items: serializedItems,
   };
   localStorage.setItem(STORAGE_PREFIX + currentCharId, JSON.stringify(data));
+
+  if (imagePromises.length) {
+    Promise.all(imagePromises).catch(e => console.warn('IndexedDB save failed:', e));
+  }
 }
 
-function load() {
+async function load() {
   const data = loadCharData(currentCharId);
   if (!data || !data.items?.length) {
     items = getDefaults().map(makeItem);
     return;
   }
   items = data.items.map(s => ({ ...makeItem(s), ...s }));
+
+  // IndexedDBからフレーム画像を復元
+  for (const item of items) {
+    if (!item.frames) continue;
+    for (let fi = 0; fi < item.frames.length; fi++) {
+      const f = item.frames[fi];
+      if (f.src && f.src.startsWith('idb:')) {
+        try {
+          const dataUrl = await loadFrameImage(f.src.slice(4));
+          item.frames[fi].src = dataUrl || null;
+        } catch (e) {
+          console.warn('Failed to load frame image from IndexedDB:', e);
+          item.frames[fi].src = null;
+        }
+      }
+    }
+  }
 
   // ゲームコードに新規追加されたCGイベントを自動マージ + 既存アイテムにデータを補完
   const defaults = getDefaults();
@@ -1743,7 +1832,7 @@ async function pickProjectFolder() {
           if (!list.includes(id)) { list.push(id); changed = true; }
         }
         if (changed) saveCharList(list);
-        load();
+        await load();
         renderCharTabs();
         renderList();
         updateCounts();
@@ -2187,7 +2276,7 @@ function tryMatchCardId(name, info) {
   return null;
 }
 
-function doBatchAssign() {
+async function doBatchAssign() {
   if (pendingBatchImages.length === 0) return;
   const charId = document.getElementById('batchChar').value;
 
@@ -2198,7 +2287,7 @@ function doBatchAssign() {
     localStorage.setItem(LASTCHAR_KEY, charId);
     selectedId = null;
     fileExistence = {};
-    load();
+    await load();
   }
 
   let count = 0;
@@ -2320,7 +2409,7 @@ function updateAssignInfo() {
     `配置先: <span class="auto-name">${esc(path)}</span>`;
 }
 
-function doAssign() {
+async function doAssign() {
   if (!pendingDropImage) return;
 
   const charId = document.getElementById('assignChar').value;
@@ -2334,7 +2423,7 @@ function doAssign() {
     localStorage.setItem(LASTCHAR_KEY, charId);
     selectedId = null;
     fileExistence = {};
-    load();
+    await load();
   }
 
   // 対象アイテムを探す（なければ作成）
@@ -3227,32 +3316,50 @@ function doCreateEvent() {
 // ============================================================
 function generateSingleEventCode(item) {
   if (!item || item.type !== 'cg') return '';
-  const indent = '      ';
-  let code = `${indent}{ id: '${item.triggerCard || item.id}_cg', triggerCard: '${item.triggerCard || item.id}', requiredDrunkLevel: ${parseInt(item.level?.replace('Lv.','') || '0')}, cgColor: '${item.cgColor || '#e85d3a'}'`;
-  if (item.instantWin) code += `, instantWin: true`;
-  code += `,\n`;
+  const I = '      ';  // base indent (6 spaces)
+  const I2 = I + '  '; // +2
+  const I3 = I + '    '; // +4
+  const I4 = I + '      '; // +6
+
+  let code = `${I}{\n`;
+  code += `${I2}id: '${item.triggerCard || item.id}_cg',\n`;
+  code += `${I2}triggerCard: '${item.triggerCard || item.id}',\n`;
+  code += `${I2}requiredDrunkLevel: ${parseInt(item.level?.replace('Lv.','') || '0')},\n`;
+  code += `${I2}cgColor: '${item.cgColor || '#e85d3a'}',\n`;
+  if (item.instantWin) code += `${I2}instantWin: true,\n`;
 
   // dialogue
   if (item.dialogue?.length) {
-    code += `${indent}  dialogue: [\n`;
+    code += `${I2}dialogue: [\n`;
     for (const d of item.dialogue) {
-      code += `${indent}    { speaker: '${escCode(d.speaker)}', text: '${escCode(d.text)}' },\n`;
+      code += `${I3}{ speaker: '${escCode(d.speaker)}', text: '${escCode(d.text)}' },\n`;
     }
-    code += `${indent}  ]`;
+    code += `${I2}],\n`;
   } else {
-    code += `${indent}  dialogue: []`;
+    code += `${I2}dialogue: [],\n`;
   }
 
   // frames
   if (item.frames?.length) {
-    code += `,\n${indent}  frames: [\n`;
-    for (const f of item.frames) {
-      code += `${indent}    { ${f.src ? `src: '${escCode(f.src)}', ` : ''}label: '${escCode(f.label || '')}', dialogueStart: ${f.dialogueStart || 0}, transition: '${f.transition || 'fade'}' },\n`;
+    code += `${I2}frames: [\n`;
+    for (let fi = 0; fi < item.frames.length; fi++) {
+      const f = item.frames[fi];
+      // base64やidb:参照はファイルパスに変換
+      const isPath = f.src && !f.src.startsWith('data:') && !f.src.startsWith('idb:');
+      const frameSrc = isPath
+        ? f.src
+        : `/characters/${currentCharId}/cg/${item.triggerCard || item.id}_${fi + 1}.webp`;
+      code += `${I3}{\n`;
+      code += `${I4}src: '${escCode(frameSrc)}',\n`;
+      code += `${I4}label: '${escCode(f.label || '')}',\n`;
+      code += `${I4}dialogueStart: ${f.dialogueStart || 0},\n`;
+      code += `${I4}transition: '${f.transition || 'fade'}',\n`;
+      code += `${I3}},\n`;
     }
-    code += `${indent}  ]`;
+    code += `${I2}],\n`;
   }
 
-  code += ` }`;
+  code += `${I}}`;
   return code;
 }
 
@@ -3549,7 +3656,7 @@ async function init() {
     if (changed) saveCharList(charList2);
   }
 
-  load();
+  await load();
   renderCharTabs();
   renderList();
   updateCounts();
