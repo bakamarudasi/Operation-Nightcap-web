@@ -2928,16 +2928,16 @@ function addFrame() {
   if (!item) return;
   if (!item.frames) item.frames = [];
   item.frames.push({ label: '', dialogueStart: item.dialogue?.length ? item.frames.length : 0, transition: 'fade', src: null });
-  saveAll();
   renderFrames(item);
+  try { saveAll(); } catch(e) { console.warn('saveAll failed:', e); }
 }
 
 function removeFrame(idx) {
   const item = items.find(i => i.id === selectedId);
   if (!item?.frames) return;
   item.frames.splice(idx, 1);
-  saveAll();
   renderFrames(item);
+  try { saveAll(); } catch(e) { console.warn('saveAll failed:', e); }
 }
 
 function moveFrame(idx, dir) {
@@ -2946,8 +2946,8 @@ function moveFrame(idx, dir) {
   const newIdx = idx + dir;
   if (newIdx < 0 || newIdx >= item.frames.length) return;
   [item.frames[idx], item.frames[newIdx]] = [item.frames[newIdx], item.frames[idx]];
-  saveAll();
   renderFrames(item);
+  try { saveAll(); } catch(e) { console.warn('saveAll failed:', e); }
 }
 
 function updateFrame(idx, key, val) {
@@ -2970,8 +2970,8 @@ function pickFrameImage(idx) {
       const item = items.find(i => i.id === selectedId);
       if (!item?.frames?.[idx]) return;
       item.frames[idx].src = ev.target.result;
-      saveAll();
       renderFrames(item);
+      try { saveAll(); } catch(e) { console.warn('saveAll failed:', e); }
     };
     reader.readAsDataURL(file);
   };
