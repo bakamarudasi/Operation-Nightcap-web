@@ -735,7 +735,10 @@
           <span style="font-size:0.7em;color:var(--text-dim);font-weight:400" id="frameCount">0 フレーム</span>
         </h3>
         <div class="frame-list" id="frameList"></div>
-        <div class="frame-add-btn" onclick="addFrame()">+ フレーム追加</div>
+        <div style="display:flex;gap:8px">
+          <div class="frame-add-btn" onclick="addFrame()" style="flex:1">+ フレーム追加</div>
+          <div class="frame-add-btn" onclick="exportAllFrameImages()" style="flex:1;background:var(--surface2)">📁 フレーム画像を一括エクスポート</div>
+        </div>
       </div>
 
       <!-- Dialogue Editor (CG only) -->
@@ -2928,16 +2931,16 @@ function addFrame() {
   if (!item) return;
   if (!item.frames) item.frames = [];
   item.frames.push({ label: '', dialogueStart: item.dialogue?.length ? item.frames.length : 0, transition: 'fade', src: null });
-  saveAll();
   renderFrames(item);
+  try { saveAll(); } catch(e) { console.warn('saveAll failed:', e); }
 }
 
 function removeFrame(idx) {
   const item = items.find(i => i.id === selectedId);
   if (!item?.frames) return;
   item.frames.splice(idx, 1);
-  saveAll();
   renderFrames(item);
+  try { saveAll(); } catch(e) { console.warn('saveAll failed:', e); }
 }
 
 function moveFrame(idx, dir) {
@@ -2946,8 +2949,8 @@ function moveFrame(idx, dir) {
   const newIdx = idx + dir;
   if (newIdx < 0 || newIdx >= item.frames.length) return;
   [item.frames[idx], item.frames[newIdx]] = [item.frames[newIdx], item.frames[idx]];
-  saveAll();
   renderFrames(item);
+  try { saveAll(); } catch(e) { console.warn('saveAll failed:', e); }
 }
 
 function updateFrame(idx, key, val) {
@@ -2970,12 +2973,73 @@ function pickFrameImage(idx) {
       const item = items.find(i => i.id === selectedId);
       if (!item?.frames?.[idx]) return;
       item.frames[idx].src = ev.target.result;
-      saveAll();
       renderFrames(item);
+      try { saveAll(); } catch(e) { console.warn('saveAll failed:', e); }
     };
     reader.readAsDataURL(file);
   };
   input.click();
+}
+
+async function exportAllFrameImages() {
+  // Collect all frames with images across all CG items for current character
+  const frameEntries = [];
+  for (const item of items) {
+    if (item.type !== 'cg' || !item.frames) continue;
+    for (let i = 0; i < item.frames.length; i++) {
+      const f = item.frames[i];
+      if (!f.src) continue;
+      frameEntries.push({ itemId: item.id, frameIdx: i, src: f.src, label: f.label });
+    }
+  }
+
+  if (frameEntries.length === 0) {
+    toast('エクスポート対象のフレーム画像がありません', 'info');
+    return;
+  }
+
+  const total = frameEntries.length;
+  toast(`${total} 件のフレーム画像をエクスポート中...`, 'info');
+
+  let success = 0;
+  let failed = 0;
+
+  for (const entry of frameEntries) {
+    const fileName = `${entry.itemId}_frame${entry.frameIdx + 1}.webp`;
+    try {
+      const result = await convertToWebP(entry.src);
+
+      if (projectDirHandle) {
+        // Save directly to cg/ folder
+        const basePath = `public/characters/${currentCharId}/cg`;
+        const dir = await getSubDir(projectDirHandle, basePath);
+        const fileHandle = await dir.getFileHandle(fileName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(result.blob);
+        await writable.close();
+      } else {
+        // Download individually
+        const a = document.createElement('a');
+        a.href = result.url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      URL.revokeObjectURL(result.url);
+      success++;
+    } catch (err) {
+      console.warn(`Frame export failed: ${fileName}`, err);
+      failed++;
+    }
+  }
+
+  if (failed > 0) {
+    toast(`${success}/${total} 件エクスポート完了（${failed} 件失敗）`, 'info');
+  } else {
+    const dest = projectDirHandle ? `cg/ フォルダ` : 'ダウンロード';
+    toast(`${success} 件のフレーム画像を${dest}にエクスポートしました`, 'ok');
+  }
 }
 
 // ============================================================
