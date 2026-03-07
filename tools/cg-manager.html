@@ -3246,8 +3246,12 @@ function generateSingleEventCode(item) {
   // frames
   if (item.frames?.length) {
     code += `,\n${indent}  frames: [\n`;
-    for (const f of item.frames) {
-      code += `${indent}    { ${f.src ? `src: '${escCode(f.src)}', ` : ''}label: '${escCode(f.label || '')}', dialogueStart: ${f.dialogueStart || 0}, transition: '${f.transition || 'fade'}' },\n`;
+    for (let fi = 0; fi < item.frames.length; fi++) {
+      const f = item.frames[fi];
+      const frameSrc = f.src && !f.src.startsWith('data:')
+        ? f.src
+        : `/characters/${currentCharId}/cg/${item.triggerCard || item.id}_${fi + 1}.webp`;
+      code += `${indent}    { src: '${escCode(frameSrc)}', label: '${escCode(f.label || '')}', dialogueStart: ${f.dialogueStart || 0}, transition: '${f.transition || 'fade'}' },\n`;
     }
     code += `${indent}  ]`;
   }
