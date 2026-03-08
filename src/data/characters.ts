@@ -115,56 +115,97 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
     },
     cgEvents: [
       {
-        id: 'blaze_shoulder',
+        id: 'shoulder_lean_cg',
         triggerCard: 'shoulder_lean',
         requiredDrunkLevel: 1,
         cgColor: '#e85d3a',
         dialogue: [
           { speaker: 'ドクター', text: '（そっと肩を寄せ、耳元に顔を近づける）' },
           { speaker: 'ブレイズ', text: 'ひゃっ……！ ちょ、近い近い……息、当たってるんだけど……' },
+          { speaker: 'ドクター', text: '（……あったかい。大型の猫に顔を埋めているような、安心感と強い熱。 ロドスの制服越しでも伝わってくる柔らかさに、どうしようもなく惹きつけられる）' },
           { speaker: 'ブレイズ', text: '……っ、なに、そんな近くで匂い嗅いでんの……変態じゃん……' },
-          { speaker: 'ブレイズ', text: '………べ、別に嫌とは言ってないし。……もうちょっとだけ、くっついてていいよ' }
+          { speaker: 'ブレイズ', text: '変態でいいよ。ブレイズの匂い、落ち着くんだ……もう少しこのままでいさせて' },
+          { speaker: 'ドクター', text: '（だけど、さっきから彼女の体がずっと強張っている。さすがにやりすぎたか……？）' },
+          { speaker: 'ドクター', text: '……ごめん。やっぱり嫌だったよな。離れるよ' },
+          { speaker: 'ブレイズ', text: '………べ、別に嫌とは言ってないし。……もうちょっとだけ、くっついてていいよ' },
         ],
         frames: [
           {
-            src: '/characters/blaze/cg/shoulder_lean.webp',
-            label: '耳元でささやく',
+            src: '/characters/blaze/cg/shoulder_lean_1.webp',
+            label: '耳元に顔を近づけた感じ',
             dialogueStart: 0,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/shoulder_lean_2.webp',
+            label: '１人称視点',
+            dialogueStart: 1,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/shoulder_lean_3.webp',
+            label: '照れる感じ',
+            dialogueStart: 4,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/shoulder_lean_4.webp',
+            label: 'いい感じ',
+            dialogueStart: 6,
             transition: 'fade',
           },
         ],
       },
+
       {
-        id: 'blaze_headpat',
+        id: 'headpat_cg',
         triggerCard: 'headpat',
         requiredDrunkLevel: 2,
         cgColor: '#e85d3a',
         dialogue: [
           { speaker: 'ドクター', text: '（髪をかき上げ、うなじに指先をそっと這わせる）' },
+          { speaker: 'ドクター', text: '（アルコールが回って、普段の隙のない姿が嘘のように無防備だ。無防備に晒されたうなじがやけに色っぽく見えて……つい手を伸ばしていた）' },
           { speaker: 'ブレイズ', text: 'ひっ……！ そこ、だめ……うなじ弱いの知ってるでしょ……っ' },
+          { speaker: 'ドクター', text: '（ビクッと肩を震わせる反応がたまらなく可愛い。もっと乱れた顔が見たくて、わざと冷たくした指先をゆっくりと這わせる）' },
           { speaker: 'ブレイズ', text: '……ん、指……冷たい……ぞくぞくする……やめてよ……' },
-          { speaker: 'ブレイズ', text: '……やめてって言ってるのに……もっと奥まで触って……ばか' }
+          { speaker: 'ブレイズ', text: '……やめてって言ってるのに……もっと奥まで触って……ばか' },
+          { speaker: 'ドクター', text: '（口では抵抗しながらも、体は熱を帯びて俺の手にすり寄ってきている。完全に理性が溶けかかっているな……）' },
         ],
         frames: [
           {
-            src: '/characters/blaze/cg/headpat.webp',
-            label: 'うなじを撫でる',
+            src: '/characters/blaze/cg/headpat_1.webp',
+            label: '見る',
             dialogueStart: 0,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/headpat_2.webp',
+            label: 'なでる',
+            dialogueStart: 1,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/headpat_3.webp',
+            label: 'にやついてる',
+            dialogueStart: 4,
             transition: 'fade',
           },
         ],
       },
       {
-        id: 'blaze_breast',
+        id: 'breast_touch_cg',
         triggerCard: 'breast_touch',
         requiredDrunkLevel: 2,
         cgColor: '#ff6b8a',
         dialogue: [
           { speaker: 'ドクター', text: '（酔ったふりをして、ブレイズの胸にそっと手を当てる）' },
           { speaker: 'ブレイズ', text: 'ひゃっ……！！ ちょ、ど、どこ触って……っ！' },
+          { speaker: 'ドクター', text: '（驚いて跳ねるような反応とは裏腹に、手のひらには彼女の豊かな柔らかさと、ドクン、ドクンという早い鼓動が伝わってくる）' },
           { speaker: 'ブレイズ', text: '……っ、ばか……酔ってるからって許されると思ってんの……？' },
+          { speaker: 'ドクター', text: '（睨みつけてくる瞳は潤んでいて、本気で拒絶する気がないのは明白だった。もう少しだけ、このまま……）' },
           { speaker: 'ブレイズ', text: '……手、どけないの……？ ……どけなくて、いいけど……今だけだからね……っ' },
-          { speaker: 'ブレイズ', text: '……ん……ドクターの手、あったかい……心臓、ばくばくしてるの……わかるでしょ……' }
+          { speaker: 'ドクター', text: '――もう一度。さっきより、少しだけ強く。   タンクトップ越しに伝わる熱と、指が沈んでいく感触。離すタイミングを、とっくに見失っていた。' },
+          { speaker: 'ブレイズ', text: '……ん……ドクターの手、あったかい……心臓、ばくばくしてるの……わかるでしょ……' },
         ],
         frames: [
           {
@@ -176,13 +217,13 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           {
             src: '/characters/blaze/cg/breast_touch_2.webp',
             label: '胸に触れる',
-            dialogueStart: 1,
+            dialogueStart: 4,
             transition: 'zoom',
           },
           {
             src: '/characters/blaze/cg/breast_touch_3.webp',
             label: '感じてる表情',
-            dialogueStart: 3,
+            dialogueStart: 6,
             transition: 'fade',
           },
         ],

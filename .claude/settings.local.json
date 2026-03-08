@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "WebFetch(domain:danbooru.donmai.us)",
+      "WebFetch(domain:civitai.com)",
+      "WebFetch(domain:www.downloadmost.com)"
+    ]
+  }
+}
