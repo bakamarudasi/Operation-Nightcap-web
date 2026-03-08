@@ -329,9 +329,15 @@ export function TitleScreen() {
             <span className="ts-btn-icon">🍶</span>
             <span className="ts-btn-label">対戦する</span>
           </button>
+          {/* ショップボタン (非表示・コード保持)
           <button className="ts-menu-btn" onClick={() => setScreen('shop')}>
             <span className="ts-btn-icon">🏮</span>
             <span className="ts-btn-label">ショップ</span>
+          </button>
+          */}
+          <button className="ts-menu-btn" onClick={() => setScreen('gacha')}>
+            <span className="ts-btn-icon">🎰</span>
+            <span className="ts-btn-label">ガチャ</span>
           </button>
           <button className="ts-menu-btn" onClick={() => setScreen('deck')}>
             <span className="ts-btn-icon">🃏</span>
