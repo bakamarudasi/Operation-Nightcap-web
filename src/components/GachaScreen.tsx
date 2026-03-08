@@ -257,7 +257,7 @@ function useParticles(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
 }
 
 // ─── メインコンポーネント ───
-export default function GachaScreen() {
+export function GachaScreen() {
   const money = useGameStore(s => s.money);
   const inventory = useGameStore(s => s.inventory);
   const pullGacha = useGameStore(s => s.pullGacha);
@@ -649,7 +649,7 @@ export default function GachaScreen() {
             </div>
           </div>
         </div>
-        <button className="gbtn" onClick={() => setScreen('select')} style={{
+        <button className="gbtn" onClick={() => setScreen('title')} style={{
           position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
           background: 'rgba(0,0,0,.45)', border: '1px solid #2a1508',
           borderRadius: 6, padding: '5px 10px', color: '#4a3015', fontSize: 11,
