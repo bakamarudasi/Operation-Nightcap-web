@@ -16,109 +16,112 @@ export function getAudioContext(): AudioContext {
   return _sharedCtx;
 }
 
+// ─── ヘルパーファクトリ ───
+
+/** 単音オシレーターを作成して自動接続 */
+function tone(
+  ctx: AudioContext, t: number,
+  type: OscillatorType, freq: number, gain: number, duration: number,
+  delay = 0,
+  freqEnv?: (o: OscillatorNode, start: number) => void,
+  gainEnv?: (g: GainNode, start: number) => void,
+) {
+  const o = ctx.createOscillator();
+  o.type = type;
+  o.frequency.value = freq;
+  const g = ctx.createGain();
+  const start = t + delay;
+  if (gainEnv) {
+    gainEnv(g, start);
+  } else {
+    g.gain.setValueAtTime(gain, start);
+    g.gain.exponentialRampToValueAtTime(0.001, start + duration);
+  }
+  if (freqEnv) freqEnv(o, start);
+  o.connect(g).connect(ctx.destination);
+  o.start(start);
+  o.stop(start + duration);
+}
+
+/** ノイズバッファ生成 */
+function noiseBurst(ctx: AudioContext, t: number, duration: number, gain: number, decay = 1) {
+  const buf = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (decay < 1 ? Math.exp(-i / (d.length * decay)) : (1 - i / d.length));
+  const ns = ctx.createBufferSource();
+  ns.buffer = buf;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+  ns.connect(g).connect(ctx.destination);
+  ns.start(t);
+  return ns;
+}
+
+/** 和音を鳴らす */
+function chord(ctx: AudioContext, t: number, freqs: number[], type: OscillatorType, gain: number, duration: number, stagger = 0.03) {
+  freqs.forEach((freq, i) => {
+    tone(ctx, t, type, freq, gain, duration, i * stagger);
+  });
+}
+
 // ─── BattleScreen 用効果音 ───
 
 export function playBattleSound(type: 'slam' | 'flip') {
   try {
-    const x = getAudioContext();
+    const ctx = getAudioContext();
+    const t = ctx.currentTime;
     if (type === 'slam') {
-      const o = x.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(180, x.currentTime);
-      o.frequency.exponentialRampToValueAtTime(50, x.currentTime + 0.15);
-      const g = x.createGain();
-      g.gain.setValueAtTime(0.12, x.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, x.currentTime + 0.2);
-      o.connect(g); g.connect(x.destination);
-      o.start(); o.stop(x.currentTime + 0.2);
-      const b = x.createBuffer(1, x.sampleRate * 0.08, x.sampleRate);
-      const d = b.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.15));
-      const n = x.createBufferSource();
-      n.buffer = b;
-      const ng = x.createGain();
-      ng.gain.value = 0.08;
-      n.connect(ng); ng.connect(x.destination);
-      n.start();
-    } else if (type === 'flip') {
-      const o = x.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = 2000;
-      const g = x.createGain();
-      g.gain.setValueAtTime(0.04, x.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, x.currentTime + 0.12);
-      o.connect(g); g.connect(x.destination);
-      o.start(); o.stop(x.currentTime + 0.12);
+      tone(ctx, t, 'sine', 180, 0.12, 0.2, 0, (o, s) => {
+        o.frequency.setValueAtTime(180, s);
+        o.frequency.exponentialRampToValueAtTime(50, s + 0.15);
+      });
+      noiseBurst(ctx, t, 0.08, 0.08, 0.15);
+    } else {
+      tone(ctx, t, 'sine', 2000, 0.04, 0.12);
     }
-  } catch (_) { /* ignore */ }
+  } catch { /* ignore */ }
 }
 
 // ─── SelectScreen 用効果音 ───
 
 export function playErrSound() {
-  const ctx = getAudioContext();
-  const o = ctx.createOscillator();
-  o.type = 'square';
-  o.frequency.value = 200;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.15, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-  o.connect(g).connect(ctx.destination);
-  o.start();
-  o.stop(ctx.currentTime + 0.3);
+  try {
+    const ctx = getAudioContext();
+    tone(ctx, ctx.currentTime, 'square', 200, 0.15, 0.3);
+  } catch { /* ignore */ }
 }
 
 export function playVsSound() {
-  const ctx = getAudioContext();
-  [300, 450, 600].forEach((freq, i) => {
-    const o = ctx.createOscillator();
-    o.type = 'sawtooth';
-    o.frequency.value = freq;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0, ctx.currentTime + i * 0.15);
-    g.gain.linearRampToValueAtTime(0.08, ctx.currentTime + i * 0.15 + 0.05);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.4);
-    o.connect(g).connect(ctx.destination);
-    o.start(ctx.currentTime + i * 0.15);
-    o.stop(ctx.currentTime + i * 0.15 + 0.4);
-  });
+  try {
+    const ctx = getAudioContext();
+    const t = ctx.currentTime;
+    [300, 450, 600].forEach((freq, i) => {
+      tone(ctx, t, 'sawtooth', freq, 0, 0.4, i * 0.15, undefined, (g, s) => {
+        g.gain.setValueAtTime(0, s);
+        g.gain.linearRampToValueAtTime(0.08, s + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.001, s + 0.4);
+      });
+    });
+  } catch { /* ignore */ }
 }
 
 export function playKanpaiSound() {
-  const ctx = getAudioContext();
-  const t = ctx.currentTime;
-  // impact
-  const n = ctx.createBufferSource();
-  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-  n.buffer = buf;
-  const ng = ctx.createGain();
-  ng.gain.setValueAtTime(0.3, t);
-  ng.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-  n.connect(ng).connect(ctx.destination);
-  n.start(t);
-  // chime
-  [800, 1200, 1600].forEach((freq, i) => {
-    const o = ctx.createOscillator();
-    o.type = 'sine';
-    o.frequency.value = freq;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.1, t + 0.05 + i * 0.08);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.05 + i * 0.08 + 0.5);
-    o.connect(g).connect(ctx.destination);
-    o.start(t + 0.05 + i * 0.08);
-    o.stop(t + 0.05 + i * 0.08 + 0.5);
-  });
+  try {
+    const ctx = getAudioContext();
+    const t = ctx.currentTime;
+    noiseBurst(ctx, t, 0.2, 0.3);
+    chord(ctx, t + 0.05, [800, 1200, 1600], 'sine', 0.1, 0.5, 0.08);
+  } catch { /* ignore */ }
 }
 
 // ─── GachaScreen 用効果音 ───
 
-/** 注ぎ音: ノイズ + 低音の持続音 */
 export function playPourSound() {
   try {
     const ctx = getAudioContext();
     const t = ctx.currentTime;
+    // ノイズ (液体感)
     const buf = ctx.createBuffer(1, ctx.sampleRate * 1.2, ctx.sampleRate);
     const d = buf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.5;
@@ -133,102 +136,60 @@ export function playPourSound() {
     ng.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
     ns.connect(bp).connect(ng).connect(ctx.destination);
     ns.start(t); ns.stop(t + 1.2);
-    const o = ctx.createOscillator();
-    o.type = 'sine'; o.frequency.value = 80;
-    o.frequency.setValueAtTime(80, t);
-    o.frequency.linearRampToValueAtTime(120, t + 0.5);
-    o.frequency.linearRampToValueAtTime(80, t + 1.0);
-    const og = ctx.createGain();
-    og.gain.setValueAtTime(0.04, t);
-    og.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
-    o.connect(og).connect(ctx.destination);
-    o.start(t); o.stop(t + 1.2);
-  } catch { /* audio not supported */ }
+    // 低いうなり (とくとく感)
+    tone(ctx, t, 'sine', 80, 0.04, 1.2, 0, (o, s) => {
+      o.frequency.setValueAtTime(80, s);
+      o.frequency.linearRampToValueAtTime(120, s + 0.5);
+      o.frequency.linearRampToValueAtTime(80, s + 1.0);
+    });
+  } catch { /* ignore */ }
 }
 
-/** グロー音: レアリティに応じた上昇音 */
 export function playGlowSound(rarity: number) {
   try {
     const ctx = getAudioContext();
     const t = ctx.currentTime;
     if (rarity >= 5) {
       const freqs = rarity >= 6 ? [400, 600, 800, 1000] : [350, 525, 700];
+      const vol = rarity >= 6 ? 0.1 : 0.07;
       freqs.forEach((freq, i) => {
-        const o = ctx.createOscillator();
-        o.type = 'sine';
-        o.frequency.setValueAtTime(freq * 0.7, t + i * 0.12);
-        o.frequency.exponentialRampToValueAtTime(freq, t + i * 0.12 + 0.2);
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0, t + i * 0.12);
-        g.gain.linearRampToValueAtTime(rarity >= 6 ? 0.1 : 0.07, t + i * 0.12 + 0.05);
-        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.8);
-        o.connect(g).connect(ctx.destination);
-        o.start(t + i * 0.12);
-        o.stop(t + i * 0.12 + 0.8);
+        tone(ctx, t, 'sine', freq, 0, 0.8, i * 0.12, (o, s) => {
+          o.frequency.setValueAtTime(freq * 0.7, s);
+          o.frequency.exponentialRampToValueAtTime(freq, s + 0.2);
+        }, (g, s) => {
+          g.gain.setValueAtTime(0, s);
+          g.gain.linearRampToValueAtTime(vol, s + 0.05);
+          g.gain.exponentialRampToValueAtTime(0.001, s + 0.8);
+        });
       });
     } else {
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = 300 + rarity * 60;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.06, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.4);
+      tone(ctx, t, 'sine', 300 + rarity * 60, 0.06, 0.4);
     }
-  } catch { /* audio not supported */ }
+  } catch { /* ignore */ }
 }
 
-/** カード出現音: レアリティで音が変わる */
 export function playRevealSound(rarity: number) {
   try {
     const ctx = getAudioContext();
     const t = ctx.currentTime;
     if (rarity >= 6) {
-      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-      const ns = ctx.createBufferSource(); ns.buffer = buf;
-      const ng = ctx.createGain();
-      ng.gain.setValueAtTime(0.25, t);
-      ng.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-      ns.connect(ng).connect(ctx.destination);
-      ns.start(t);
-      [1000, 1500, 2000].forEach((freq, i) => {
-        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0.08, t + 0.05 + i * 0.06);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.05 + i * 0.06 + 0.6);
-        o.connect(g).connect(ctx.destination);
-        o.start(t + 0.05 + i * 0.06);
-        o.stop(t + 0.05 + i * 0.06 + 0.6);
-      });
+      noiseBurst(ctx, t, 0.15, 0.25);
+      chord(ctx, t + 0.05, [1000, 1500, 2000], 'sine', 0.08, 0.6, 0.06);
     } else if (rarity >= 4) {
-      const o = ctx.createOscillator();
-      o.type = 'sine';
       const baseFreq = rarity >= 5 ? 1200 : 800;
-      o.frequency.setValueAtTime(baseFreq * 0.6, t);
-      o.frequency.exponentialRampToValueAtTime(baseFreq, t + 0.08);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(rarity >= 5 ? 0.08 : 0.06, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.3);
+      tone(ctx, t, 'sine', baseFreq, rarity >= 5 ? 0.08 : 0.06, 0.3, 0, (o, s) => {
+        o.frequency.setValueAtTime(baseFreq * 0.6, s);
+        o.frequency.exponentialRampToValueAtTime(baseFreq, s + 0.08);
+      });
     } else {
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(500 + rarity * 80, t);
-      o.frequency.exponentialRampToValueAtTime(200, t + 0.1);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.04, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.12);
+      tone(ctx, t, 'sine', 500 + rarity * 80, 0.04, 0.12, 0, (o, s) => {
+        o.frequency.setValueAtTime(500 + rarity * 80, s);
+        o.frequency.exponentialRampToValueAtTime(200, s + 0.1);
+      });
     }
-  } catch { /* audio not supported */ }
+  } catch { /* ignore */ }
 }
 
-/** 結果表示音: 全カード揃った時の締め音 */
 export function playResultSound(highestRarity: number) {
   try {
     const ctx = getAudioContext();
@@ -238,24 +199,10 @@ export function playResultSound(highestRarity: number) {
         ? [[523, 659, 784], [659, 784, 1047]]
         : [[440, 554, 659]];
       chords.forEach((freqs, ci) => {
-        freqs.forEach((freq, fi) => {
-          const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
-          const g = ctx.createGain();
-          const start = t + ci * 0.25 + fi * 0.03;
-          g.gain.setValueAtTime(0.07, start);
-          g.gain.exponentialRampToValueAtTime(0.001, start + 0.8);
-          o.connect(g).connect(ctx.destination);
-          o.start(start); o.stop(start + 0.8);
-        });
+        chord(ctx, t + ci * 0.25, freqs, 'sine', 0.07, 0.8, 0.03);
       });
     } else {
-      const o = ctx.createOscillator();
-      o.type = 'triangle'; o.frequency.value = 600;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.05, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.25);
+      tone(ctx, t, 'triangle', 600, 0.05, 0.25);
     }
-  } catch { /* audio not supported */ }
+  } catch { /* ignore */ }
 }

@@ -18,6 +18,15 @@ export function getDrunkStage(value: number): DrunkStage {
   return DRUNK_STAGES[DRUNK_STAGES.length - 1];
 }
 
+/** 酔い値からレベル(0-4)を取得 */
+export function getDrunkLevel(drunkValue: number): number {
+  if (drunkValue >= 10) return 4;
+  if (drunkValue >= 7) return 3;
+  if (drunkValue >= 4) return 2;
+  if (drunkValue >= 2) return 1;
+  return 0;
+}
+
 /** 酔い値からblush(頬赤らみ)のopacityを取得 */
 export function getBlushOpacity(drunkLevel: number): number {
   if (drunkLevel >= 3) return 0.8;

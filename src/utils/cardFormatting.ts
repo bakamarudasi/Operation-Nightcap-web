@@ -1,4 +1,5 @@
 import type { CardDef } from '../data/types.ts';
+import { FULL_HEAL } from '../data/cards.ts';
 
 /** カードの攻撃力を表示用にフォーマット */
 export function formatDamage(damage: number | undefined): string {
@@ -9,7 +10,7 @@ export function formatDamage(damage: number | undefined): string {
 /** カードの回復力を表示用にフォーマット */
 export function formatHeal(heal: number | undefined): string {
   if (heal === undefined) return '';
-  return heal === 99 ? 'MAX' : String(heal);
+  return heal === FULL_HEAL ? 'MAX' : String(heal);
 }
 
 /** カードの概要テキストを取得（デッキ画面・手札用） */
@@ -30,7 +31,7 @@ export function formatCardStat(card: CardDef): string {
 export function formatCardValue(card: CardDef): string {
   switch (card.type) {
     case 'food':
-      return card.heal === 99 ? 'MAX回復' : `回復 ${card.heal}`;
+      return card.heal === FULL_HEAL ? 'MAX回復' : `回復 ${card.heal}`;
     case 'drink':
       return formatDamage(card.damage);
     case 'chug':
@@ -45,7 +46,7 @@ export function formatCardValue(card: CardDef): string {
 export function formatFieldValue(card: CardDef): string {
   switch (card.type) {
     case 'food':
-      return card.heal === 99 ? '+MAX' : `+${card.heal ?? 0}`;
+      return card.heal === FULL_HEAL ? '+MAX' : `+${card.heal ?? 0}`;
     case 'drink':
       return formatDamage(card.damage);
     default:
@@ -57,7 +58,7 @@ export function formatFieldValue(card: CardDef): string {
 export function formatOppFieldValue(card: CardDef): string {
   switch (card.type) {
     case 'food':
-      return card.heal === 99 ? '+MAX' : `+${card.heal ?? 0}`;
+      return card.heal === FULL_HEAL ? '+MAX' : `+${card.heal ?? 0}`;
     case 'drink':
       return card.damage === -1 ? '?' : String(card.damage);
     case 'chug':

@@ -1,5 +1,8 @@
 import type { CardDef } from './types.ts';
 
+/** heal: FULL_HEAL = 全回復を表すマジックナンバー */
+export const FULL_HEAL = 99;
+
 export const CARD_DATA: Record<string, CardDef> = {
   // === ドリンクカード（攻撃） ===
   beer: {
@@ -39,7 +42,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   ukon: {
     id: 'ukon', name: 'ケルシー処方薬', emoji: '💊', type: 'food',
-    heal: 99, description: 'クロージャが裏ルートで横流しした禁断の回復薬。「お前には過ぎた代物だ」', rarity: 5, price: 1200
+    heal: FULL_HEAL, description: 'クロージャが裏ルートで横流しした禁断の回復薬。「お前には過ぎた代物だ」', rarity: 5, price: 1200
   },
 
   // === 戦略・妨害カード ===

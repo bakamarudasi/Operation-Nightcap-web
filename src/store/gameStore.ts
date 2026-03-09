@@ -8,6 +8,8 @@ import { BattleEngine, tickBuffs } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
 import { pullMulti } from '../engine/gachaEngine.ts';
 import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
+import { getDrunkLevel } from '../utils/drunkLevel.ts';
+import { getAdjustedRequiredLevel } from '../engine/buffUtils.ts';
 
 interface GameStore {
   // 永続データ
@@ -233,12 +235,8 @@ export const useGameStore = create<GameStore>()(
         // === プレイヤーのセクハラ成功時 → CGイベント検索 ===
         const pCard = CARD_DATA[b.selectedCard];
         if (pCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
-          const targetDrunk = b.opponentDrunk;
-          const targetLevel = get().getDrunkLevel(targetDrunk);
-          // バフによる必要Lv補正を考慮
-          let adjustedRequired = pCard.requiredDrunkLevel ?? 0;
-          if (b.playerBuffs.some(bf => bf.id === 'dimlight')) adjustedRequired = Math.max(0, adjustedRequired - 1);
-          if (b.playerBuffs.some(bf => bf.id === 'excuse')) adjustedRequired = Math.max(0, adjustedRequired - 1);
+          const targetLevel = getDrunkLevel(b.opponentDrunk);
+          const adjustedRequired = getAdjustedRequiredLevel(pCard.requiredDrunkLevel ?? 0, b.playerBuffs);
           if (targetLevel >= adjustedRequired) {
             const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === b.selectedCard);
             if (cgEvent) {
@@ -251,13 +249,8 @@ export const useGameStore = create<GameStore>()(
         const oCard = CARD_DATA[opponentCardId];
         let opponentCgEvent: CGEvent | null = null;
         if (oCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
-          // BUG-012修正: 相手のセクハラはプレイヤーの酔い度で判定
-          const playerDrunk = b.playerDrunk;
-          const playerLevel = get().getDrunkLevel(playerDrunk);
-          // バフによる必要Lv補正を考慮
-          let adjustedRequired = oCard.requiredDrunkLevel ?? 0;
-          if (b.opponentBuffs.some(bf => bf.id === 'dimlight')) adjustedRequired = Math.max(0, adjustedRequired - 1);
-          if (b.opponentBuffs.some(bf => bf.id === 'excuse')) adjustedRequired = Math.max(0, adjustedRequired - 1);
+          const playerLevel = getDrunkLevel(b.playerDrunk);
+          const adjustedRequired = getAdjustedRequiredLevel(oCard.requiredDrunkLevel ?? 0, b.opponentBuffs);
           if (playerLevel >= adjustedRequired) {
             const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === opponentCardId);
             if (cgEvent) {
@@ -556,13 +549,7 @@ export const useGameStore = create<GameStore>()(
         });
       },
 
-      getDrunkLevel: (drunkValue) => {
-        if (drunkValue >= 10) return 4;
-        if (drunkValue >= 7) return 3;
-        if (drunkValue >= 4) return 2;
-        if (drunkValue >= 2) return 1;
-        return 0;
-      },
+      getDrunkLevel,
     }),
     {
       name: 'closures_bar_save',
