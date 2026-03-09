@@ -3,78 +3,12 @@ import { useGameStore } from '../store/gameStore.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import type { CharacterDef } from '../data/types.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
+import { playErrSound, playVsSound, playKanpaiSound } from '../utils/audioContext.ts';
 import '../styles/select.css';
 
 /* ── 定数 ── */
 const CARD_W = 280;       // カルーセルカード幅(px)
 const DRINK_COST = 500;   // 1回の飲み代
-
-/* ── 効果音ユーティリティ (AudioContext 再利用) ── */
-let sfxCtx: AudioContext | null = null;
-function getSfxCtx() {
-  if (!sfxCtx || sfxCtx.state === 'closed') {
-    sfxCtx = new AudioContext();
-  }
-  if (sfxCtx.state === 'suspended') sfxCtx.resume();
-  return sfxCtx;
-}
-
-function playErrSound() {
-  const ctx = getSfxCtx();
-  const o = ctx.createOscillator();
-  o.type = 'square';
-  o.frequency.value = 200;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.15, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-  o.connect(g).connect(ctx.destination);
-  o.start();
-  o.stop(ctx.currentTime + 0.3);
-}
-
-function playVsSound() {
-  const ctx = getSfxCtx();
-  [300, 450, 600].forEach((freq, i) => {
-    const o = ctx.createOscillator();
-    o.type = 'sawtooth';
-    o.frequency.value = freq;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0, ctx.currentTime + i * 0.15);
-    g.gain.linearRampToValueAtTime(0.08, ctx.currentTime + i * 0.15 + 0.05);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.4);
-    o.connect(g).connect(ctx.destination);
-    o.start(ctx.currentTime + i * 0.15);
-    o.stop(ctx.currentTime + i * 0.15 + 0.4);
-  });
-}
-
-function playKanpaiSound() {
-  const ctx = getSfxCtx();
-  const t = ctx.currentTime;
-  // impact
-  const n = ctx.createBufferSource();
-  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-  n.buffer = buf;
-  const ng = ctx.createGain();
-  ng.gain.setValueAtTime(0.3, t);
-  ng.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-  n.connect(ng).connect(ctx.destination);
-  n.start(t);
-  // chime
-  [800, 1200, 1600].forEach((freq, i) => {
-    const o = ctx.createOscillator();
-    o.type = 'sine';
-    o.frequency.value = freq;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.1, t + 0.05 + i * 0.08);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.05 + i * 0.08 + 0.5);
-    o.connect(g).connect(ctx.destination);
-    o.start(t + 0.05 + i * 0.08);
-    o.stop(t + 0.05 + i * 0.08 + 0.5);
-  });
-}
 
 /* ── フェーズ型 ── */
 type Phase = 'select' | 'noren-close' | 'noren-closed' | 'noren-open' | 'vs' | 'kanpai' | 'noren-final';

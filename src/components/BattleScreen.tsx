@@ -4,70 +4,10 @@ import { CARD_DATA } from '../data/cards.ts';
 import { randomPick } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
-
-// 酔い段階
-const DRUNK_STAGES = [
-  { max: 0, text: 'シラフ',   cls: 'drunk-sober' },
-  { max: 1, text: 'ほろ酔い', cls: 'drunk-tipsy' },
-  { max: 3, text: '酔い',     cls: 'drunk-good' },
-  { max: 6, text: 'べろべろ', cls: 'drunk-done' },
-  { max: 9, text: '泥酔',     cls: 'drunk-wasted' },
-  { max: 10, text: '潰れ',    cls: 'drunk-gone' },
-];
-
-function getDrunkStage(value: number) {
-  for (const s of DRUNK_STAGES) {
-    if (value <= s.max) return s;
-  }
-  return DRUNK_STAGES[DRUNK_STAGES.length - 1];
-}
-
-// 効果音（AudioContextを再利用）
-let _audioCtx: AudioContext | null = null;
-function getAudioContext(): AudioContext {
-  if (!_audioCtx || _audioCtx.state === 'closed') {
-    _audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  }
-  if (_audioCtx.state === 'suspended') {
-    _audioCtx.resume();
-  }
-  return _audioCtx;
-}
-
-function playSound(type: 'slam' | 'flip') {
-  try {
-    const x = getAudioContext();
-    if (type === 'slam') {
-      const o = x.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(180, x.currentTime);
-      o.frequency.exponentialRampToValueAtTime(50, x.currentTime + 0.15);
-      const g = x.createGain();
-      g.gain.setValueAtTime(0.12, x.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, x.currentTime + 0.2);
-      o.connect(g); g.connect(x.destination);
-      o.start(); o.stop(x.currentTime + 0.2);
-      const b = x.createBuffer(1, x.sampleRate * 0.08, x.sampleRate);
-      const d = b.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.15));
-      const n = x.createBufferSource();
-      n.buffer = b;
-      const ng = x.createGain();
-      ng.gain.value = 0.08;
-      n.connect(ng); ng.connect(x.destination);
-      n.start();
-    } else if (type === 'flip') {
-      const o = x.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = 2000;
-      const g = x.createGain();
-      g.gain.setValueAtTime(0.04, x.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, x.currentTime + 0.12);
-      o.connect(g); g.connect(x.destination);
-      o.start(); o.stop(x.currentTime + 0.12);
-    }
-  } catch (_) { /* ignore */ }
-}
+import { getDrunkStage } from '../utils/drunkLevel.ts';
+import { playBattleSound } from '../utils/audioContext.ts';
+import { formatFieldValue, formatOppFieldValue, formatCardValue, formatRevealedType } from '../utils/cardFormatting.ts';
+import { useTypewriterEffect } from '../hooks/useTypewriterEffect.ts';
 
 export function BattleScreen() {
   const battle = useGameStore((s) => s.battle);
@@ -88,7 +28,6 @@ export function BattleScreen() {
   const activeAfterEvent = useGameStore((s) => s.activeAfterEvent);
 
   const [dialogue, setDialogue] = useState({ speaker: '', text: '' });
-  const [displayText, setDisplayText] = useState('');
   const [tableCards, setTableCards] = useState<{
     player: { id: string; emoji: string; name: string; val: string } | null;
     opponent: { id: string; emoji: string; name: string; val: string } | null;
@@ -125,21 +64,7 @@ export function BattleScreen() {
     }
   }, [battle.playerHand.length, battle.isProcessing, gameResult, drawHands, currentOpponent]);
 
-  // タイピングエフェクト
-  useEffect(() => {
-    if (!dialogue.text) { setDisplayText(''); return; }
-    let i = 0;
-    setDisplayText('');
-    const timer = setInterval(() => {
-      if (i < dialogue.text.length) {
-        setDisplayText(dialogue.text.substring(0, i + 1));
-        i++;
-      } else {
-        clearInterval(timer);
-      }
-    }, 30);
-    return () => clearInterval(timer);
-  }, [dialogue.text]);
+  const { displayText } = useTypewriterEffect(dialogue.text);
 
   // 酔い演出更新
   useEffect(() => {
@@ -206,16 +131,14 @@ export function BattleScreen() {
 
     // プレイヤーカードをフィールドに表示
     if (pCard) {
-      const val = pCard.type === 'food' ? (pCard.heal === 99 ? '+MAX' : `+${pCard.heal ?? 0}`) :
-                  pCard.type === 'drink' ? `${pCard.damage === -1 ? '1~3' : pCard.damage}` :
-                  '';
+      const val = formatFieldValue(pCard);
       setTableCards(prev => ({
         ...prev,
         player: { id: selectedId, emoji: pCard.emoji, name: pCard.name, val }
       }));
       setPlayerFlipped(true);
       setSlamPlayer(true);
-      playSound('slam');
+      playBattleSound('slam');
       setFieldShaking(true);
       setTimeout(() => { setSlamPlayer(false); setFieldShaking(false); }, 400);
     }
@@ -226,11 +149,7 @@ export function BattleScreen() {
       const oppCard = CARD_DATA[result.opponentCardId];
       let oppCardInfo: { emoji: string; name: string; val: string } | null = null;
       if (oppCard) {
-        const v = oppCard.type === 'food' ? (oppCard.heal === 99 ? '+MAX' : `+${oppCard.heal ?? 0}`) :
-                  oppCard.type === 'drink' ? `${oppCard.damage === -1 ? '?' : oppCard.damage}` :
-                  oppCard.type === 'chug' ? '特殊' :
-                  oppCard.type === 'harassment' ? '特殊' : '';
-        oppCardInfo = { emoji: oppCard.emoji, name: oppCard.name, val: v };
+        oppCardInfo = { emoji: oppCard.emoji, name: oppCard.name, val: formatOppFieldValue(oppCard) };
       }
 
       if (oppCardInfo) {
@@ -238,13 +157,13 @@ export function BattleScreen() {
       }
 
       setSlamOpp(true);
-      playSound('slam');
+      playBattleSound('slam');
       setTimeout(() => setSlamOpp(false), 400);
 
       // 相手カードフリップ
       setTimeout(() => {
         setOppFlipped(true);
-        playSound('flip');
+        playBattleSound('flip');
 
         // 結果表示
         setTimeout(() => {
@@ -609,10 +528,7 @@ export function BattleScreen() {
             const isDisabled = (battle.isProcessing || playingCardIdx !== null) && !isPlaying;
             const isSelected = battle.selectedCard === cardId && !isPlaying;
             const isCorrupted = battle.corruptedSlots[i] === true;
-            const valText = card.type === 'food' ? (card.heal === 99 ? 'MAX回復' : `回復 ${card.heal}`) :
-                            card.type === 'drink' ? (card.damage === -1 ? '1~3' : `${card.damage}`) :
-                            card.type === 'chug' ? '特殊' :
-                            card.type === 'harassment' ? '特殊' : '';
+            const valText = formatCardValue(card);
 
             return (
               <div
@@ -647,12 +563,7 @@ export function BattleScreen() {
                   <div className="revealed-card-emoji">{card.emoji}</div>
                   <div className="revealed-card-name">{card.name}</div>
                   <div className="revealed-card-type">
-                    {card.type === 'drink' ? `攻撃 ${card.damage === -1 ? '1~3' : card.damage}` :
-                     card.type === 'food' ? `回復 ${card.heal}` :
-                     card.type === 'chug' ? '一気飲み' :
-                     card.type === 'harassment' ? 'セクハラ' :
-                     card.type === 'strategy' ? '戦略' :
-                     card.type === 'environment' ? '環境' : '状態異常'}
+                    {formatRevealedType(card)}
                   </div>
                 </div>
               );

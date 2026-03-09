@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import type { CardDef } from '../data/types.ts';
+import { formatCardStat, formatDamage, formatHeal, formatInventoryDesc } from '../utils/cardFormatting.ts';
 import '../styles/deck.css';
 
 /* ── 定数 ── */
@@ -344,10 +345,7 @@ export function DeckScreen() {
                 <div className="deck-card-emoji">{card.emoji}</div>
                 <div className="deck-card-name">{card.name}</div>
                 <div className="deck-card-info">
-                  {card.type === 'drink' ? `攻${card.damage === -1 ? '1~3' : card.damage}` :
-                   card.type === 'food' ? `回${card.heal === 99 ? 'MAX' : card.heal}` :
-                   card.type === 'harassment' ? `Lv${card.requiredDrunkLevel}` :
-                   '特殊'}
+                  {formatCardStat(card)}
                 </div>
               </div>
             );
@@ -410,10 +408,7 @@ export function DeckScreen() {
                 <div className="inv-card-details">
                   <div className="inv-card-name">{card.name}</div>
                   <div className="inv-card-desc">
-                    {card.type === 'drink' ? `攻撃 ${card.damage === -1 ? '1~3' : card.damage}` :
-                     card.type === 'food' ? `回復 ${card.heal === 99 ? 'MAX' : card.heal}` :
-                     card.type === 'harassment' ? `酔Lv${card.requiredDrunkLevel} 酔+${card.drunkDamage ?? 0}` :
-                     card.description.substring(0, 20)}
+                    {formatInventoryDesc(card)}
                   </div>
                 </div>
                 <div className="inv-card-count">×{remaining}</div>
@@ -437,8 +432,8 @@ export function DeckScreen() {
           </div>
           <div className="card-preview-type">{previewCard.type}</div>
           <div className="card-preview-stats">
-            {previewCard.damage !== undefined && <span>攻撃: {previewCard.damage === -1 ? '1~3' : previewCard.damage}</span>}
-            {previewCard.heal !== undefined && <span>回復: {previewCard.heal === 99 ? 'MAX' : previewCard.heal}</span>}
+            {previewCard.damage !== undefined && <span>攻撃: {formatDamage(previewCard.damage)}</span>}
+            {previewCard.heal !== undefined && <span>回復: {formatHeal(previewCard.heal)}</span>}
             {previewCard.requiredDrunkLevel !== undefined && <span>必要酔度: Lv{previewCard.requiredDrunkLevel}</span>}
             {previewCard.drunkDamage !== undefined && <span>酔い+{previewCard.drunkDamage}</span>}
           </div>

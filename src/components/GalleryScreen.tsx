@@ -4,6 +4,7 @@ import { CHARACTER_DATA } from '../data/characters.ts';
 import { randomPick } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
+import { getBlushOpacity } from '../utils/drunkLevel.ts';
 
 export function GalleryScreen() {
   const setScreen = useGameStore((s) => s.setScreen);
@@ -55,8 +56,7 @@ export function GalleryScreen() {
     }
   };
 
-  // blush opacity
-  const blushOpacity = drunkLevel >= 3 ? 0.8 : drunkLevel >= 2 ? 0.5 : drunkLevel >= 1 ? 0.25 : 0;
+  const blushOpacity = getBlushOpacity(drunkLevel);
 
   return (
     <div className="screen active">
