@@ -27,181 +27,223 @@ src/
 ├── main.tsx                       # エントリポイント
 ├── App.tsx                        # ルート（画面切替）
 │
-├── assets/                        # 画像・音声（import で参照）
-│   ├── characters/{id}/
-│   │   ├── portrait.webp          # 立ち絵
-│   │   ├── select-icon.webp       # 選択画面用
-│   │   └── cg/
-│   │       └── {event}.webp       # CG イベント画像
-│   ├── cards/{cardId}.webp        # カードイラスト
-│   ├── ui/                        # 背景・ロゴ・カード裏面
-│   └── audio/                     # BGM・SE
-│
-├── types/                         # 共有型定義
-│   └── index.ts
+├── components/                    # 画面 & 再利用UIパーツ
+│   ├── TitleScreen.tsx            # タイトル画面
+│   ├── SelectScreen.tsx           # 対戦相手選択
+│   ├── BattleScreen.tsx           # バトル画面
+│   ├── DeckScreen.tsx             # デッキ編集画面
+│   ├── ShopScreen.tsx             # ショップ画面
+│   ├── GachaScreen.tsx            # ガチャ画面
+│   ├── GalleryScreen.tsx          # ギャラリー画面
+│   ├── SettingsScreen.tsx         # 設定画面
+│   ├── Card.tsx                   # カード表示コンポーネント
+│   ├── CharacterPortrait.tsx      # キャラ立ち絵表示
+│   ├── CGOverlay.tsx              # CG イベントオーバーレイ
+│   ├── CGSequencePlayer.tsx       # CG 段階演出プレイヤー
+│   └── AfterEventOverlay.tsx      # アフターイベントオーバーレイ
 │
 ├── data/                          # マスターデータ（TS 直書き）
-│   ├── cards.ts
-│   ├── characters.ts
-│   └── shop.ts
+│   ├── types.ts                   # 全共有型定義
+│   ├── cards.ts                   # カードデータベース（CARD_DATA）
+│   ├── characters.ts              # キャラクターデータ集約
+│   ├── characters/
+│   │   └── blaze.ts               # ブレイズ定義（デッキ・CG・アフターイベント）
+│   ├── gacha.ts                   # ガチャレート・コスト定義
+│   └── shop.ts                    # ショップ商品リスト
 │
-├── stores/                        # Zustand ストア
-│   ├── useGameStore.ts            # 永続データ（money, deck, CGs）
-│   ├── useBattleStore.ts          # バトル中の揮発データ
-│   └── useSettingsStore.ts        # ユーザー設定
+├── store/                         # Zustand ストア（単一統合）
+│   └── gameStore.ts               # 永続 + バトル + UI 状態を一元管理
 │
-├── engine/                        # ゲームロジック（UI 非依存・純粋関数）
-│   ├── battle.ts
-│   ├── ai.ts
-│   └── utils.ts
-│
-├── screens/                       # 画面コンポーネント
-│   ├── TitleScreen/
-│   ├── SelectScreen/
-│   ├── BattleScreen/
-│   ├── ShopScreen/
-│   └── GalleryScreen/
-│
-├── components/                    # 再利用 UI パーツ
-│   ├── Card/
-│   ├── DrunkGauge/
-│   ├── DialogueBox/
-│   ├── CGOverlay/
-│   ├── CharacterSprite/
-│   └── HandArea/
+├── engine/                        # ゲームロジック（UI 非依存）
+│   ├── battleEngine.ts            # ラウンド解決（カード効果・ダメージ計算）
+│   ├── battleAI.ts                # 相手AIのカード選択ロジック
+│   ├── buffUtils.ts               # バフ/デバフ管理（付与・tick・判定）
+│   ├── gachaEngine.ts             # ガチャ排出ロジック（レアリティ抽選）
+│   └── utils.ts                   # 汎用ユーティリティ（shuffle, randomPick）
 │
 ├── hooks/                         # カスタムフック
-│   └── useTypewriter.ts
+│   └── useTypewriterEffect.ts     # タイプライター演出フック
 │
-└── styles/                        # グローバル CSS
-    ├── global.css
-    └── variables.css
+├── utils/                         # ユーティリティ関数
+│   ├── drunkLevel.ts              # 酔い値→DrunkLevel変換
+│   ├── cardFormatting.ts          # カード表示フォーマット
+│   └── audioContext.ts            # 音声再生管理
+│
+└── styles/                        # CSS スタイルシート
+    ├── _variables.css             # CSS カスタムプロパティ
+    ├── main.css                   # グローバルスタイル
+    ├── title.css                  # タイトル画面
+    ├── select.css                 # 選択画面
+    ├── battle.css                 # バトル画面
+    ├── deck.css                   # デッキ画面
+    ├── shop.css                   # ショップ画面
+    ├── cards.css                  # カードコンポーネント
+    ├── cg.css                     # CG オーバーレイ
+    └── gallery.css                # ギャラリー画面
 ```
 
 ---
 
-## 型定義（types/index.ts）
+## 型定義（data/types.ts）
 
 ```ts
+// ─── バフ/デバフ ───
+
+export interface Buff {
+  id: 'stun' | 'atk_down' | 'dot' | 'no_food' | 'corrupted_hand'
+    | 'tipsy' | 'blush' | 'alone' | 'karaoke' | 'dimlight' | 'excuse';
+  duration: number;   // -1 = 永続, 1~ = 残りターン数
+  value?: number;     // ダメージ量・倍率など
+  source?: string;    // 付与元カードID
+}
+
 // ─── カード ───
 
-export type CardType = 'drink' | 'food' | 'chug' | 'harassment';
+export type CardType = 'drink' | 'food' | 'chug' | 'harassment'
+  | 'strategy' | 'environment' | 'status';
 
-export type CardId =
-  | 'beer' | 'wine' | 'whiskey' | 'baijiu' | 'cocktail'
-  | 'nuts' | 'yakitori' | 'ramen' | 'ukon'
-  | 'chug' | 'toast' | 'spill'
-  | 'shoulder_lean' | 'headpat' | 'lap_pillow' | 'kiss';
+export type CardEffect = 'chug' | 'toast' | 'spill'
+  | 'rumor' | 'excuse' | 'distract'
+  | 'karaoke' | 'lastorder' | 'dimlight'
+  | 'tipsy' | 'blush' | 'alone';
 
-/** カード共通フィールド */
-interface CardBase {
-  id: CardId;
+/** 全カード統一インターフェース */
+export interface CardDef {
+  id: string;
   name: string;
   emoji: string;
   type: CardType;
   description: string;
   rarity: number;
   price: number;
+  damage?: number;              // drink: -1 = ランダム(1~3)
+  heal?: number;                // food: 99 = 全回復
+  effect?: CardEffect;          // chug/strategy/environment/status
+  duration?: number;            // 環境カードの持続ターン数
+  enemyDamage?: number;         // chug系
+  selfDamage?: number;          // chug系
+  requiredDrunkLevel?: number;  // harassment
+  drunkDamage?: number;         // harassment
+  instantWin?: boolean;         // harassment (kiss等)
+  sanityDamage?: number;        // 逆セクハラ: 理性への直接ダメージ
+  applyBuffs?: Buff[];          // 成功時に対象に付与するバフ
+  applySelfBuffs?: Buff[];      // 成功時に自分に付与するバフ
+  corruptHand?: number;         // 手札汚染: ランダムN枚を「発情」状態に
 }
-
-/** ドリンクカード */
-export interface DrinkCard extends CardBase {
-  type: 'drink';
-  damage: number;        // -1 = ランダム(1~3)
-}
-
-/** つまみカード */
-export interface FoodCard extends CardBase {
-  type: 'food';
-  heal: number;          // 99 = 全回復
-}
-
-/** 一気飲みカード */
-export interface ChugCard extends CardBase {
-  type: 'chug';
-  effect: 'chug' | 'toast' | 'spill';
-  enemyDamage?: number;
-  selfDamage?: number;
-}
-
-/** セクハラカード（CG 発動） */
-export interface HarassmentCard extends CardBase {
-  type: 'harassment';
-  requiredDrunkLevel: number;
-  drunkDamage?: number;
-  instantWin?: boolean;
-}
-
-export type Card = DrinkCard | FoodCard | ChugCard | HarassmentCard;
 
 // ─── キャラクター ───
 
-export type CharacterId = 'blaze'; // 今後追加
-
-export type DrunkLevelValue = 0 | 1 | 2 | 3 | 4;
+export interface CharacterTheme {
+  color: string;
+  colorDark: string;
+  colorGlow: string;
+  icon: string;
+  portraitImg?: string;                    // 立ち絵画像パス
+  portraitDrunkImgs?: Record<number, string>; // 酔いレベル別立ち絵
+  iconImg?: string;                        // ミニアイコン画像パス
+}
 
 export interface DrunkLevel {
-  level: DrunkLevelValue;
-  name: string;           // 'シラフ' | 'ほろ酔い' | '酔い' | 'べろべろ' | '潰れ'
+  level: number;
+  name: string;
   threshold: number;
   lines: string[];
 }
 
-export interface CGEvent {
-  id: string;
-  triggerCard: CardId;
-  requiredDrunkLevel: number;
-  cgColor: string;
-  instantWin?: boolean;
-  dialogue: DialogueLine[];
-}
-
-export interface DialogueLine {
+export interface CGDialogueLine {
   speaker: string;
   text: string;
 }
 
-export type AIPersonality = 'aggressive' | 'defensive' | 'balanced';
+export interface CGSequenceFrame {
+  src?: string;
+  dialogueStart?: number;
+  transition?: 'fade' | 'slide-left' | 'zoom' | 'none';
+  label?: string;
+}
 
-export interface Character {
-  id: CharacterId;
+export interface CGEvent {
+  id: string;
+  triggerCard: string;
+  requiredDrunkLevel: number;
+  cgColor: string;
+  instantWin?: boolean;
+  dialogue: CGDialogueLine[];
+  frames?: CGSequenceFrame[];
+}
+
+export interface AfterEvent {
+  id: string;
+  requiredCGRate: number;   // CG解放率（0~1）
+  requiredWins: number;     // 最低勝利数
+  title: string;
+  cgColor: string;
+  emoji: string;
+  dialogue: CGDialogueLine[];
+}
+
+export interface BattleLines {
+  playDrink: string[];
+  playFood: string[];
+  playChug: string[];
+  takeDamage: string[];
+  dealDamage: string[];
+  harassmentSuccess: string[];
+  harassmentFail: string[];
+  winLine: string;
+  loseLine: string;
+}
+
+export interface DeckAI {
+  personality: 'aggressive' | 'defensive' | 'balanced';
+  defaultDeck: string[];
+}
+
+export interface CharacterDef {
+  id: string;
   name: string;
   nameEn: string;
   subtitle: string;
-  theme: {
-    color: string;
-    colorDark: string;
-    colorGlow: string;
-    icon: string;
-  };
+  theme: CharacterTheme;
   drunkType: string;
   drunkMax: number;
   drunkLevels: DrunkLevel[];
-  battleLines: {
-    playDrink: string[];
-    playFood: string[];
-    playChug: string[];
-    takeDamage: string[];
-    dealDamage: string[];
-    harassmentSuccess: string[];
-    harassmentFail: string[];
-    winLine: string;
-    loseLine: string;
-  };
-  deck_ai: {
-    personality: AIPersonality;
-    defaultDeck: CardId[];
-  };
+  costumeStates: CostumeState[];
+  battleLines: BattleLines;
+  deck_ai: DeckAI;
   cgEvents: CGEvent[];
+  afterEvents: AfterEvent[];
 }
 
 // ─── ゲーム状態 ───
 
-export type ScreenId = 'title' | 'select' | 'battle' | 'shop' | 'gallery';
+export type ScreenId = 'title' | 'select' | 'battle' | 'shop'
+  | 'gacha' | 'gallery' | 'settings' | 'deck';
+
+export interface BattleState {
+  round: number;
+  maxRounds: number;          // 12
+  playerDrunk: number;
+  opponentDrunk: number;
+  playerDeckRemaining: string[];
+  opponentDeckRemaining: string[];
+  playerHand: string[];
+  opponentHand: string[];
+  selectedCard: string | null;
+  isProcessing: boolean;
+  opponentDiscardNext: boolean;
+  playerReducedHand: boolean;
+  opponentReducedHand: boolean;
+  spillActive: boolean;
+  playerBuffs: Buff[];
+  opponentBuffs: Buff[];
+  corruptedSlots: boolean[];  // 手札の汚染状態
+  rumorActive: boolean;       // 次ラウンドの相手手札差替
+}
 
 export interface RoundResult {
-  playerCard: Card;
-  opponentCard: Card;
+  playerCard: CardDef;
+  opponentCard: CardDef;
   playerDamage: number;
   opponentDamage: number;
   playerHeal: number;
@@ -210,6 +252,18 @@ export interface RoundResult {
   cgEvent: CGEvent | null;
   instantWin: boolean;
   spillNullified: boolean;
+  opponentCgEvent?: CGEvent | null;
+  newPlayerBuffs?: Buff[];
+  newOpponentBuffs?: Buff[];
+  corruptCount?: number;
+}
+
+export interface GachaResult {
+  cardId: string;
+  rarity: number;
+  isNew: boolean;
+  isDuplicate: boolean;
+  refund: number;
 }
 
 export type GameEndResult = 'player_win' | 'opponent_win' | 'draw' | null;
@@ -219,130 +273,69 @@ export type GameEndResult = 'player_win' | 'opponent_win' | 'draw' | null;
 
 ## 状態管理（Zustand ストア）
 
-### useGameStore — 永続データ
+単一の `gameStore.ts` に永続データ・バトル状態・UI 状態を統合。
+
+### gameStore — 統合ストア
 
 ```ts
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+// === 永続データ（LocalStorage に保存） ===
+money: number;                    // 初期値 3200
+inventory: string[];              // 全所持カードID
+playerDeck: string[];             // 現在のデッキ（4~12枚）
+unlockedCGs: string[];            // 解放済みCGイベントID
+unlockedAfterEvents: string[];    // 解放済みアフターイベントID
+wins: number;
+losses: number;
 
-interface GameStore {
-  // === 状態 ===
-  money: number;
-  playerDeck: CardId[];
-  unlockedCGs: string[];        // Set → 配列（JSON シリアライズ対応）
-  wins: number;
-  losses: number;
-  currentScreen: ScreenId;
+// === UI 状態（非永続） ===
+currentScreen: ScreenId;
+previousScreen: ScreenId | null;
+currentOpponent: CharacterDef | null;
 
-  // === アクション ===
-  addMoney: (amount: number) => void;
-  spendMoney: (amount: number) => boolean;  // 残高不足なら false
-  addCardToDeck: (cardId: CardId) => boolean;
-  removeCardFromDeck: (index: number) => void;
-  unlockCG: (cgId: string) => void;
-  isCGUnlocked: (cgId: string) => boolean;
-  addWin: () => void;
-  addLoss: () => void;
-  setScreen: (screen: ScreenId) => void;
-}
+// === バトル状態（非永続） ===
+battle: BattleState;              // 型定義の BattleState を参照
 
-export const useGameStore = create<GameStore>()(
-  persist(
-    (set, get) => ({
-      money: 3200,
-      playerDeck: DEFAULT_DECK,
-      unlockedCGs: [],
-      wins: 0,
-      losses: 0,
-      currentScreen: 'title',
-
-      addMoney: (amount) => set((s) => ({ money: s.money + amount })),
-
-      spendMoney: (amount) => {
-        if (get().money < amount) return false;
-        set((s) => ({ money: s.money - amount }));
-        return true;
-      },
-
-      addCardToDeck: (cardId) => {
-        if (get().playerDeck.length >= 12) return false;
-        set((s) => ({ playerDeck: [...s.playerDeck, cardId] }));
-        return true;
-      },
-
-      removeCardFromDeck: (index) =>
-        set((s) => ({
-          playerDeck: s.playerDeck.filter((_, i) => i !== index),
-        })),
-
-      unlockCG: (cgId) =>
-        set((s) => ({
-          unlockedCGs: s.unlockedCGs.includes(cgId)
-            ? s.unlockedCGs
-            : [...s.unlockedCGs, cgId],
-        })),
-
-      isCGUnlocked: (cgId) => get().unlockedCGs.includes(cgId),
-
-      addWin: () => set((s) => ({ wins: s.wins + 1 })),
-      addLoss: () => set((s) => ({ losses: s.losses + 1 })),
-      setScreen: (screen) => set({ currentScreen: screen }),
-    }),
-    {
-      name: 'closures-bar-save',     // localStorage キー
-    }
-  )
-);
+// === CG/イベント状態 ===
+activeCG: CGEvent | null;
+cgDialogueIndex: number;
+activeAfterEvent: AfterEvent | null;
+afterEventDialogueIndex: number;
 ```
 
-### useBattleStore — バトル中の揮発データ
+#### 主要アクション
+
+| カテゴリ | アクション | 説明 |
+|---------|-----------|------|
+| 画面遷移 | `setScreen(screen)` | 画面切替 |
+| バトル | `initBattle(opponentId)` | バトル初期化（デッキシャッフル・手札配布） |
+| | `drawHands()` | 手札補充 |
+| | `selectCard(cardId)` | カード選択 |
+| | `playRound()` | ラウンド実行 → `RoundResult` 返却 |
+| | `checkGameEnd()` | 勝敗判定 |
+| | `endBattle(result)` | バトル終了 → 報酬金額返却 |
+| ショップ | `buyCard(cardId)` | カード購入 |
+| | `sellCard(index)` | カード売却 |
+| デッキ | `addToDeck(cardId)` | デッキにカード追加 |
+| | `removeFromDeck(index)` | デッキからカード除去 |
+| ガチャ | `pullGacha(count)` | 1回 or 10連ガチャ → `GachaResult[]` |
+| CG | `showCG(cg)` / `advanceCG()` / `closeCG()` | CGイベント制御 |
+| アフター | `checkAfterEvent()` / `showAfterEvent()` / `closeAfterEvent()` | アフターイベント制御 |
+| 設定 | `resetData()` | 全データ初期化 |
+
+#### 永続化設定
 
 ```ts
-interface BattleStore {
-  // === 状態 ===
-  round: number;
-  maxRounds: number;
-  playerDrunk: number;
-  opponentDrunk: number;
-  playerHand: CardId[];
-  opponentHand: CardId[];
-  playerDeckRemaining: CardId[];
-  opponentDeckRemaining: CardId[];
-  selectedCard: CardId | null;
-  isProcessing: boolean;
-  opponent: Character | null;
-
-  // 特殊効果
-  opponentDiscardNext: boolean;
-  playerReducedHand: boolean;
-  spillActive: boolean;
-
-  // === アクション ===
-  initBattle: (opponent: Character, playerDeck: CardId[]) => void;
-  selectCard: (cardId: CardId) => void;
-  drawHands: () => void;
-  resolveRound: (playerCardId: CardId) => RoundResult;
-  checkGameEnd: () => GameEndResult;
-  reset: () => void;
-}
+persist({
+  name: 'closures_bar_save',
+  partialize: (state) => ({
+    money, inventory, playerDeck,
+    unlockedCGs, unlockedAfterEvents,
+    wins, losses,
+  }),
+})
 ```
 
-> `useBattleStore` は `persist` しない（バトル中にブラウザ閉じたらリセット）。
-
-### useSettingsStore — ユーザー設定
-
-```ts
-interface SettingsStore {
-  bgmVolume: number;       // 0.0 ~ 1.0
-  seVolume: number;        // 0.0 ~ 1.0
-  textSpeed: number;       // タイプライター速度（ms/文字）
-  setBgmVolume: (v: number) => void;
-  setSeVolume: (v: number) => void;
-  setTextSpeed: (v: number) => void;
-}
-```
-
-> `persist` で LocalStorage に保存。
+> バトル状態・UI 状態は永続化しない（ブラウザ閉じでリセット）。
 
 ---
 
@@ -990,37 +983,122 @@ export const App = () => {
 
 | ID | 名前 | 絵文字 | ダメージ | レア度 | 価格 |
 |----|------|--------|---------|--------|------|
-| `beer` | ビール | 🍺 | 1 | ★ | 100 |
-| `wine` | ワイン | 🍷 | 2 | ★★ | 300 |
-| `whiskey` | ウイスキー | 🥃 | 3 | ★★★ | 500 |
-| `baijiu` | 白酒 | 🍶 | 4 | ★★★★ | 800 |
-| `cocktail` | カクテル | 🧊 | 1~3 | ★★ | 400 |
+| `beer` | 龍門ラガー | 🍺 | 1 | ★ | 100 |
+| `wine` | ヴィクトリア産熟成赤 | 🍷 | 2 | ★★ | 300 |
+| `whiskey` | ウルサス原酒ストレート | 🥃 | 3 | ★★★ | 500 |
+| `baijiu` | 炎国・茅台酒 | 🍶 | 4 | ★★★★ | 800 |
+| `cocktail` | ペンギン急便スペシャル | 🧊 | 1~3 | ★★ | 400 |
 
 ### つまみカード（回復）
 
 | ID | 名前 | 絵文字 | 回復量 | レア度 | 価格 |
 |----|------|--------|--------|--------|------|
-| `nuts` | ナッツ | 🥜 | 1 | ★ | 100 |
-| `yakitori` | 焼き鳥 | 🍖 | 2 | ★★ | 300 |
-| `ramen` | ラーメン | 🍜 | 3 | ★★★ | 600 |
-| `ukon` | ウコン | 💊 | 全回復 | ★★★★★ | 1200 |
+| `nuts` | 行軍糧食 | 🥜 | 1 | ★ | 100 |
+| `yakitori` | 龍門屋台の串焼き | 🍖 | 2 | ★★ | 300 |
+| `ramen` | 龍門式老火麺 | 🍜 | 3 | ★★★ | 600 |
+| `ukon` | ケルシー処方薬 | 💊 | 全回復 | ★★★★★ | 1200 |
 
 ### 一気飲みカード（ハイリスク）
 
 | ID | 名前 | 絵文字 | 効果 | レア度 | 価格 |
 |----|------|--------|------|--------|------|
-| `chug` | 一気飲み | 🍻 | 相手+3 自分+1 | ★★★ | 800 |
-| `toast` | 乾杯強制 | 🥂 | 相手+2 自分+1 + 手札破棄 | ★★★ | 700 |
-| `spill` | こぼし | 🫗 | 相手カード無効化（次R手札-1） | ★★ | 500 |
+| `chug` | レユニオン式気合注入 | 🍻 | 相手+3 自分+1 | ★★★ | 800 |
+| `toast` | 強制乾杯令 | 🥂 | 相手+2 自分+1 + 手札破棄 | ★★★ | 700 |
+| `spill` | わざとこぼし | 🫗 | 相手カード無効化（次R手札3枚） | ★★ | 500 |
 
-### セクハラカード（CG発動）
+### セクハラカード（プレイヤー → 相手）
 
 | ID | 名前 | 絵文字 | 条件 | 効果 | レア度 | 価格 |
 |----|------|--------|------|------|--------|------|
-| `shoulder_lean` | 肩を寄せる | 💋 | 酔Lv≧1 | 酔い+1 + CG | ★★★★ | 1500 |
-| `headpat` | 頭ポンポン | 🫳 | 酔Lv≧2 | 酔い+1 + CG | ★★★★ | 1500 |
-| `lap_pillow` | 膝枕する | 💕 | 酔Lv≧3 | 酔い+2 + CG | ★★★★★ | 3000 |
-| `kiss` | キス | 💋 | 酔Lv≧3 | 即勝利 + CG | ★★★★★★ | 5000 |
+| `shoulder_lean` | 耳元でささやく | 💋 | 酔Lv≧1 | 酔い+1 + CG | ★★★★ | 1500 |
+| `headpat` | うなじを撫でる | 🫳 | 酔Lv≧2 | 酔い+1 + CG | ★★★★ | 1500 |
+| `fix_collar` | 襟を直してあげる | 👔 | 酔Lv≧1 | 酔い+1 + CG | ★★★ | 500 |
+| `check_pulse` | 脈を測る | 💓 | 酔Lv≧1 | 酔い+1 + CG | ★★★ | 520 |
+| `hip_touch` | お尻をなでる | 🍑 | 酔Lv≧2 | 酔い+2 + CG | ★★★★★ | 3500 |
+| `breast_touch` | 胸に触れる | 🫦 | 酔Lv≧2 | 酔い+3 + CG | ★★★★★ | 4000 |
+| `ear_bite` | 耳を甘噛み | 👅 | 酔Lv≧3 | 酔い+3 + CG | ★★★★★ | 4500 |
+| `lap_pillow` | 膝枕 | 🛌 | 酔Lv≧3 | 酔い+2 + CG | ★★★★★ | 3000 |
+| `kiss` | ディープキス | 💋 | 酔Lv≧3 | 即勝利 + CG | ★★★★★★ | 5000 |
+
+### 逆セクハラカード（相手 → プレイヤーへの理性攻撃）
+
+| ID | 名前 | 絵文字 | 条件 | 効果 | レア度 | 価格 |
+|----|------|--------|------|------|--------|------|
+| `foot_tease` | テーブルの下の足首 | 🦶 | 酔Lv≧2 | 理性+3, 攻撃半減1T, CG | ★★★★★ | 3000 |
+| `dirty_talk` | 淫らな耳元囁き | 👄 | 酔Lv≧2 | 理性+2, 手札2枚汚染, CG | ★★★★★ | 3500 |
+
+### 戦略カード
+
+| ID | 名前 | 絵文字 | 効果 | レア度 | 価格 |
+|----|------|--------|------|--------|------|
+| `rumor` | 龍門の噂話 | 🗣️ | 相手の次の手札1枚をランダム差替 | ★★★ | 600 |
+| `excuse` | 「酔ってるから」 | 🙈 | ハラスメント必要酔いLv-1（2T） | ★★★★ | 900 |
+| `distract` | 話題転換 | 👁️ | 相手の手札を全確認 | ★★ | 500 |
+
+### 環境カード
+
+| ID | 名前 | 絵文字 | 効果 | レア度 | 価格 |
+|----|------|--------|------|--------|------|
+| `karaoke` | カラオケ2次会 | 🎤 | 3T全ドリンクダメージ+1 | ★★★ | 700 |
+| `lastorder` | ラストオーダー | 🔔 | 次T ドリンクダメージ+2 | ★★★★ | 1000 |
+| `dimlight` | 照明を落とす | 🕯️ | 2T全ハラスメント必要酔いLv-1 | ★★★ | 800 |
+
+### 状態異常カード
+
+| ID | 名前 | 絵文字 | 効果 | レア度 | 価格 |
+|----|------|--------|------|--------|------|
+| `tipsy` | ほろ酔い状態 | 😳 | 相手の受けるドリンクダメージ1.5倍（3T） | ★★★ | 750 |
+| `blush` | 顔が赤い | 😶‍🌫️ | 相手への harassment ダメージ+1（3T） | ★★★★ | 1100 |
+| `alone` | 二人きり | 🌙 | 全ハラスメントダメージ2倍（2T） | ★★★★★ | 2000 |
+
+### ガチャ追加ドリンク
+
+| ID | 名前 | 絵文字 | Dmg | レア度 | 価格 |
+|----|------|--------|-----|--------|------|
+| `shochu` | 東国芋焼酎 | 🍶 | 1 | ★ | 100 |
+| `soju` | 高麗焼酎 | 🫗 | 1 | ★ | 100 |
+| `ale` | カジミエーシュ麦酒 | 🍺 | 2 | ★★ | 280 |
+| `liter_beer` | ジョッキ一気 | 🍻 | 2 | ★★ | 350 |
+| `sparkling` | コロンビア産泡酒 | 🥂 | 2 | ★★ | 320 |
+| `rice_wine` | 炎国紹興酒 | 🫘 | 2 | ★★ | 290 |
+| `mead` | サーミ蜂蜜酒 | 🍯 | 2 | ★★ | 310 |
+| `herb_liqueur` | イベリア薬草酒 | 🌿 | 3 | ★★★ | 550 |
+| `absinthe` | リターニアの緑妖精 | 🧚 | 3 | ★★★ | 600 |
+| `stout` | ヴィクトリア黒ビール | 🍫 | 3 | ★★★ | 480 |
+| `gin` | コロンビア・ドライジン | 🫧 | 3 | ★★★ | 520 |
+| `sake` | 東国・純米大吟醸 | 🍶 | 3 | ★★★ | 650 |
+| `mystery_flask` | 謎のフラスコ | ⚗️ | 1~3 | ★★★ | 500 |
+| `double_shot` | ダブルショット | 🥃 | 4 | ★★★★ | 900 |
+| `brandy` | ガリア産ブランデー | 🫗 | 4 | ★★★★ | 1000 |
+
+### ガチャ追加フード
+
+| ID | 名前 | 絵文字 | 回復 | レア度 | 価格 |
+|----|------|--------|------|--------|------|
+| `black_bread` | ウルサス黒パン | 🍞 | 1 | ★ | 80 |
+| `candy` | ペンギン急便キャンディ | 🍬 | 1 | ★ | 60 |
+| `opera_cake` | リターニア歌劇菓子 | 🍰 | 1 | ★ | 120 |
+| `dimsum` | 龍門式飲茶 | 🥟 | 2 | ★★ | 280 |
+| `highland_tea` | シルバーアッシュの茶 | 🍵 | 2 | ★★ | 350 |
+| `daily_meal` | ロドス食堂の日替り | 🍱 | 2 | ★★ | 250 |
+| `skewer` | 羊肉串 | 🍢 | 2 | ★★ | 270 |
+| `grilled_fish` | 龍門烤魚 | 🐟 | 2 | ★★ | 300 |
+| `jerky` | クルビア式ジャーキー | 🥩 | 2 | ★★ | 230 |
+| `dango` | 東国式団子 | 🍡 | 2 | ★★ | 240 |
+| `ration_plus` | 強化レーション | 💪 | 3 | ★★★ | 450 |
+| `mushroom_soup` | サルカズ毒キノコ鍋 | 🍄 | 3 | ★★★ | 580 |
+| `bibimbap` | 高麗式石焼ビビンバ | 🍳 | 3 | ★★★ | 550 |
+| `hangover_set` | 二日酔いセット | 🧊 | 3 | ★★★ | 500 |
+| `hotpot` | 炎国激辛火鍋 | 🫕 | 4 | ★★★★ | 850 |
+
+### ガチャ仕様
+
+| 項目 | 値 |
+|------|-----|
+| 単発コスト | 300 龍門幣 |
+| 10連コスト | 2,700 龍門幣（1回分お得） |
+| 同名所持上限 | 超過時はダブり返金 |
+| ダブり返金 | レアリティ依存（★1: 30, ★2: 80, ...） |
 
 ---
 
@@ -1038,12 +1116,58 @@ export const App = () => {
 
 ## バトル解決ルール
 
+### 処理フェーズ順序
+
 ```
-ドリンク vs ドリンク → 差分ダメージ（高い方が通る）
-ドリンク vs つまみ   → ドリンクのダメージ適用後、つまみで回復
-つまみ   vs つまみ   → 何も起きない（平和）
-一気飲み系           → 相手カード無視で効果発動
-セクハラ             → 酔いLv条件チェック → 成功: CG + ダメージ / 不発
+フェーズ0: DoT バフの tick ダメージ処理
+フェーズ0.5: スタンチェック（スタン中は行動不可）
+フェーズ1: 戦略・環境・状態異常カードを先に処理
+フェーズ2: 一気飲み系カード処理
+フェーズ3: セクハラカード処理
+フェーズ4: ドリンク vs ドリンク / ドリンク vs つまみ / つまみ vs つまみ
+```
+
+### カード対戦マトリクス
+
+```
+ドリンク vs ドリンク   → 差分ダメージ（高い方が通る、同値は相殺）
+ドリンク vs つまみ     → ドリンクダメージ適用後、つまみで回復（no_food バフ中は回復不可）
+つまみ   vs つまみ     → お互い回復（平和なラウンド）
+一気飲み系             → 相手カード無視で効果発動（chug/toast/spill）
+セクハラ               → 相手酔いLv条件チェック → 成功: CG + ダメージ / 不発
+戦略/環境/状態異常     → 先に効果処理、相手の戦闘カードは通常通り発動
+片方ユーティリティ     → ユーティリティ効果適用 + 相手の攻撃カードが一方的に通る
+```
+
+### バフシステム
+
+| バフID | 効果 | 発生源 |
+|--------|------|--------|
+| `stun` | 行動不可 | — |
+| `atk_down` | ドリンクダメージ半減 | foot_tease |
+| `dot` | 毎ターン持続ダメージ | — |
+| `no_food` | つまみカード使用不可 | — |
+| `corrupted_hand` | 使用時に自分にダメージ | dirty_talk |
+| `tipsy` | 受けるドリンクダメージ1.5倍 | tipsyカード |
+| `blush` | ハラスメントダメージ+1 | blushカード |
+| `alone` | ハラスメントダメージ2倍 | aloneカード |
+| `karaoke` | 全ドリンクダメージ+N | karaoke/lastorderカード |
+| `dimlight` | ハラスメント必要酔いLv-1 | dimlightカード |
+| `excuse` | ハラスメント必要酔いLv-1 | excuseカード |
+
+> バフは `duration` でターン管理。毎ラウンド終了時に `tickBuffs()` で減算、0 になったら除去。
+
+### AI カード選択ロジック（battleAI.ts）
+
+```
+1. 酔いLv3以上 → 最強のセクハラカードを使用
+2. プレイヤーが守り偏重 → 逆セクハラ（60%確率）
+3. 序盤（R1~3） → 環境カード使用検討（50%確率）
+4. 状態異常 + セクハラ手持ち → 布石として状態異常使用
+5. 戦略カード → excuse/rumor を状況に応じて使用
+6. 自分の酔い高い → つまみ優先（70%）
+7. 相手の酔い高い → ドリンクで畳みかけ（70%）
+8. パーソナリティ別（aggressive/defensive/balanced）でフォールバック
 ```
 
 ---

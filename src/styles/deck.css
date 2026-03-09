@@ -85,32 +85,32 @@
 }
 
 .deck-card.type-drink {
-  background: linear-gradient(160deg, rgba(60, 25, 15, 0.9), rgba(40, 18, 10, 0.95));
-  border-bottom: 3px solid #884444;
+  background: var(--type-drink-bg);
+  border-bottom: 3px solid var(--type-drink-border);
 }
 .deck-card.type-food {
-  background: linear-gradient(160deg, rgba(20, 40, 20, 0.9), rgba(15, 30, 15, 0.95));
-  border-bottom: 3px solid #448844;
+  background: var(--type-food-bg);
+  border-bottom: 3px solid var(--type-food-border);
 }
 .deck-card.type-chug {
-  background: linear-gradient(160deg, rgba(35, 20, 50, 0.9), rgba(25, 15, 35, 0.95));
-  border-bottom: 3px solid #665588;
+  background: var(--type-chug-bg);
+  border-bottom: 3px solid var(--type-chug-border);
 }
 .deck-card.type-harassment {
-  background: linear-gradient(160deg, rgba(50, 18, 35, 0.9), rgba(35, 12, 25, 0.95));
-  border-bottom: 3px solid #884466;
+  background: var(--type-harassment-bg);
+  border-bottom: 3px solid var(--type-harassment-border);
 }
 .deck-card.type-strategy {
-  background: linear-gradient(160deg, rgba(30, 35, 50, 0.9), rgba(20, 25, 35, 0.95));
-  border-bottom: 3px solid #556688;
+  background: var(--type-strategy-bg);
+  border-bottom: 3px solid var(--type-strategy-border);
 }
 .deck-card.type-environment {
-  background: linear-gradient(160deg, rgba(35, 40, 25, 0.9), rgba(25, 30, 15, 0.95));
-  border-bottom: 3px solid #668855;
+  background: var(--type-environment-bg);
+  border-bottom: 3px solid var(--type-environment-border);
 }
 .deck-card.type-status {
-  background: linear-gradient(160deg, rgba(45, 30, 15, 0.9), rgba(35, 20, 10, 0.95));
-  border-bottom: 3px solid #886644;
+  background: var(--type-status-bg);
+  border-bottom: 3px solid var(--type-status-border);
 }
 
 .deck-card-empty {

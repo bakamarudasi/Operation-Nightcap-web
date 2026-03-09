@@ -1,0 +1,46 @@
+/* ============================================
+   カードタイプ別カラー変数
+   battle.css / cards.css / deck.css で共有
+   ============================================ */
+
+:root {
+  /* ドリンク（攻撃）: 赤系 */
+  --type-drink-border: #884444;
+  --type-drink-border-solid: #8b3333;
+  --type-drink-bg: linear-gradient(160deg, rgba(60, 25, 15, 0.9), rgba(40, 18, 10, 0.95));
+  --type-drink-bg-solid: linear-gradient(180deg, #3d1a1a 0%, #2a1010 100%);
+  --type-drink-glow: rgba(230, 57, 70, 0.25);
+
+  /* フード（回復）: 緑系 */
+  --type-food-border: #448844;
+  --type-food-border-solid: #4a6b35;
+  --type-food-bg: linear-gradient(160deg, rgba(20, 40, 20, 0.9), rgba(15, 30, 15, 0.95));
+  --type-food-bg-solid: linear-gradient(180deg, #1f2e18 0%, #151f10 100%);
+  --type-food-glow: rgba(123, 158, 94, 0.25);
+
+  /* 一気飲み: 紫系 */
+  --type-chug-border: #665588;
+  --type-chug-border-solid: #6b3a7a;
+  --type-chug-bg: linear-gradient(160deg, rgba(35, 20, 50, 0.9), rgba(25, 15, 35, 0.95));
+  --type-chug-bg-solid: linear-gradient(180deg, #2a1530 0%, #1a0d20 100%);
+  --type-chug-glow: rgba(176, 96, 208, 0.25);
+
+  /* セクハラ: ピンク系 */
+  --type-harassment-border: #884466;
+  --type-harassment-border-solid: #8b3060;
+  --type-harassment-bg: linear-gradient(160deg, rgba(50, 18, 35, 0.9), rgba(35, 12, 25, 0.95));
+  --type-harassment-bg-solid: linear-gradient(180deg, #3d1530 0%, #2a0d20 100%);
+  --type-harassment-glow: rgba(255, 68, 136, 0.25);
+
+  /* 戦略: 青系 */
+  --type-strategy-border: #556688;
+  --type-strategy-bg: linear-gradient(160deg, rgba(30, 35, 50, 0.9), rgba(20, 25, 35, 0.95));
+
+  /* 環境: 黄緑系 */
+  --type-environment-border: #668855;
+  --type-environment-bg: linear-gradient(160deg, rgba(35, 40, 25, 0.9), rgba(25, 30, 15, 0.95));
+
+  /* 状態異常: 茶系 */
+  --type-status-border: #886644;
+  --type-status-bg: linear-gradient(160deg, rgba(45, 30, 15, 0.9), rgba(35, 20, 10, 0.95));
+}

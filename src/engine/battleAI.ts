@@ -1,18 +1,8 @@
 import { CARD_DATA } from '../data/cards.ts';
 import type { BattleState, CharacterDef } from '../data/types.ts';
 import { randomPick } from './utils.ts';
-
-function getDrunkLevel(drunkValue: number): number {
-  if (drunkValue >= 10) return 4;
-  if (drunkValue >= 7) return 3;
-  if (drunkValue >= 4) return 2;
-  if (drunkValue >= 2) return 1;
-  return 0;
-}
-
-function hasBuff(buffs: { id: string }[], id: string): boolean {
-  return buffs.some(b => b.id === id);
-}
+import { getDrunkLevel } from '../utils/drunkLevel.ts';
+import { hasBuff } from './buffUtils.ts';
 
 /** プレイヤーがつまみばかり使っているか判定 */
 function isPlayerStalling(battle: BattleState): boolean {

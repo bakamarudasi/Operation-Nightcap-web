@@ -1,4 +1,5 @@
 import { CARD_DATA } from '../data/cards.ts';
+import { formatDamage, formatHeal } from '../utils/cardFormatting.ts';
 
 interface CardProps {
   cardId: string;
@@ -27,12 +28,12 @@ export function Card({ cardId, onClick, selected, size = 'normal', showPrice }: 
       <span className="card-name">{card.name}</span>
       {card.type === 'drink' && card.damage !== undefined && (
         <span className="card-value">
-          {card.damage === -1 ? '1~3' : card.damage}
+          {formatDamage(card.damage)}
         </span>
       )}
       {card.type === 'food' && card.heal !== undefined && (
         <span className="card-value">
-          +{card.heal === 99 ? 'MAX' : card.heal}
+          +{formatHeal(card.heal)}
         </span>
       )}
       {showPrice && (
