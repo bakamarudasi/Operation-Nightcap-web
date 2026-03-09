@@ -280,7 +280,7 @@ export function GachaScreen() {
   const [liquidFill, setLiquidFill] = useState(0);
   const [shake, setShake] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
-  const [showCollection, setShowCollection] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<'rates' | 'collection'>('rates');
   const [pullCount, setPullCount] = useState(0);
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -388,102 +388,28 @@ export function GachaScreen() {
     { r: 1, emoji: '🍺', items: '並カード', rate: '45.0%' },
   ];
 
-  // ── コレクション画面 ──
-  if (showCollection) {
+  // コレクション用のグループ化データ
+  const collectionGrouped = useMemo(() => {
     const grouped: Record<number, Array<{ id: string; name: string; emoji: string; count: number }>> = {};
     for (const [id, card] of Object.entries(CARD_DATA)) {
       if (!grouped[card.rarity]) grouped[card.rarity] = [];
       grouped[card.rarity].push({ id, name: card.name, emoji: card.emoji, count: inventoryMap[id] ?? 0 });
     }
-    return (
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 1000, background: '#0e0805',
-        fontFamily: "'Noto Serif JP','Hiragino Mincho ProN',serif",
-        display: 'flex', flexDirection: 'column', overflow: 'hidden',
-      }}>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700;900&display=swap');
-          @keyframes shimGold{0%{background-position:-200% center}100%{background-position:200% center}}
-          .gold{background:linear-gradient(90deg,#aa6600,#ffdd55,#ffaa00,#ffee88,#aa6600);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shimGold 3s linear infinite;}
-        `}</style>
-        <div style={{
-          padding: '14px 16px', textAlign: 'center',
-          background: 'linear-gradient(180deg,rgba(30,14,0,.97),rgba(20,9,0,.93))',
-          borderBottom: '2px solid #4a2804', flexShrink: 0, position: 'relative',
-        }}>
-          <div className="gold" style={{ fontSize: 20, fontWeight: 900, letterSpacing: 4 }}>お品書き帳</div>
-          <div style={{ fontSize: 10, color: '#6a4a22', marginTop: 2 }}>
-            {collectionStats.owned} / {collectionStats.total} 品 収集済
-          </div>
-          <button onClick={() => setShowCollection(false)} style={{
-            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-            background: 'rgba(0,0,0,.5)', border: '1px solid #3a1e08',
-            borderRadius: 6, padding: '5px 12px', color: '#8a6030', fontSize: 11,
-            cursor: 'pointer',
-          }}>← 戻る</button>
-        </div>
-        <div style={{ flex: 1, overflow: 'auto', padding: '10px 12px' }}>
-          {[6, 5, 4, 3, 2, 1].map(r => {
-            const cards = grouped[r] || [];
-            if (!cards.length) return null;
-            const cfg = RC[r];
-            return (
-              <div key={r} style={{ marginBottom: 16 }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
-                  padding: '6px 10px', background: 'rgba(0,0,0,.4)', borderRadius: 6,
-                  borderLeft: `3px solid ${cfg.border}`,
-                }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: cfg.text }}>{cfg.label}</span>
-                  <span style={{ fontSize: 10, color: cfg.menuColor }}>
-                    {cards.filter(c => c.count > 0).length}/{cards.length}
-                  </span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(80px,1fr))', gap: 6 }}>
-                  {cards.map(card => {
-                    const owned = card.count > 0;
-                    return (
-                      <div key={card.id} style={{
-                        background: owned ? cfg.bg : 'rgba(10,5,0,.6)',
-                        border: `1px solid ${owned ? cfg.border : '#1a1008'}`,
-                        borderRadius: 8, padding: '8px 4px', textAlign: 'center',
-                        opacity: owned ? 1 : 0.35,
-                        position: 'relative',
-                      }}>
-                        <div style={{ fontSize: 22, lineHeight: 1.2 }}>{owned ? card.emoji : '？'}</div>
-                        <div style={{ fontSize: 8, color: owned ? cfg.text : '#333', fontWeight: 600, marginTop: 2, lineHeight: 1.2 }}>
-                          {owned ? card.name : '？？？'}
-                        </div>
-                        {owned && card.count > 1 && (
-                          <div style={{
-                            position: 'absolute', top: 2, right: 2, fontSize: 7,
-                            background: 'rgba(0,0,0,.6)', borderRadius: 3, padding: '1px 3px',
-                            color: cfg.menuColor,
-                          }}>×{card.count}</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
+    return grouped;
+  }, [inventoryMap]);
 
   // ── メイン画面 ──
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
-      fontFamily: "'Noto Serif JP','Hiragino Mincho ProN','YuMincho',serif",
-      background: '#0e0805',
+      fontFamily: "'Zen Maru Gothic','Noto Serif JP','Hiragino Sans',sans-serif",
+      background: '#1a0e08', color: '#e8d5b5',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
       transform: shake ? `translate(${(Math.random() - 0.5) * 8}px, ${(Math.random() - 0.5) * 6}px)` : 'none',
       transition: shake ? 'none' : 'transform 0.1s ease-out',
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700;900&family=Zen+Maru+Gothic:wght@400;700;900&family=Shippori+Mincho:wght@400;700&display=swap');
         @keyframes flicker{0%,100%{opacity:1}91%{opacity:1}92%{opacity:.75}93%{opacity:1}97%{opacity:.88}98%{opacity:1}}
         @keyframes sway{0%,100%{transform:rotate(-2.5deg) translateX(0)}50%{transform:rotate(2.5deg) translateX(1px)}}
         @keyframes shimGold{0%{background-position:-200% center}100%{background-position:200% center}}
@@ -555,6 +481,8 @@ export function GachaScreen() {
         }
         @keyframes heroFadeIn{from{opacity:0;transform:scale(.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
         @keyframes featuredSlide{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+        @keyframes floatLantern{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}}
+        @keyframes fadeSlideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
         .hero-fade{animation:heroFadeIn .6s ease both;}
         .featured-slide{animation:featuredSlide .5s ease both;}
         .bottle-float{animation:bottleFloat 4s ease-in-out infinite;}
@@ -617,49 +545,55 @@ export function GachaScreen() {
       ))}
 
       {/* ── ヘッダー ── */}
-      <div style={{
-        padding: '13px 60px 11px', textAlign: 'center',
+      <header style={{
+        position: 'relative', zIndex: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 24px',
         background: 'linear-gradient(180deg,rgba(30,14,0,.97),rgba(20,9,0,.93))',
-        borderBottom: '2px solid #4a2804',
+        borderBottom: '1px solid rgba(255,180,80,0.15)',
         boxShadow: '0 4px 24px rgba(0,0,0,.8)',
-        flexShrink: 0, position: 'relative', zIndex: 2,
+        flexShrink: 0,
       }}>
-        <div style={{ fontSize: 8, letterSpacing: 6, color: '#5a3a18', marginBottom: 2 }}>
-          ─── ロドス島 龍門出張所 ───
-        </div>
-        <div className="gold" style={{ fontSize: 24, fontWeight: 900, letterSpacing: 6 }}>
-          お品書きガチャ
-        </div>
-        <div style={{ fontSize: 8, color: '#3a2510', letterSpacing: 3, marginTop: 2 }} className="flick">
-          〜 飲んで引いて　酔いしれろ 〜
-        </div>
-        {/* 龍門幣 */}
-        <div style={{
-          position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-          background: 'rgba(0,0,0,.65)', border: '1px solid #4a2804',
-          borderRadius: 8, padding: '5px 11px',
-          display: 'flex', alignItems: 'center', gap: 6,
-          backdropFilter: 'blur(4px)',
-        }}>
-          <span style={{ fontSize: 14 }}>🪙</span>
-          <div>
-            <div style={{ fontSize: 7, color: '#5a3a18', letterSpacing: 1 }}>龍門幣</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#ffcc44', fontVariantNumeric: 'tabular-nums' }}>
-              {money.toLocaleString()}
-            </div>
-          </div>
-        </div>
         <button className="gbtn" onClick={() => setScreen('title')} style={{
-          position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
-          background: 'rgba(0,0,0,.45)', border: '1px solid #2a1508',
-          borderRadius: 6, padding: '5px 10px', color: '#4a3015', fontSize: 11,
+          background: 'none', border: '1px solid rgba(255,180,80,0.25)',
+          color: '#c9a96e', padding: '6px 16px', borderRadius: 6,
+          fontFamily: 'inherit', fontSize: 13,
         }}>← 戻る</button>
-      </div>
+        <h1 style={{
+          fontSize: 26, fontWeight: 900, color: '#fbbf24',
+          textShadow: '0 0 20px rgba(251,191,36,0.4)',
+          letterSpacing: 4, margin: 0,
+          fontFamily: "'Shippori Mincho','Noto Serif JP',serif",
+        }}>
+          <span style={{ color: '#ff8c00' }}>お品書き</span>ガチャ
+        </h1>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'rgba(255,180,80,0.1)', border: '1px solid rgba(255,180,80,0.3)',
+          borderRadius: 20, padding: '6px 16px',
+        }}>
+          <span style={{ fontSize: 18 }}>🪙</span>
+          <span style={{
+            fontSize: 20, fontWeight: 700, color: '#fbbf24',
+            fontFamily: "'Courier New', monospace",
+          }}>{money.toLocaleString()}</span>
+        </div>
+      </header>
 
-      {/* ── スクロールエリア ── */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '12px 12px 20px', display: 'flex', flexDirection: 'column', gap: 10, position: 'relative' }}>
+      {/* ── メイン2カラムレイアウト ── */}
+      <div style={{
+        flex: 1, overflow: 'auto', position: 'relative',
+        display: 'grid',
+        gridTemplateColumns: isIdle ? '1fr 1fr' : '1fr',
+        gap: 24, maxWidth: 1280, margin: '0 auto', width: '100%',
+        padding: '20px 24px',
+        alignContent: 'start',
+      }}>
 
-        {/* ======== IDLE: メニュー表 ======== */}
+        {/* ▌LEFT COLUMN — ガチャ演出 + ボタン */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'relative' }}>
+
+        {/* ======== IDLE: ヒーロー + ボタン ======== */}
         {animPhase === 'idle' && (
           <>
             {/* アンビエント煙 */}
@@ -680,24 +614,34 @@ export function GachaScreen() {
             {/* ヒーロービジュアル */}
             <div className="hero-fade" style={{
               position: 'relative',
-              background: 'radial-gradient(ellipse at 50% 80%,rgba(180,80,0,.12),transparent 60%),rgba(12,6,0,.5)',
-              border: '1px solid rgba(90,50,15,.3)',
-              borderRadius: 14,
-              padding: '20px 16px 16px',
+              background: 'linear-gradient(180deg, rgba(60,30,10,0.6) 0%, rgba(30,15,5,0.8) 100%)',
+              border: '1px solid rgba(255,180,80,0.2)',
+              borderRadius: 16,
+              padding: '32px 24px 20px',
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               overflow: 'hidden',
             }}>
               <div style={{
-                position: 'absolute', inset: 0, pointerEvents: 'none',
-                background: 'radial-gradient(ellipse at 50% 90%,rgba(255,140,30,.08),transparent 50%)',
-              }} />
+                position: 'absolute', top: 8, left: 16, fontSize: 28,
+                animation: 'floatLantern 3s ease-in-out infinite',
+              }}>🏮</div>
               <div style={{
-                display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 14,
+                position: 'absolute', top: 8, right: 16, fontSize: 28,
+                animation: 'floatLantern 3s ease-in-out infinite 1.5s',
+              }}>🏮</div>
+
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24,
                 marginBottom: 12, position: 'relative',
               }}>
-                <div className="bottle-float" style={{ fontSize: 32, animationDelay: '0.5s', opacity: 0.7, marginBottom: 4 }}>🍶</div>
+                <div className="bottle-float" style={{ fontSize: 40, opacity: 0.5, animationDelay: '0.5s' }}>🍶</div>
                 <div style={{ position: 'relative', animation: 'glassIdle 6s ease-in-out infinite' }}>
-                  <div style={{ fontSize: 56, lineHeight: 1, filter: 'drop-shadow(0 4px 20px rgba(255,140,30,.4))' }}>🍺</div>
+                  <div style={{
+                    fontSize: 72, lineHeight: 1,
+                    filter: 'drop-shadow(0 4px 20px rgba(255,140,30,.4))',
+                    animation: 'pulseGlow 3s ease-in-out infinite',
+                    borderRadius: '50%',
+                  }}>🍺</div>
                   {[0, 1, 2].map(i => (
                     <div key={i} style={{
                       position: 'absolute', top: -8 - i * 4, left: `${30 + i * 12}%`,
@@ -708,196 +652,65 @@ export function GachaScreen() {
                     }} />
                   ))}
                 </div>
-                <div className="bottle-float" style={{ fontSize: 32, animationDelay: '1.2s', opacity: 0.7, marginBottom: 4 }}>🍶</div>
+                <div className="bottle-float" style={{ fontSize: 40, opacity: 0.5, animationDelay: '1.2s' }}>🫗</div>
               </div>
               <div style={{
-                fontSize: 11, color: '#aa8050', letterSpacing: 6, fontWeight: 600,
-                textShadow: '0 0 12px rgba(200,120,20,.3)', marginBottom: 4,
+                fontSize: 14, color: '#c9a96e', letterSpacing: 3, marginBottom: 16,
+                fontFamily: "'Shippori Mincho','Noto Serif JP',serif",
               }}>今宵も一杯、いかがですか</div>
-              {/* コレクション進捗バー */}
-              <div style={{ width: '100%', maxWidth: 260, marginTop: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                  <span style={{ fontSize: 9, color: '#6a4a28', letterSpacing: 1 }}>収集進捗</span>
-                  <span style={{ fontSize: 11, color: '#aa8855', fontWeight: 700 }}>
-                    {collectionStats.owned}<span style={{ color: '#5a3a18', fontWeight: 400 }}>/{collectionStats.total}</span>
-                  </span>
-                </div>
-                <div style={{
-                  height: 6, borderRadius: 3,
-                  background: 'rgba(0,0,0,.4)', border: '1px solid rgba(90,50,15,.25)', overflow: 'hidden',
-                }}>
+
+              {/* 収集進捗バー */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
+                <span style={{ fontSize: 11, color: '#888', letterSpacing: 1 }}>収集進捗</span>
+                <div style={{ width: 120, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{
-                    height: '100%', borderRadius: 3,
-                    background: 'linear-gradient(90deg,#6a3a10,#cc8800,#ffaa00)',
                     width: `${(collectionStats.owned / collectionStats.total) * 100}%`,
-                    boxShadow: '0 0 8px rgba(200,130,0,.4)', transition: 'width 0.5s ease',
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #fbbf24, #ff8c00)',
+                    borderRadius: 3, transition: 'width 0.5s ease',
                   }} />
                 </div>
+                <span style={{ fontSize: 16, fontWeight: 700, color: '#fbbf24', fontFamily: "'Courier New', monospace" }}>
+                  {collectionStats.owned}<span style={{ color: '#888', fontSize: 12 }}>/{collectionStats.total}</span>
+                </span>
               </div>
             </div>
 
             {/* 今宵のおすすめ */}
             <FeaturedCard getCard={getCard} />
 
-            {/* 大メニューボード */}
-            <div style={{
-              background: 'rgba(18,9,2,.92)', border: '2px solid #5a3010',
-              borderRadius: 12, overflow: 'hidden',
-              boxShadow: '0 8px 36px rgba(0,0,0,.7), inset 0 0 50px rgba(0,0,0,.5)',
-              position: 'relative',
-            }}>
-              <div style={{
-                position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.06,
-                background: 'repeating-linear-gradient(180deg,transparent,transparent 12px,rgba(200,140,60,.3) 12px,rgba(200,140,60,.3) 13px)',
-              }} />
-              <div style={{
-                background: 'linear-gradient(90deg,rgba(60,25,3,.9),rgba(120,55,5,.98),rgba(60,25,3,.9))',
-                borderBottom: '1px solid #6a3a10',
-                padding: '12px 16px', textAlign: 'center', position: 'relative',
-              }}>
-                <div style={{
-                  position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-                  fontSize: 16, opacity: 0.5, animation: 'gentlePulse 4s ease-in-out infinite',
-                }}>🏮</div>
-                <div style={{
-                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                  fontSize: 16, opacity: 0.5, animation: 'gentlePulse 4s ease-in-out 1s infinite',
-                }}>🏮</div>
-                <div style={{
-                  fontSize: 14, color: '#ffcc88', letterSpacing: 6, fontWeight: 700,
-                  textShadow: '0 0 16px rgba(255,180,60,.25)',
-                }}>本日のお品書き</div>
-                <div style={{
-                  fontSize: 8, color: '#7a5530', marginTop: 4, letterSpacing: 2,
-                  display: 'flex', justifyContent: 'center', gap: 12,
-                }}>
-                  <span>天井なし</span><span style={{ color: '#4a3018' }}>│</span>
-                  <span>同一3枚上限</span><span style={{ color: '#4a3018' }}>│</span>
-                  <span>超過は龍門幣変換</span>
-                </div>
-              </div>
-              {menuRows.map((row, idx) => {
-                const cfg = RC[row.r];
-                const isHighRare = row.r >= 5;
-                return (
-                  <div key={row.r} className="menu-row" style={{
-                    animationDelay: `${idx * 0.08}s`,
-                    display: 'flex', alignItems: 'center',
-                    padding: isHighRare ? '13px 16px' : '11px 16px',
-                    borderBottom: idx < menuRows.length - 1 ? '1px solid rgba(90,50,15,.3)' : 'none',
-                    background: isHighRare
-                      ? `linear-gradient(90deg,transparent,${cfg.glow.replace(')', ',0.06)')},transparent)`
-                      : idx % 2 === 0 ? 'rgba(255,255,255,.015)' : 'transparent',
-                    gap: 10, position: 'relative',
-                  }}>
-                    {isHighRare && (
-                      <div style={{
-                        position: 'absolute', left: 0, top: 4, bottom: 4, width: 3,
-                        background: `linear-gradient(180deg,transparent,${cfg.border},transparent)`, borderRadius: 2,
-                      }} />
-                    )}
-                    <div style={{
-                      fontSize: isHighRare ? 24 : 22, width: 32, textAlign: 'center', flexShrink: 0,
-                      filter: isHighRare ? `drop-shadow(0 0 6px ${cfg.glow})` : 'none',
-                    }}>{row.emoji}</div>
-                    <div style={{
-                      fontSize: 14, fontWeight: 700, color: cfg.text,
-                      minWidth: 40, textAlign: 'center',
-                      padding: '3px 8px', borderRadius: 5,
-                      background: 'rgba(0,0,0,.5)', border: `1px solid ${cfg.border}`, flexShrink: 0,
-                      boxShadow: isHighRare ? `0 0 8px ${cfg.glow}` : 'none',
-                    }}>{cfg.label}</div>
-                    <div style={{
-                      flex: 1, borderBottom: `1px dashed rgba(${row.r >= 5 ? '200,150,0' : '80,60,20'},.25)`, margin: '0 6px',
-                    }} />
-                    <div style={{
-                      fontSize: 11, color: isHighRare ? cfg.menuColor : '#aa8866', flexShrink: 0,
-                      fontWeight: isHighRare ? 600 : 400,
-                    }}>{row.items}</div>
-                    <div style={{
-                      fontSize: isHighRare ? 15 : 14, fontWeight: 700, color: cfg.menuColor,
-                      minWidth: 48, textAlign: 'right', flexShrink: 0,
-                      textShadow: isHighRare ? `0 0 10px ${cfg.glow}` : 'none',
-                    }}>{row.rate}</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* コレクション＆統計バー */}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-              <button className="gbtn" onClick={() => setShowCollection(true)} style={{
-                flex: 1, background: 'rgba(18,9,2,.85)',
-                border: '1px solid rgba(90,50,15,.35)', borderRadius: 8, padding: '10px 14px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                color: '#8a6a3a', boxShadow: 'inset 0 0 20px rgba(0,0,0,.3)',
-              }}>
-                <span style={{ fontSize: 16 }}>📖</span>
-                <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1 }}>お品書き帳</span>
-                <span style={{
-                  fontSize: 10, color: '#ffaa44', fontWeight: 700,
-                  background: 'rgba(200,120,0,.12)', padding: '2px 6px', borderRadius: 4,
-                }}>{collectionStats.owned}/{collectionStats.total}</span>
-              </button>
-              {pullCount > 0 && (
-                <div style={{
-                  background: 'rgba(18,9,2,.85)', border: '1px solid rgba(90,50,15,.3)',
-                  borderRadius: 8, padding: '8px 14px', fontSize: 9, color: '#5a3a18',
-                  textAlign: 'center', display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center',
-                  boxShadow: 'inset 0 0 20px rgba(0,0,0,.3)',
-                }}>
-                  <span>累計</span>
-                  <span style={{ color: '#aa8855', fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>{pullCount}<span style={{ fontSize: 9, fontWeight: 400 }}>回</span></span>
-                </div>
-              )}
-            </div>
-
-            {/* ガチャボタン */}
-            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+            {/* ── ガチャボタン ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 4 }}>
               <button className="gbtn" disabled={money < GACHA_SINGLE_COST} onClick={() => startGacha(1)} style={{
-                flex: 1, position: 'relative',
+                position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                padding: '20px 16px', borderRadius: 14,
                 background: money >= GACHA_SINGLE_COST
-                  ? 'linear-gradient(170deg,#4a2810 0%,#2a1508 50%,#3a2010 100%)' : 'rgba(20,10,0,.4)',
-                border: `1px solid ${money >= GACHA_SINGLE_COST ? '#7a4a18' : '#2a1508'}`,
-                borderRadius: 12, padding: '18px 10px', color: '#fff',
+                  ? 'linear-gradient(180deg, #3d2814 0%, #2a1a0c 100%)' : 'rgba(20,10,0,.4)',
+                border: `2px solid ${money >= GACHA_SINGLE_COST ? 'rgba(255,180,80,0.3)' : '#2a1508'}`,
+                color: '#fff',
                 boxShadow: money >= GACHA_SINGLE_COST
-                  ? '0 6px 24px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,160,50,.15),inset 0 -1px 0 rgba(0,0,0,.3)' : 'none',
+                  ? '0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,180,80,0.1)' : 'none',
                 overflow: 'hidden',
               }}>
-                {money >= GACHA_SINGLE_COST && <div style={{
-                  position: 'absolute', top: 0, left: 0, right: 0, height: '50%',
-                  background: 'linear-gradient(180deg,rgba(255,180,80,.06),transparent)',
-                  pointerEvents: 'none', borderRadius: '12px 12px 0 0',
-                }} />}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 7 }}>
-                  <span style={{ fontSize: 26, filter: money >= GACHA_SINGLE_COST ? 'drop-shadow(0 2px 6px rgba(200,130,0,.4))' : 'none' }}>🍺</span>
-                  <span style={{ fontSize: 17, fontWeight: 700, color: money >= GACHA_SINGLE_COST ? '#e8c090' : '#443322' }}>一杯だけ</span>
-                </div>
-                <div style={{
-                  fontSize: 13, fontWeight: 700, color: money >= GACHA_SINGLE_COST ? '#ffaa44' : '#332211',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                }}>
-                  🪙 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{GACHA_SINGLE_COST.toLocaleString()}</span>
-                  <span style={{ fontSize: 10, fontWeight: 400, opacity: 0.7 }}>龍門幣</span>
-                </div>
+                <span style={{ fontSize: 32 }}>🍺</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: money >= GACHA_SINGLE_COST ? '#e8d5b5' : '#443322', letterSpacing: 2 }}>一杯だけ</span>
+                <span style={{ fontSize: 13, color: money >= GACHA_SINGLE_COST ? '#fbbf24' : '#332211', fontWeight: 700 }}>
+                  🪙 {GACHA_SINGLE_COST.toLocaleString()}
+                </span>
               </button>
+
               <button className="gbtn" disabled={money < GACHA_MULTI_COST} onClick={() => startGacha(10)} style={{
-                flex: 1, position: 'relative',
+                position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                padding: '20px 16px', borderRadius: 14,
                 background: money >= GACHA_MULTI_COST
-                  ? 'linear-gradient(170deg,#4a2d00 0%,#281800 50%,#3a2500 100%)' : 'rgba(20,10,0,.4)',
-                border: `1px solid ${money >= GACHA_MULTI_COST ? '#bb7700' : '#2a1508'}`,
-                borderRadius: 12, padding: '18px 10px', color: '#fff',
+                  ? 'linear-gradient(180deg, #5c1a1a 0%, #3a0e0e 100%)' : 'rgba(20,10,0,.4)',
+                border: `2px solid ${money >= GACHA_MULTI_COST ? 'rgba(255,80,80,0.35)' : '#2a1508'}`,
+                color: '#fff',
                 boxShadow: money >= GACHA_MULTI_COST
-                  ? '0 6px 28px rgba(0,0,0,.6),0 0 20px rgba(200,120,0,.08),inset 0 1px 0 rgba(255,200,50,.15),inset 0 -1px 0 rgba(0,0,0,.3)' : 'none',
+                  ? '0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,80,80,0.1)' : 'none',
                 overflow: 'hidden',
               }}>
                 {money >= GACHA_MULTI_COST && <div style={{
-                  position: 'absolute', top: 0, left: 0, right: 0, height: '50%',
-                  background: 'linear-gradient(180deg,rgba(255,200,50,.08),transparent)',
-                  pointerEvents: 'none', borderRadius: '12px 12px 0 0',
-                }} />}
-                <div style={{
                   position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
                   background: 'linear-gradient(135deg,#aa1800,#dd3300,#aa1800)',
                   borderRadius: 20, padding: '3px 12px',
@@ -905,31 +718,21 @@ export function GachaScreen() {
                   whiteSpace: 'nowrap', boxShadow: '0 3px 10px rgba(200,40,0,.5)',
                   border: '1px solid rgba(255,100,50,.3)',
                   animation: 'neonFlicker 4s ease-in-out infinite',
-                }}>✦ 1杯分お得 ✦</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 7 }}>
-                  <span style={{ fontSize: 26, filter: money >= GACHA_MULTI_COST ? 'drop-shadow(0 2px 8px rgba(220,160,0,.5))' : 'none' }}>🍻</span>
-                  <span style={{ fontSize: 17, fontWeight: 700, color: money >= GACHA_MULTI_COST ? '#ffcc66' : '#443322' }}>飲み放題</span>
-                </div>
-                <div style={{
-                  fontSize: 13, fontWeight: 700, color: money >= GACHA_MULTI_COST ? '#ffcc44' : '#332211',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                }}>
-                  🪙 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{GACHA_MULTI_COST.toLocaleString()}</span>
-                  <span style={{ fontSize: 10, fontWeight: 400, opacity: 0.7 }}>龍門幣</span>
-                </div>
+                }}>✦ 1杯分お得 ✦</div>}
+                <span style={{ fontSize: 32 }}>🍻</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: money >= GACHA_MULTI_COST ? '#e8d5b5' : '#443322', letterSpacing: 2 }}>飲み放題</span>
+                <span style={{ fontSize: 13, color: money >= GACHA_MULTI_COST ? '#fbbf24' : '#332211', fontWeight: 700 }}>
+                  🪙 {GACHA_MULTI_COST.toLocaleString()}
+                </span>
               </button>
             </div>
 
-            {/* フッター情報 */}
-            <div style={{
-              textAlign: 'center', fontSize: 9, color: '#2e1c08', lineHeight: 2.2,
-              borderTop: '1px solid rgba(40,20,4,.5)', paddingTop: 10,
-              display: 'flex', justifyContent: 'center', gap: 16,
-            }}>
-              <span>★5以上 <span style={{ color: '#aa8800' }}>3.5%</span></span>
-              <span style={{ color: '#1a0e04' }}>│</span>
-              <span>★6（幻）<span style={{ color: '#cc3344' }}>0.5%</span></span>
-              <span style={{ color: '#1a0e04' }}>│</span>
+            {/* サブ情報 */}
+            <div style={{ textAlign: 'center', fontSize: 12, color: '#888', padding: '4px 0' }}>
+              <span>秘蔵↑ <span style={{ color: '#e8a020' }}>3.5%</span></span>
+              <span style={{ margin: '0 12px', color: '#555' }}>|</span>
+              <span>幻↑ <span style={{ color: '#ff3366' }}>0.5%</span></span>
+              <span style={{ margin: '0 12px', color: '#555' }}>|</span>
               <span>ダブりは龍門幣変換</span>
             </div>
           </>
@@ -1244,7 +1047,165 @@ export function GachaScreen() {
             </div>
           </div>
         )}
-      </div>
+
+        </div>{/* END LEFT COLUMN */}
+
+        {/* ▌RIGHT COLUMN — お品書き + コレクション（idle時のみ表示） */}
+        {isIdle && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {/* タブ切り替え */}
+            <div style={{ display: 'flex', borderBottom: '2px solid rgba(255,180,80,0.15)' }}>
+              <button className="gbtn" onClick={() => setSelectedTab('rates')} style={{
+                flex: 1, background: 'none', border: 'none',
+                color: selectedTab === 'rates' ? '#fbbf24' : '#777',
+                padding: '12px 16px', fontSize: 14, fontWeight: 700,
+                fontFamily: "'Shippori Mincho','Noto Serif JP',serif",
+                letterSpacing: 2,
+                borderBottom: `2px solid ${selectedTab === 'rates' ? '#fbbf24' : 'transparent'}`,
+                marginBottom: -2, transition: 'all 0.2s',
+              }}>本日のお品書き</button>
+              <button className="gbtn" onClick={() => setSelectedTab('collection')} style={{
+                flex: 1, background: 'none', border: 'none',
+                color: selectedTab === 'collection' ? '#fbbf24' : '#777',
+                padding: '12px 16px', fontSize: 14, fontWeight: 700,
+                fontFamily: "'Shippori Mincho','Noto Serif JP',serif",
+                letterSpacing: 2,
+                borderBottom: `2px solid ${selectedTab === 'collection' ? '#fbbf24' : 'transparent'}`,
+                marginBottom: -2, transition: 'all 0.2s',
+              }}>📖 お品書き帳 {collectionStats.owned}/{collectionStats.total}</button>
+            </div>
+
+            {/* レート表示タブ */}
+            {selectedTab === 'rates' ? (
+              <div style={{
+                background: 'linear-gradient(180deg, rgba(50,25,10,0.6) 0%, rgba(25,12,5,0.8) 100%)',
+                border: '1px solid rgba(255,180,80,0.15)', borderTop: 'none',
+                borderRadius: '0 0 12px 12px', padding: 16,
+              }}>
+                <div style={{ textAlign: 'right', marginBottom: 8 }}>
+                  <span style={{ color: '#aaa', fontSize: 12 }}>提供割合</span>
+                </div>
+                {menuRows.map((row, idx) => {
+                  const cfg = RC[row.r];
+                  const isHighRare = row.r >= 5;
+                  return (
+                    <div key={row.r} style={{
+                      display: 'flex', alignItems: 'center',
+                      padding: '10px 12px', borderRadius: 8, marginBottom: 4,
+                      background: `linear-gradient(90deg, ${cfg.glow} 0%, transparent 60%)`,
+                      animation: 'fadeSlideIn 0.4s ease both',
+                      animationDelay: `${idx * 0.08}s`,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 80 }}>
+                        <span style={{ fontSize: 20 }}>{row.emoji}</span>
+                        <span style={{
+                          padding: '3px 10px', borderRadius: 5, fontSize: 12, fontWeight: 700, color: '#fff',
+                          letterSpacing: 1,
+                          background: `linear-gradient(135deg, ${cfg.border}, ${cfg.border}aa)`,
+                          boxShadow: isHighRare ? `0 0 8px ${cfg.glow}` : 'none',
+                        }}>{cfg.label}</span>
+                      </div>
+                      {/* 割合バー */}
+                      <div style={{
+                        flex: 1, height: 4, background: 'rgba(255,255,255,0.05)',
+                        borderRadius: 2, margin: '0 16px', overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          height: '100%', borderRadius: 2,
+                          width: `${parseFloat(row.rate) * 2}%`,
+                          background: `linear-gradient(90deg, ${cfg.border}, ${cfg.border}66)`,
+                          transition: 'width 0.6s ease',
+                        }} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 110, gap: 2 }}>
+                        <span style={{ color: '#999', fontSize: 12 }}>{row.items}</span>
+                        <span style={{
+                          color: cfg.menuColor, fontWeight: 700, fontSize: 18,
+                          fontFamily: "'Courier New', monospace",
+                        }}>{row.rate}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* 注意事項 */}
+                <div style={{ marginTop: 16, padding: 12, borderTop: '1px solid rgba(255,180,80,0.1)' }}>
+                  <p style={{ color: '#777', fontSize: 11, lineHeight: 1.6, margin: 0 }}>
+                    ※ 表示確率は小数点第2位以下を四捨五入しています<br />
+                    ※ 同一カード3枚上限、超過は龍門幣に変換されます<br />
+                    ※ おすすめカードは提供期間終了後、通常排出に移行します
+                  </p>
+                </div>
+              </div>
+            ) : (
+              /* コレクション表示タブ */
+              <div style={{
+                background: 'linear-gradient(180deg, rgba(50,25,10,0.6) 0%, rgba(25,12,5,0.8) 100%)',
+                border: '1px solid rgba(255,180,80,0.15)', borderTop: 'none',
+                borderRadius: '0 0 12px 12px', padding: '20px 16px',
+              }}>
+                {[6, 5, 4, 3, 2, 1].map(r => {
+                  const cards = collectionGrouped[r] || [];
+                  if (!cards.length) return null;
+                  const cfg = RC[r];
+                  return (
+                    <div key={r} style={{ marginBottom: 16 }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
+                        padding: '6px 10px', background: 'rgba(0,0,0,.4)', borderRadius: 6,
+                        borderLeft: `3px solid ${cfg.border}`,
+                      }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: cfg.text }}>{cfg.label}</span>
+                        <span style={{ fontSize: 10, color: cfg.menuColor }}>
+                          {cards.filter(c => c.count > 0).length}/{cards.length}
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(80px,1fr))', gap: 6 }}>
+                        {cards.map(card => {
+                          const owned = card.count > 0;
+                          return (
+                            <div key={card.id} className="card-hover" style={{
+                              background: owned ? cfg.bg : 'rgba(10,5,0,.6)',
+                              border: `1px solid ${owned ? cfg.border : '#1a1008'}`,
+                              borderRadius: 8, padding: '8px 4px', textAlign: 'center',
+                              opacity: owned ? 1 : 0.35,
+                              position: 'relative', cursor: owned ? 'pointer' : 'default',
+                            }}>
+                              <div style={{ fontSize: 22, lineHeight: 1.2 }}>{owned ? card.emoji : '？'}</div>
+                              <div style={{ fontSize: 8, color: owned ? cfg.text : '#333', fontWeight: 600, marginTop: 2, lineHeight: 1.2 }}>
+                                {owned ? card.name : '？？？'}
+                              </div>
+                              {owned && card.count > 1 && (
+                                <div style={{
+                                  position: 'absolute', top: 2, right: 2, fontSize: 7,
+                                  background: 'rgba(0,0,0,.6)', borderRadius: 3, padding: '1px 3px',
+                                  color: cfg.menuColor,
+                                }}>×{card.count}</div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 累計カウント */}
+            {pullCount > 0 && (
+              <div style={{
+                marginTop: 12, textAlign: 'center',
+                background: 'rgba(18,9,2,.85)', border: '1px solid rgba(90,50,15,.3)',
+                borderRadius: 8, padding: '8px 14px', fontSize: 11, color: '#5a3a18',
+              }}>
+                累計 <span style={{ color: '#aa8855', fontWeight: 700, fontSize: 16 }}>{pullCount}</span> 回
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>{/* END MAIN GRID */}
     </div>
   );
 }
