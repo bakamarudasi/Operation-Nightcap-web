@@ -1,5 +1,5 @@
 import { CARD_DATA, FULL_HEAL, getCardDamage } from '../data/cards.ts';
-import type { BattleState, RoundResult, CGEvent, CharacterDef, Buff } from '../data/types.ts';
+import type { BattleState, RoundResult, CardDef, Buff } from '../data/types.ts';
 import { randomPick } from './utils.ts';
 import { getDrunkLevel } from '../utils/drunkLevel.ts';
 import {
@@ -21,7 +21,7 @@ interface ExtendedResult extends RoundResult {
 }
 
 export const BattleEngine = {
-  resolveRound(playerCardId: string, opponentCardId: string, battle: BattleState, currentOpponent?: CharacterDef | null): ExtendedResult {
+  resolveRound(playerCardId: string, opponentCardId: string, battle: BattleState): ExtendedResult {
     const pCard = CARD_DATA[playerCardId];
     const oCard = CARD_DATA[opponentCardId];
     const result: ExtendedResult = {
@@ -221,7 +221,7 @@ export const BattleEngine = {
   },
 
   /** 戦略・環境・状態異常カードの解決 */
-  resolveUtilityCard(card: any, result: ExtendedResult, user: 'player' | 'opponent', battle: BattleState): void {
+  resolveUtilityCard(card: CardDef, result: ExtendedResult, user: 'player' | 'opponent', battle: BattleState): void {
     const isPlayer = user === 'player';
 
     switch (card.effect) {
@@ -324,7 +324,7 @@ export const BattleEngine = {
     }
   },
 
-  resolveChugCard(chugCard: any, otherCard: any, result: ExtendedResult, chugUser: 'player' | 'opponent', battle: BattleState): ExtendedResult {
+  resolveChugCard(chugCard: CardDef, otherCard: CardDef, result: ExtendedResult, chugUser: 'player' | 'opponent', battle: BattleState): ExtendedResult {
     if (chugCard.effect === 'chug') {
       if (chugUser === 'player') {
         result.opponentDamage += chugCard.enemyDamage;
@@ -362,7 +362,7 @@ export const BattleEngine = {
     return result;
   },
 
-  resolveHarassmentCard(hCard: any, otherCard: any, result: ExtendedResult, user: 'player' | 'opponent', battle: BattleState): ExtendedResult {
+  resolveHarassmentCard(hCard: CardDef, otherCard: CardDef, result: ExtendedResult, user: 'player' | 'opponent', battle: BattleState): ExtendedResult {
     // 判定: 相手の酔い度で判定（どちら側でも相手の酔いを参照）
     const triggerDrunk = user === 'player' ? battle.opponentDrunk : battle.playerDrunk;
     const triggerLevel = getDrunkLevel(triggerDrunk);
