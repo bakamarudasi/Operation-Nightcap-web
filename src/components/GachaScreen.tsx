@@ -282,6 +282,9 @@ export function GachaScreen() {
   const [flash, setFlash] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<'rates' | 'collection'>('rates');
   const [pullCount, setPullCount] = useState(0);
+  const [manualReveal, setManualReveal] = useState(false); // 10連タップめくりモード
+  const [collectionDetail, setCollectionDetail] = useState<string | null>(null); // コレクション詳細表示中のカードID
+  const [collectionFilter, setCollectionFilter] = useState<string>('all'); // all | drink | food | harassment | strategy | environment | status | chug
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const fillRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -308,6 +311,49 @@ export function GachaScreen() {
     const t = setTimeout(() => setFlash(null), duration);
     timers.current.push(t);
   };
+
+  // スキップ: 演出を飛ばして結果表示
+  const skipToResult = useCallback(() => {
+    if (animPhase === 'idle' || animPhase === 'result') return;
+    clearAll();
+    if (animPhase === 'pour') {
+      // pourフェーズ中はまだガチャ結果が無い場合がある → 強制的にpull
+      const count = pendingCount;
+      const res = pullGacha(count);
+      if (!res) { setAnimPhase('idle'); return; }
+      const refund = res.filter(r => r.isDuplicate).reduce((s, r) => s + r.refund, 0);
+      const highest = Math.max(...res.map(r => r.rarity));
+      setResults(res); setRefundTotal(refund);
+      setPullCount(p => p + count);
+      setRevealedCount(res.length);
+      setAnimPhase('result');
+      playResultSound(highest);
+    } else {
+      // glow/reveal中は既にresultsがある
+      setRevealedCount(results.length);
+      setAnimPhase('result');
+      if (results.length > 0) playResultSound(Math.max(...results.map(r => r.rarity)));
+    }
+  }, [animPhase, pendingCount, pullGacha, results]);
+
+  // 10連タップめくり: クリックで1枚ずつ公開
+  const revealNext = useCallback(() => {
+    if (!manualReveal || animPhase !== 'reveal') return;
+    if (revealedCount < results.length) {
+      const r = results[revealedCount];
+      setRevealedCount(c => c + 1);
+      playRevealSound(r.rarity);
+      if (r.rarity >= 4) triggerShake(r.rarity >= 6 ? 2 : 0.5);
+      // 最後の1枚を開いたら結果フェーズへ
+      if (revealedCount + 1 >= results.length) {
+        const t = setTimeout(() => {
+          setAnimPhase('result');
+          playResultSound(Math.max(...results.map(rr => rr.rarity)));
+        }, 600);
+        timers.current.push(t);
+      }
+    }
+  }, [manualReveal, animPhase, revealedCount, results]);
 
   const collectionStats = useMemo(() => {
     const total = Object.keys(CARD_DATA).length;
@@ -356,20 +402,33 @@ export function GachaScreen() {
         if (highest >= 5) burstCenter(pc, highest >= 6 ? 80 : 40);
         if (highest >= 4) rain(pc, highest >= 6 ? 50 : 20);
 
-        res.forEach((r, i) => {
-          const t = setTimeout(() => {
-            setRevealedCount(i + 1);
-            playRevealSound(r.rarity);
-            if (r.rarity >= 4) triggerShake(r.rarity >= 6 ? 2 : 0.5);
-          }, i * (count === 1 ? 100 : 130));
-          timers.current.push(t);
-        });
+        // 10連はタップめくりモード、1連は自動
+        const useManual = count === 10;
+        setManualReveal(useManual);
 
-        const t3 = setTimeout(() => {
-          setAnimPhase('result');
-          playResultSound(highest);
-        }, res.length * (count === 1 ? 100 : 130) + 600);
-        timers.current.push(t3);
+        if (useManual) {
+          // 最初の1枚だけ自動で開く
+          const t = setTimeout(() => {
+            setRevealedCount(1);
+            playRevealSound(res[0].rarity);
+          }, 200);
+          timers.current.push(t);
+        } else {
+          res.forEach((r, i) => {
+            const t = setTimeout(() => {
+              setRevealedCount(i + 1);
+              playRevealSound(r.rarity);
+              if (r.rarity >= 4) triggerShake(r.rarity >= 6 ? 2 : 0.5);
+            }, i * 100);
+            timers.current.push(t);
+          });
+
+          const t3 = setTimeout(() => {
+            setAnimPhase('result');
+            playResultSound(highest);
+          }, res.length * 100 + 600);
+          timers.current.push(t3);
+        }
       }, 1100);
       timers.current.push(t2);
     }, 1500);
@@ -483,6 +542,7 @@ export function GachaScreen() {
         @keyframes featuredSlide{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
         @keyframes floatLantern{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}}
         @keyframes fadeSlideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+        @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
         .hero-fade{animation:heroFadeIn .6s ease both;}
         .featured-slide{animation:featuredSlide .5s ease both;}
         .bottle-float{animation:bottleFloat 4s ease-in-out infinite;}
@@ -584,7 +644,7 @@ export function GachaScreen() {
       <div style={{
         flex: 1, overflow: 'auto', position: 'relative',
         display: 'grid',
-        gridTemplateColumns: isIdle ? '1fr 1fr' : '1fr',
+        gridTemplateColumns: '1fr 1fr',
         gap: 24, maxWidth: 1280, margin: '0 auto', width: '100%',
         padding: '20px 24px',
         alignContent: 'start',
@@ -735,6 +795,28 @@ export function GachaScreen() {
               <span style={{ margin: '0 12px', color: '#555' }}>|</span>
               <span>ダブりは龍門幣変換</span>
             </div>
+
+            {/* コイン不足時のUX */}
+            {money < GACHA_SINGLE_COST && (
+              <div style={{
+                background: 'rgba(80,30,10,.4)', border: '1px solid rgba(255,120,50,.2)',
+                borderRadius: 10, padding: '12px 16px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 12, color: '#cc8866', marginBottom: 8 }}>
+                  🪙 あと <span style={{ color: '#ffaa44', fontWeight: 700, fontSize: 14 }}>
+                    {(GACHA_SINGLE_COST - money).toLocaleString()}
+                  </span> 龍門幣足りません
+                </div>
+                <button className="gbtn" onClick={() => setScreen('shop')} style={{
+                  background: 'linear-gradient(160deg,#2a3a10,#1a2508)',
+                  border: '1px solid rgba(120,180,50,.35)',
+                  borderRadius: 8, padding: '8px 20px', color: '#aad060',
+                  fontSize: 12, fontWeight: 700, letterSpacing: 1,
+                }}>
+                  🏪 ショップで稼ぐ
+                </button>
+              </div>
+            )}
           </>
         )}
 
@@ -800,6 +882,10 @@ export function GachaScreen() {
             <div style={{ fontSize: 12, color: '#8a6030', letterSpacing: 5, marginTop: 20 }} className="flick">
               {pendingCount === 1 ? '一杯お注ぎします…' : '飲み放題、いきます…'}
             </div>
+            <button className="gbtn" onClick={skipToResult} style={{
+              marginTop: 16, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)',
+              borderRadius: 6, padding: '6px 20px', color: '#666', fontSize: 11,
+            }}>スキップ ▸▸</button>
           </div>
         )}
 
@@ -848,41 +934,75 @@ export function GachaScreen() {
             }}>
               {highest >= 6 ? '─ 幻の一品…！！ ─' : highest >= 5 ? '秘蔵品、登場…！' : highest >= 4 ? '極品、来た…！' : 'お待ちどうさまです'}
             </div>
+            <button className="gbtn" onClick={skipToResult} style={{
+              marginTop: 16, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)',
+              borderRadius: 6, padding: '6px 20px', color: '#666', fontSize: 11,
+            }}>スキップ ▸▸</button>
           </div>
         )}
 
         {/* ======== REVEAL: カード出現 ======== */}
         {animPhase === 'reveal' && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: results.length === 1 ? '1fr' : 'repeat(auto-fill,minmax(96px,1fr))',
-            gap: 8, maxWidth: results.length === 1 ? 240 : '100%', margin: '0 auto', width: '100%',
-          }}>
-            {results.slice(0, revealedCount).map((res, i) => {
-              const card = getCard(res.cardId);
-              const cfg = RC[res.rarity];
-              const isLegend = res.rarity >= 6;
-              const isRare = res.rarity >= 4;
-              return (
-                <div key={i} className={isLegend ? 'card-legend' : isRare ? 'card-rare' : 'card-drop'} style={{
-                  background: cfg.bg, border: `2px solid ${cfg.border}`,
-                  borderRadius: 10, padding: '11px 7px', textAlign: 'center',
-                  position: 'relative', overflow: 'hidden',
-                  boxShadow: isRare ? `0 0 26px ${cfg.glow},0 5px 16px rgba(0,0,0,.6)` : '0 3px 12px rgba(0,0,0,.5)',
-                }}>
-                  <div style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-                    background: isRare
-                      ? `linear-gradient(90deg,transparent,${cfg.text},${cfg.border},${cfg.text},transparent)` : `linear-gradient(90deg,transparent,${cfg.border},transparent)`,
-                    backgroundSize: isRare ? '200% 100%' : undefined,
-                    animation: isRare ? 'borderShine 2s linear infinite' : undefined,
-                  }} />
-                  <div style={{ fontSize: results.length === 1 ? 48 : 28, lineHeight: 1.1, marginBottom: 5 }}>{card.emoji}</div>
-                  <div style={{ fontSize: results.length === 1 ? 13 : 9, color: cfg.text, fontWeight: 700, lineHeight: 1.3 }}>{card.name}</div>
-                  <div style={{ fontSize: 8, color: cfg.menuColor, marginTop: 3 }}>{cfg.label}</div>
-                </div>
-              );
-            })}
+          <div>
+            {manualReveal && revealedCount < results.length && (
+              <div style={{ textAlign: 'center', marginBottom: 12, display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: '#aa8050', letterSpacing: 2 }}>
+                  タップでめくる {revealedCount}/{results.length}
+                </span>
+                <button className="gbtn" onClick={skipToResult} style={{
+                  background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)',
+                  borderRadius: 6, padding: '4px 14px', color: '#666', fontSize: 10,
+                }}>全て開く</button>
+              </div>
+            )}
+            <div
+              onClick={manualReveal ? revealNext : undefined}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: results.length === 1 ? '1fr' : 'repeat(auto-fill,minmax(96px,1fr))',
+                gap: 8, maxWidth: results.length === 1 ? 240 : '100%', margin: '0 auto', width: '100%',
+                cursor: manualReveal && revealedCount < results.length ? 'pointer' : 'default',
+              }}
+            >
+              {results.map((res, i) => {
+                const revealed = i < revealedCount;
+                const card = getCard(res.cardId);
+                const cfg = RC[res.rarity];
+                const isLegend = res.rarity >= 6;
+                const isRare = res.rarity >= 4;
+                return (
+                  <div key={i}
+                    className={revealed ? (isLegend ? 'card-legend' : isRare ? 'card-rare' : 'card-drop') : ''}
+                    style={{
+                      background: revealed ? cfg.bg : 'rgba(255,255,255,.03)',
+                      border: `2px solid ${revealed ? cfg.border : 'rgba(255,255,255,.08)'}`,
+                      borderRadius: 10, padding: '11px 7px', textAlign: 'center',
+                      position: 'relative', overflow: 'hidden',
+                      boxShadow: revealed && isRare ? `0 0 26px ${cfg.glow},0 5px 16px rgba(0,0,0,.6)` : '0 3px 12px rgba(0,0,0,.5)',
+                      opacity: revealed ? 1 : 0.4,
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    {revealed ? (
+                      <>
+                        <div style={{
+                          position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                          background: isRare
+                            ? `linear-gradient(90deg,transparent,${cfg.text},${cfg.border},${cfg.text},transparent)` : `linear-gradient(90deg,transparent,${cfg.border},transparent)`,
+                          backgroundSize: isRare ? '200% 100%' : undefined,
+                          animation: isRare ? 'borderShine 2s linear infinite' : undefined,
+                        }} />
+                        <div style={{ fontSize: results.length === 1 ? 48 : 28, lineHeight: 1.1, marginBottom: 5 }}>{card.emoji}</div>
+                        <div style={{ fontSize: results.length === 1 ? 13 : 9, color: cfg.text, fontWeight: 700, lineHeight: 1.3 }}>{card.name}</div>
+                        <div style={{ fontSize: 8, color: cfg.menuColor, marginTop: 3 }}>{cfg.label}</div>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 24, opacity: 0.3, padding: '4px 0' }}>？</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -1050,9 +1170,37 @@ export function GachaScreen() {
 
         </div>{/* END LEFT COLUMN */}
 
-        {/* ▌RIGHT COLUMN — お品書き + コレクション（idle時のみ表示） */}
-        {isIdle && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {/* ▌RIGHT COLUMN — お品書き + コレクション */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
+            {/* 演出中のオーバーレイ */}
+            {!isIdle && (
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 20,
+                background: 'rgba(10,5,2,.85)',
+                borderRadius: 12,
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 16,
+                backdropFilter: 'blur(4px)',
+              }}>
+                <div style={{ fontSize: 40, animation: 'gentlePulse 2s ease-in-out infinite' }}>
+                  {animPhase === 'pour' ? '🍺' : animPhase === 'glow' ? '✨' : '🃏'}
+                </div>
+                <div style={{ fontSize: 14, color: '#aa8050', letterSpacing: 4, fontWeight: 700 }}>
+                  {animPhase === 'pour' ? '仕込み中…' : animPhase === 'glow' ? '光が…！' : 'お品出し中…'}
+                </div>
+                <div style={{
+                  width: 60, height: 3, borderRadius: 2, overflow: 'hidden',
+                  background: 'rgba(255,255,255,.1)',
+                }}>
+                  <div style={{
+                    height: '100%', borderRadius: 2,
+                    background: 'linear-gradient(90deg, #fbbf24, #ff8c00)',
+                    animation: 'shimmer 1.5s linear infinite',
+                    backgroundSize: '200% 100%',
+                  }} />
+                </div>
+              </div>
+            )}
             {/* タブ切り替え */}
             <div style={{ display: 'flex', borderBottom: '2px solid rgba(255,180,80,0.15)' }}>
               <button className="gbtn" onClick={() => setSelectedTab('rates')} style={{
@@ -1143,9 +1291,71 @@ export function GachaScreen() {
                 background: 'linear-gradient(180deg, rgba(50,25,10,0.6) 0%, rgba(25,12,5,0.8) 100%)',
                 border: '1px solid rgba(255,180,80,0.15)', borderTop: 'none',
                 borderRadius: '0 0 12px 12px', padding: '20px 16px',
+                position: 'relative',
               }}>
+                {/* タイプフィルター */}
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 14,
+                  padding: '8px 0', borderBottom: '1px solid rgba(255,180,80,.08)',
+                }}>
+                  {[
+                    { key: 'all', label: '全て', emoji: '📋' },
+                    { key: 'drink', label: 'ドリンク', emoji: '🍺' },
+                    { key: 'food', label: 'フード', emoji: '🍖' },
+                    { key: 'chug', label: 'イッキ', emoji: '🍻' },
+                    { key: 'harassment', label: 'セクハラ', emoji: '💋' },
+                    { key: 'strategy', label: '戦略', emoji: '🧠' },
+                    { key: 'environment', label: '環境', emoji: '🌙' },
+                    { key: 'status', label: '状態', emoji: '💫' },
+                  ].map(f => (
+                    <button key={f.key} className="gbtn" onClick={() => setCollectionFilter(f.key)} style={{
+                      background: collectionFilter === f.key ? 'rgba(255,180,80,.18)' : 'rgba(255,255,255,.03)',
+                      border: `1px solid ${collectionFilter === f.key ? 'rgba(255,180,80,.4)' : 'rgba(255,255,255,.06)'}`,
+                      borderRadius: 6, padding: '4px 8px', fontSize: 10,
+                      color: collectionFilter === f.key ? '#fbbf24' : '#666',
+                      fontWeight: collectionFilter === f.key ? 700 : 400,
+                      transition: 'all 0.15s',
+                    }}>{f.emoji} {f.label}</button>
+                  ))}
+                </div>
+
+                {/* レアリティ別プログレスバー */}
+                <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {[6, 5, 4, 3, 2, 1].map(r => {
+                    const allCards = Object.values(CARD_DATA).filter(c => c.rarity === r);
+                    const ownedCards = allCards.filter(c => (inventoryMap[c.id] ?? 0) > 0);
+                    if (allCards.length === 0) return null;
+                    const pct = (ownedCards.length / allCards.length) * 100;
+                    const cfg = RC[r];
+                    return (
+                      <div key={r} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 9, color: cfg.text, fontWeight: 700, width: 28, textAlign: 'right' }}>{cfg.label}</span>
+                        <div style={{
+                          flex: 1, height: 5, background: 'rgba(255,255,255,.05)',
+                          borderRadius: 3, overflow: 'hidden',
+                        }}>
+                          <div style={{
+                            height: '100%', borderRadius: 3,
+                            width: `${pct}%`,
+                            background: `linear-gradient(90deg, ${cfg.border}, ${cfg.text})`,
+                            transition: 'width 0.5s ease',
+                          }} />
+                        </div>
+                        <span style={{
+                          fontSize: 9, color: cfg.menuColor, fontFamily: "'Courier New',monospace",
+                          width: 36, textAlign: 'right',
+                        }}>{ownedCards.length}/{allCards.length}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
                 {[6, 5, 4, 3, 2, 1].map(r => {
-                  const cards = collectionGrouped[r] || [];
+                  const cards = (collectionGrouped[r] || []).filter(card => {
+                    if (collectionFilter === 'all') return true;
+                    const fullCard = CARD_DATA[card.id];
+                    return fullCard && fullCard.type === collectionFilter;
+                  });
                   if (!cards.length) return null;
                   const cfg = RC[r];
                   return (
@@ -1164,13 +1374,18 @@ export function GachaScreen() {
                         {cards.map(card => {
                           const owned = card.count > 0;
                           return (
-                            <div key={card.id} className="card-hover" style={{
-                              background: owned ? cfg.bg : 'rgba(10,5,0,.6)',
-                              border: `1px solid ${owned ? cfg.border : '#1a1008'}`,
-                              borderRadius: 8, padding: '8px 4px', textAlign: 'center',
-                              opacity: owned ? 1 : 0.35,
-                              position: 'relative', cursor: owned ? 'pointer' : 'default',
-                            }}>
+                            <div key={card.id} className="card-hover"
+                              onClick={owned ? () => setCollectionDetail(collectionDetail === card.id ? null : card.id) : undefined}
+                              style={{
+                                background: owned ? cfg.bg : 'rgba(10,5,0,.6)',
+                                border: `1px solid ${owned ? (collectionDetail === card.id ? cfg.text : cfg.border) : '#1a1008'}`,
+                                borderRadius: 8, padding: '8px 4px', textAlign: 'center',
+                                opacity: owned ? 1 : 0.35,
+                                position: 'relative', cursor: owned ? 'pointer' : 'default',
+                                boxShadow: collectionDetail === card.id ? `0 0 16px ${cfg.glow}` : 'none',
+                                transform: collectionDetail === card.id ? 'scale(1.05)' : 'scale(1)',
+                                transition: 'all 0.15s',
+                              }}>
                               <div style={{ fontSize: 22, lineHeight: 1.2 }}>{owned ? card.emoji : '？'}</div>
                               <div style={{ fontSize: 8, color: owned ? cfg.text : '#333', fontWeight: 600, marginTop: 2, lineHeight: 1.2 }}>
                                 {owned ? card.name : '？？？'}
@@ -1189,6 +1404,66 @@ export function GachaScreen() {
                     </div>
                   );
                 })}
+
+                {/* コレクション詳細ポップアップ */}
+                {collectionDetail && (() => {
+                  const card = CARD_DATA[collectionDetail];
+                  if (!card) return null;
+                  const cfg = RC[card.rarity];
+                  const ownedCount = inventoryMap[collectionDetail] ?? 0;
+                  const typeLabels: Record<string, string> = {
+                    drink: '🍺 ドリンク', food: '🍖 フード', chug: '🍻 イッキ',
+                    harassment: '💋 セクハラ', strategy: '🧠 戦略', environment: '🌙 環境', status: '💫 状態',
+                  };
+                  return (
+                    <div className="slide-up" style={{
+                      position: 'sticky', bottom: 0,
+                      marginTop: 8, padding: '14px 16px',
+                      background: 'rgba(8,4,0,.96)',
+                      border: `1px solid ${cfg.border}`, borderRadius: 10,
+                      boxShadow: `0 0 28px ${cfg.glow}, 0 -4px 20px rgba(0,0,0,.8)`,
+                    }}>
+                      <button className="gbtn" onClick={() => setCollectionDetail(null)} style={{
+                        position: 'absolute', top: 6, right: 8, background: 'none',
+                        border: 'none', color: '#555', fontSize: 16, padding: 4,
+                      }}>✕</button>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        <div style={{
+                          fontSize: 36, flexShrink: 0, width: 52, height: 52,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: 'rgba(0,0,0,.3)', borderRadius: 10,
+                          border: `1px solid ${cfg.border}44`,
+                        }}>{card.emoji}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 15, color: '#ddd', fontWeight: 700 }}>{card.name}</span>
+                            <span style={{
+                              fontSize: 8, padding: '2px 7px', borderRadius: 4,
+                              background: 'rgba(0,0,0,.5)', border: `1px solid ${cfg.border}`, color: cfg.text,
+                            }}>{cfg.label}</span>
+                            <span style={{
+                              fontSize: 8, padding: '2px 6px', borderRadius: 4,
+                              background: 'rgba(0,0,0,.3)', color: '#888',
+                            }}>{typeLabels[card.type] ?? card.type}</span>
+                          </div>
+                          <div style={{
+                            fontSize: 11, color: '#aa8866', lineHeight: 1.8,
+                            borderLeft: `2px solid ${cfg.border}44`, paddingLeft: 10,
+                            marginBottom: 6,
+                          }}>{card.description}</div>
+                          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 10, color: '#5a3a18' }}>
+                              所持: <span style={{ color: cfg.menuColor, fontWeight: 700 }}>{ownedCount}</span>/3
+                            </span>
+                            {card.damage != null && <span style={{ fontSize: 9, color: '#cc6644' }}>DMG {card.damage}</span>}
+                            {card.heal != null && <span style={{ fontSize: 9, color: '#66aa66' }}>回復 {card.heal}</span>}
+                            <span style={{ fontSize: 9, color: '#777' }}>価格 🪙{card.price}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -1203,7 +1478,6 @@ export function GachaScreen() {
               </div>
             )}
           </div>
-        )}
 
       </div>{/* END MAIN GRID */}
     </div>
