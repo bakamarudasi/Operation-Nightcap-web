@@ -91,54 +91,54 @@
 /* --- タイプ別カラー --- */
 /* ドリンク（攻撃）: 赤系 */
 .card-drink {
-  border-color: #8b3333 !important;
-  background: linear-gradient(180deg, #3d1a1a 0%, #2a1010 100%) !important;
+  border-color: var(--type-drink-border-solid) !important;
+  background: var(--type-drink-bg-solid) !important;
 }
 .card-drink:hover,
 .card-drink.selected {
   border-color: var(--lantern-bright) !important;
   box-shadow:
     0 8px 20px rgba(0, 0, 0, 0.4),
-    0 0 12px rgba(230, 57, 70, 0.25) !important;
+    0 0 12px var(--type-drink-glow) !important;
 }
 
 /* フード（防御）: 緑系 */
 .card-food {
-  border-color: #4a6b35 !important;
-  background: linear-gradient(180deg, #1f2e18 0%, #151f10 100%) !important;
+  border-color: var(--type-food-border-solid) !important;
+  background: var(--type-food-bg-solid) !important;
 }
 .card-food:hover,
 .card-food.selected {
   border-color: var(--sake-green) !important;
   box-shadow:
     0 8px 20px rgba(0, 0, 0, 0.4),
-    0 0 12px rgba(123, 158, 94, 0.25) !important;
+    0 0 12px var(--type-food-glow) !important;
 }
 
 /* 一気飲み（ハイリスク）: 紫系 */
 .card-chug {
-  border-color: #6b3a7a !important;
-  background: linear-gradient(180deg, #2a1530 0%, #1a0d20 100%) !important;
+  border-color: var(--type-chug-border-solid) !important;
+  background: var(--type-chug-bg-solid) !important;
 }
 .card-chug:hover,
 .card-chug.selected {
   border-color: #b060d0 !important;
   box-shadow:
     0 8px 20px rgba(0, 0, 0, 0.4),
-    0 0 12px rgba(176, 96, 208, 0.25) !important;
+    0 0 12px var(--type-chug-glow) !important;
 }
 
 /* セクハラ（特殊）: ピンク系 */
 .card-harassment {
-  border-color: #8b3060 !important;
-  background: linear-gradient(180deg, #3d1530 0%, #2a0d20 100%) !important;
+  border-color: var(--type-harassment-border-solid) !important;
+  background: var(--type-harassment-bg-solid) !important;
 }
 .card-harassment:hover,
 .card-harassment.selected {
   border-color: #ff4488 !important;
   box-shadow:
     0 8px 20px rgba(0, 0, 0, 0.4),
-    0 0 12px rgba(255, 68, 136, 0.25) !important;
+    0 0 12px var(--type-harassment-glow) !important;
 }
 
 /* --- カード出し演出 --- */

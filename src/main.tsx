@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './styles/main.css';
+import './styles/_variables.css';
 import './styles/cards.css';
 import './styles/battle.css';
 import './styles/shop.css';
