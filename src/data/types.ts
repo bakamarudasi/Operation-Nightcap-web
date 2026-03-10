@@ -53,6 +53,16 @@ export interface CardDef {
   cleanseSelf?: number;
   /** dot除去 */
   cleanseDot?: boolean;
+  /** 双方に付与するバフ（環境カード等） */
+  applyBothBuffs?: Buff[];
+  /** 相手の手札を公開する */
+  revealHand?: boolean;
+  /** 酔いLvを入れ替える */
+  swapDrunk?: boolean;
+  /** 相手の最高dmgカードを破棄 */
+  discardHighest?: boolean;
+  /** 相手の次ラウンド手札をランダム差替 */
+  triggerRumor?: boolean;
   description: string;
   rarity: number;
   price: number;

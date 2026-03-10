@@ -496,248 +496,112 @@ export const BattleEngine = {
     return result;
   },
 
-  /** 戦略・環境・状態異常カードの解決 */
+  /**
+   * 戦略・環境・状態異常カードの汎用解決
+   * switchなし。カードデータのフラグを読んで動的に処理する。
+   * 新カード追加時はカードデータ定義だけでOK。
+   */
   resolveUtilityCard(card: CardDef, result: ExtendedResult, user: 'player' | 'opponent', battle: BattleState): void {
     const isPlayer = user === 'player';
+    const selfBuffs = isPlayer ? result.newPlayerBuffs! : result.newOpponentBuffs!;
+    const targetBuffs = isPlayer ? result.newOpponentBuffs! : result.newPlayerBuffs!;
 
-    switch (card.effect) {
-      // === 戦略カード ===
-      case 'rumor':
-        result.rumorActive = true;
-        if (isPlayer) {
-          result.messages.push(`${card.emoji} ${card.name}！相手の次の手札が乱される！`);
-        } else {
-          result.messages.push(`${card.emoji} 噂話が飛び交う…次の手札が乱された！`);
-        }
-        break;
+    result.messages.push(`${card.emoji} ${card.name}！`);
 
-      case 'excuse':
-        if (isPlayer) {
-          result.newPlayerBuffs!.push({ id: 'excuse', duration: 2, source: card.id });
-          result.messages.push(`${card.emoji} 「${card.name}」…次のセクハラの条件が緩和！`);
-        } else {
-          result.newOpponentBuffs!.push({ id: 'excuse', duration: 2, source: card.id });
-          result.messages.push(`${card.emoji} 相手が言い訳を始めた…`);
-        }
-        break;
+    // --- フラグ駆動の効果処理 ---
 
-      case 'distract':
-        if (isPlayer) {
-          result.revealedHand = [...battle.opponentHand];
-          result.messages.push(`${card.emoji} ${card.name}！相手の手札が見えた！`);
-        } else {
-          result.messages.push(`${card.emoji} 話題を逸らされた…手の内が見られている！`);
-        }
-        // カードにapplyBuffsがある場合（テキサスのポーカーフェイス等）
-        if (card.applyBuffs) {
-          const target = isPlayer ? result.newOpponentBuffs! : result.newPlayerBuffs!;
-          target.push(...card.applyBuffs);
-          for (const buff of card.applyBuffs) {
-            const label = buffLabel(buff);
-            if (label) result.messages.push(label);
-          }
-        }
-        break;
+    // 手札公開
+    if (card.revealHand) {
+      if (isPlayer) {
+        result.revealedHand = [...battle.opponentHand];
+        result.messages.push(`相手の手札が見えた！`);
+      } else {
+        result.messages.push(`手の内が見られている…！`);
+      }
+    }
 
-      case 'reveal_and_debuff':
-        // ジェシカの内部情報: 手札公開 + デバフ付与
-        if (isPlayer) {
-          result.revealedHand = [...battle.opponentHand];
-          result.messages.push(`${card.emoji} ${card.name}！相手の手札が見えた！`);
-          if (card.applyBuffs) {
-            result.newOpponentBuffs!.push(...card.applyBuffs);
-            for (const buff of card.applyBuffs) {
-              const label = buffLabel(buff);
-              if (label) result.messages.push(label);
-            }
-          }
-        } else {
-          result.messages.push(`${card.emoji} ${card.name}…情報が漏れた！`);
-          if (card.applyBuffs) {
-            result.newPlayerBuffs!.push(...card.applyBuffs);
-            for (const buff of card.applyBuffs) {
-              const label = buffLabel(buff);
-              if (label) result.messages.push(label);
-            }
-          }
-        }
-        break;
+    // 噂話（次ラウンド手札差替）
+    if (card.triggerRumor) {
+      result.rumorActive = true;
+      result.messages.push(isPlayer ? `相手の次の手札が乱される！` : `次の手札が乱された！`);
+    }
 
-      case 'discard_highest':
-        // スワイヤーの命令: 相手の最高dmgカードを破棄
-        if (isPlayer) {
-          result.discardHighest = true;
-          result.messages.push(`${card.emoji} ${card.name}！相手の最強カードが没収された！`);
-        } else {
-          // 相手が使った場合、プレイヤーの手札から破棄（ストア側で処理）
-          result.messages.push(`${card.emoji} ${card.name}…最強のカードが奪われた！`);
-        }
-        break;
+    // 酔いLv入れ替え
+    if (card.swapDrunk) {
+      result.swapDrunk = true;
+      result.messages.push(`酔いレベルが入れ替わった！`);
+    }
 
-      case 'swap_drunk':
-        // プロジェクト・レッドの奇襲: 酔いLv入れ替え
-        result.swapDrunk = true;
-        result.messages.push(`${card.emoji} ${card.name}！酔いレベルが入れ替わった！`);
-        break;
+    // 最高dmgカード破棄
+    if (card.discardHighest) {
+      result.discardHighest = true;
+      result.messages.push(isPlayer ? `相手の最強カードが没収された！` : `最強のカードが奪われた！`);
+    }
 
-      // === 環境カード ===
-      case 'karaoke':
-        {
-          const dur = card.duration ?? 3;
-          result.newPlayerBuffs!.push({ id: 'karaoke', duration: dur, value: 1, source: card.id });
-          result.newOpponentBuffs!.push({ id: 'karaoke', duration: dur, value: 1, source: card.id });
-          result.messages.push(`${card.emoji} ${card.name}突入！${dur}ターン、全ドリンクのダメージ+1！`);
-        }
-        break;
+    // 手札破棄（ランダム）
+    if (card.discardEnemyHand) {
+      result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
+      result.messages.push(`相手の手札${card.discardEnemyHand}枚が消える…`);
+    }
 
-      case 'lastorder':
-        {
-          if (isPlayer) {
-            result.newPlayerBuffs!.push({ id: 'karaoke', duration: 1, value: 2, source: card.id });
-          } else {
-            result.newOpponentBuffs!.push({ id: 'karaoke', duration: 1, value: 2, source: card.id });
-          }
-          result.messages.push(`${card.emoji} ${card.name}！閉店間近…次のターン、全力勝負！（ドリンクダメージ+2）`);
-        }
-        break;
+    // maxRounds減少
+    if (card.reduceMaxRounds) {
+      result.reduceMaxRounds = card.reduceMaxRounds;
+      result.messages.push(`残りラウンドが${card.reduceMaxRounds}減少！決着を急げ！`);
+    }
 
-      case 'dimlight':
-        {
-          const dur = card.duration ?? 2;
-          result.newPlayerBuffs!.push({ id: 'dimlight', duration: dur, source: card.id });
-          result.newOpponentBuffs!.push({ id: 'dimlight', duration: dur, source: card.id });
-          result.messages.push(`${card.emoji} ${card.name}…${dur}ターン、暗がりの中ではセクハラの条件が緩和…`);
-        }
-        break;
+    // 相手にバフ/デバフ付与
+    if (card.applyBuffs) {
+      targetBuffs.push(...card.applyBuffs);
+      for (const buff of card.applyBuffs) {
+        const label = buffLabel(buff);
+        if (label) result.messages.push(label);
+      }
+    }
 
-      case 'rhodes_party':
-        // ロドス艦内パーティ: 3T双方drink dmg+1（karaokeと同等）
-        {
-          const dur = card.duration ?? 3;
-          result.newPlayerBuffs!.push({ id: 'karaoke', duration: dur, value: 1, source: card.id });
-          result.newOpponentBuffs!.push({ id: 'karaoke', duration: dur, value: 1, source: card.id });
-          result.messages.push(`${card.emoji} ${card.name}開催！${dur}ターン、全ドリンクのダメージ+1！`);
-        }
-        break;
+    // 自分にバフ付与
+    if (card.applySelfBuffs) {
+      selfBuffs.push(...card.applySelfBuffs);
+      for (const buff of card.applySelfBuffs) {
+        const label = buffLabel(buff);
+        if (label) result.messages.push(label);
+      }
+    }
 
-      case 'penguin_vip':
-        // ペンギン急便VIPルーム: 3T harassment必要Lv-1 & alone
-        {
-          const dur = card.duration ?? 3;
-          result.newPlayerBuffs!.push({ id: 'dimlight', duration: dur, source: card.id });
-          result.newOpponentBuffs!.push({ id: 'dimlight', duration: dur, source: card.id });
-          result.newPlayerBuffs!.push({ id: 'alone', duration: dur, source: card.id });
-          result.newOpponentBuffs!.push({ id: 'alone', duration: dur, source: card.id });
-          result.messages.push(`${card.emoji} ${card.name}に移動！${dur}ターン、二人きりでセクハラの条件緩和＆ダメージ2倍！`);
-        }
-        break;
+    // 双方にバフ付与（環境効果）
+    if (card.applyBothBuffs) {
+      for (const buff of card.applyBothBuffs) {
+        result.newPlayerBuffs!.push({ ...buff, source: card.id });
+        result.newOpponentBuffs!.push({ ...buff, source: card.id });
+        const label = buffLabel(buff);
+        if (label) result.messages.push(label);
+      }
+    }
 
-      case 'babel_requiem':
-        // バベルの残響: 3T全カードdmg+1 & 双方dot 1/T
-        {
-          const dur = card.duration ?? 3;
-          // カードに設定されたapplyBuffsとapplySelfBuffsを使用
-          if (card.applyBuffs) {
-            result.newOpponentBuffs!.push(...card.applyBuffs);
-          }
-          if (card.applySelfBuffs) {
-            result.newPlayerBuffs!.push(...card.applySelfBuffs);
-          }
-          // 相手にもall_dmg_upを付与
-          result.newOpponentBuffs!.push({ id: 'all_dmg_up', duration: dur, value: 1, source: card.id });
-          result.messages.push(`${card.emoji} ${card.name}…テレジアの記憶が蘇る。${dur}ターン、全ダメージ+1＆双方に持続ダメージ！`);
-        }
-        break;
+    // ドレイン（自分回復）
+    if (card.selfHeal) {
+      if (isPlayer) {
+        result.playerHeal += card.selfHeal;
+      } else {
+        result.opponentHeal += card.selfHeal;
+      }
+      result.messages.push(`💚 ドレイン効果！${card.selfHeal}回復！`);
+    }
 
-      case 'contingency_contract':
-        // 危機契約発令: maxRounds減少
-        {
-          const reduction = card.reduceMaxRounds ?? 3;
-          result.reduceMaxRounds = reduction;
-          result.messages.push(`${card.emoji} ${card.name}！残りラウンドが${reduction}減少！決着を急げ！`);
-        }
-        break;
+    // 自傷ダメージ
+    if (card.selfDamage) {
+      if (isPlayer) {
+        result.playerDamage += card.selfDamage;
+      } else {
+        result.opponentDamage += card.selfDamage;
+      }
+      result.messages.push(`💉 副作用…${card.selfDamage}ダメージ！`);
+    }
 
-      // === 状態異常カード ===
-      case 'tipsy':
-        // 相手をほろ酔い状態に（受けるドリンクダメージ1.5倍）
-        {
-          // カードにapplyBuffsがある場合はそれを使用（エイヤの噴火カクテル等）
-          if (card.applyBuffs && card.applyBuffs.length > 0) {
-            const target = isPlayer ? result.newOpponentBuffs! : result.newPlayerBuffs!;
-            target.push(...card.applyBuffs);
-          } else {
-            if (isPlayer) {
-              result.newOpponentBuffs!.push({ id: 'tipsy', duration: 3, value: 1.5, source: card.id });
-            } else {
-              result.newPlayerBuffs!.push({ id: 'tipsy', duration: 3, value: 1.5, source: card.id });
-            }
-          }
-
-          if (isPlayer) {
-            result.messages.push(`${card.emoji} ${card.name}！相手はほろ酔いに…ドリンクダメージ1.5倍！`);
-          } else {
-            result.messages.push(`${card.emoji} ほろ酔い状態に…ドリンクが効きやすくなった！`);
-          }
-
-          // selfHeal（ワルファリンの一噛み: ドレイン）
-          if (card.selfHeal) {
-            if (isPlayer) {
-              result.playerHeal += card.selfHeal;
-              result.messages.push(`🧛 ドレイン効果！酔い${card.selfHeal}回復！`);
-            } else {
-              result.opponentHeal += card.selfHeal;
-              result.messages.push(`🧛 相手がドレイン！${card.selfHeal}回復！`);
-            }
-          }
-
-          // applySelfBuffs（アーク注射: self_atk_up）
-          if (card.applySelfBuffs) {
-            const self = isPlayer ? result.newPlayerBuffs! : result.newOpponentBuffs!;
-            self.push(...card.applySelfBuffs);
-            for (const buff of card.applySelfBuffs) {
-              const label = buffLabel(buff);
-              if (label) result.messages.push(label);
-            }
-          }
-
-          // selfDamage（アーク注射: 自傷）
-          if (card.selfDamage) {
-            if (isPlayer) {
-              result.playerDamage += card.selfDamage;
-              result.messages.push(`💉 副作用…自分に酔い${card.selfDamage}ダメージ！`);
-            } else {
-              result.opponentDamage += card.selfDamage;
-            }
-          }
-        }
-        break;
-
-      case 'blush':
-        if (isPlayer) {
-          result.newOpponentBuffs!.push({ id: 'blush', duration: 3, value: 1, source: card.id });
-          result.messages.push(`${card.emoji} ${card.name}！相手は動揺状態に…セクハラが効きやすい！`);
-        } else {
-          result.newPlayerBuffs!.push({ id: 'blush', duration: 3, value: 1, source: card.id });
-          result.messages.push(`${card.emoji} 顔が赤い…動揺してセクハラが効きやすくなった！`);
-        }
-        break;
-
-      case 'alone':
-        // マンティコアの隠密はaloneだがstealth付与
-        {
-          if (card.applySelfBuffs) {
-            // stealth持ちの場合（マンティコア）
-            const self = isPlayer ? result.newPlayerBuffs! : result.newOpponentBuffs!;
-            self.push(...card.applySelfBuffs);
-            result.messages.push(`${card.emoji} ${card.name}…姿が消えた！セクハラを回避！`);
-          } else {
-            result.newPlayerBuffs!.push({ id: 'alone', duration: 2, source: card.id });
-            result.newOpponentBuffs!.push({ id: 'alone', duration: 2, source: card.id });
-            result.messages.push(`${card.emoji} ${card.name}…2ターン、ハラスメントのダメージが2倍に！`);
-          }
-        }
-        break;
+    // 手札汚染
+    if (card.corruptHand) {
+      result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
+      result.messages.push(`🔥 手札${card.corruptHand}枚が発情状態に…！`);
     }
   },
 

@@ -45,51 +45,51 @@ export const CARD_DATA: Record<string, CardDef> = {
   // === 戦略・妨害カード ===
   rumor: {
     id: 'rumor', name: '龍門の噂話', emoji: '🗣️', type: 'strategy',
-    effect: 'rumor',
+    triggerRumor: true,
     description: '「ねえ聞いた？」相手の次に出すカードをランダムに差し替える。ペンギン急便の情報網を使った情報戦', rarity: 3, price: 600
   },
   excuse: {
     id: 'excuse', name: '「酔ってるから」', emoji: '🙈', type: 'strategy',
-    effect: 'excuse',
+    applySelfBuffs: [{ id: 'excuse', duration: 2 }],
     description: 'ハラスメントカードの発動必要酔いLvを1下げる。「これは任務の一環です」', rarity: 4, price: 900
   },
   distract: {
     id: 'distract', name: '話題転換', emoji: '👁️', type: 'strategy',
-    effect: 'distract',
+    revealHand: true,
     description: '相手の手札を全て確認する。「そういえば、ウルサスのこと聞きましたよ」', rarity: 2, price: 500
   },
 
   // === 環境変化カード ===
   karaoke: {
     id: 'karaoke', name: 'カラオケ2次会', emoji: '🎤', type: 'environment',
-    effect: 'karaoke', duration: 3,
+    applyBothBuffs: [{ id: 'karaoke', duration: 3, value: 1 }],
     description: '3ターン、全ドリンクのダメージ+1。「まだ終わりませんよ、ドクター」', rarity: 3, price: 700
   },
   lastorder: {
     id: 'lastorder', name: 'ラストオーダー', emoji: '🔔', type: 'environment',
-    effect: 'lastorder',
+    applySelfBuffs: [{ id: 'karaoke', duration: 1, value: 2 }],
     description: '次のターンのみ手札を全て使用可能。「閉店前の最後のチャンスです」', rarity: 4, price: 1000
   },
   dimlight: {
     id: 'dimlight', name: '照明を落とす', emoji: '🕯️', type: 'environment',
-    effect: 'dimlight', duration: 2,
+    applyBothBuffs: [{ id: 'dimlight', duration: 2 }],
     description: '2ターン、全ハラスメントカードの必要酔いLvを1下げる。「…暗くしたんですか」', rarity: 3, price: 800
   },
 
   // === 状態異常カード ===
   tipsy: {
     id: 'tipsy', name: 'ほろ酔い状態', emoji: '😳', type: 'status',
-    effect: 'tipsy',
+    applyBuffs: [{ id: 'tipsy', duration: 3, value: 1.5 }],
     description: '相手をほろ酔い状態にする。ほろ酔い時は受けるドリンクダメージが1.5倍になる', rarity: 3, price: 750
   },
   blush: {
     id: 'blush', name: '顔が赤い', emoji: '😶‍🌫️', type: 'status',
-    effect: 'blush',
+    applyBuffs: [{ id: 'blush', duration: 3, value: 1 }],
     description: '相手を動揺状態にする。動揺中はハラスメントカードのdrunkDamageが+1される', rarity: 4, price: 1100
   },
   alone: {
     id: 'alone', name: '二人きり', emoji: '🌙', type: 'status',
-    effect: 'alone',
+    applyBothBuffs: [{ id: 'alone', duration: 2 }],
     description: '2ターン、場の状態を「二人きり」にする。この間ハラスメントカードのダメージが2倍', rarity: 5, price: 2000
   },
 
@@ -230,23 +230,23 @@ export const CARD_DATA: Record<string, CardDef> = {
   // === アークナイツ戦略系（妨害・情報） ===
   jessica_intel: {
     id: 'jessica_intel', name: 'ジェシカの内部情報', emoji: '🐱', type: 'strategy',
-    effect: 'reveal_and_debuff',
+    revealHand: true,
     applyBuffs: [{ id: 'atk_down', duration: 1, value: 0.5 }],
     description: '「あ、あの…これ見ちゃったんですけど…」相手の手札を全て確認 + 1T攻撃半減', rarity: 2, price: 400
   },
   swire_order: {
     id: 'swire_order', name: 'スワイヤーの命令', emoji: '📋', type: 'strategy',
-    effect: 'discard_highest',
+    discardHighest: true,
     description: '「あたしに逆らう気？」相手の最高dmgカードを破棄', rarity: 3, price: 700
   },
   projekt_red_swap: {
     id: 'projekt_red_swap', name: 'プロジェクト・レッドの奇襲', emoji: '🐺', type: 'strategy',
-    effect: 'swap_drunk',
+    swapDrunk: true,
     description: '一瞬でグラスが入れ替わる。自分と相手の酔いLvを入れ替え', rarity: 4, price: 1100
   },
   texas_bluff: {
     id: 'texas_bluff', name: 'テキサスのポーカーフェイス', emoji: '🃏', type: 'strategy',
-    effect: 'distract',
+    revealHand: true,
     applyBuffs: [{ id: 'negate_next', duration: 1 }],
     description: '「…ハッタリだと思うか？」相手の次のカード効果を無効化', rarity: 3, price: 650
   },
@@ -254,50 +254,44 @@ export const CARD_DATA: Record<string, CardDef> = {
   // === アークナイツ環境系（場の変化） ===
   rhodes_party: {
     id: 'rhodes_party', name: 'ロドス艦内パーティ', emoji: '🎉', type: 'environment',
-    effect: 'rhodes_party', duration: 3,
+    applyBothBuffs: [{ id: 'karaoke', duration: 3, value: 1 }],
     description: '3T: 双方drink dmg+1。周年記念の宴会。全員が飲むペースを上げる', rarity: 3, price: 700
   },
   penguin_vip: {
     id: 'penguin_vip', name: 'ペンギン急便VIPルーム', emoji: '🚪', type: 'environment',
-    effect: 'penguin_vip', duration: 3,
+    applyBothBuffs: [{ id: 'dimlight', duration: 3 }, { id: 'alone', duration: 3 }],
     description: '3T: harassment必要Lv-1 & 二人きり。「さ、二人きりだよ」', rarity: 4, price: 1000
   },
   babel_requiem: {
     id: 'babel_requiem', name: 'バベルの残響', emoji: '💮', type: 'environment',
-    effect: 'babel_requiem', duration: 3,
-    applyBuffs: [{ id: 'dot', duration: 3, value: 1 }],
-    applySelfBuffs: [{ id: 'dot', duration: 3, value: 1 }, { id: 'all_dmg_up', duration: 3, value: 1 }],
+    applyBothBuffs: [{ id: 'dot', duration: 3, value: 1 }, { id: 'all_dmg_up', duration: 3, value: 1 }],
     description: 'テレジアの記憶が蘇る。場の空気が重く、酒が深く染みる。3T: 全カードdmg+1 & 双方dot 1/T', rarity: 5, price: 1500
   },
   contingency_contract: {
     id: 'contingency_contract', name: '危機契約発令', emoji: '⚠️', type: 'environment',
-    effect: 'contingency_contract', reduceMaxRounds: 3,
+    reduceMaxRounds: 3,
     description: '「作戦時間短縮」残りラウンドが3減る。決着を急げ', rarity: 5, price: 1200
   },
 
   // === アークナイツ状態異常系 ===
   warfarin_bite: {
     id: 'warfarin_bite', name: 'ワルファリンの一噛み', emoji: '🧛', type: 'status',
-    effect: 'tipsy',
     applyBuffs: [{ id: 'dot', duration: 3, value: 1 }],
     selfHeal: 2,
     description: '「少しだけ…いただくわ」dot 1dmg x 3T + 自分heal: 2。吸血鬼ドクターの特権', rarity: 4, price: 900
   },
   eyja_eruption: {
     id: 'eyja_eruption', name: 'エイヤの噴火カクテル', emoji: '🌋', type: 'status',
-    effect: 'tipsy',
     applyBuffs: [{ id: 'tipsy', duration: 2 }],
     description: '火山のように熱い一杯。体温が上がって酔いが回りやすくなる', rarity: 3, price: 650
   },
   manticore_stealth: {
     id: 'manticore_stealth', name: 'マンティコアの隠密', emoji: '👻', type: 'status',
-    effect: 'alone',
     applySelfBuffs: [{ id: 'stealth', duration: 2 }],
     description: '「…見えない、から」2T: 相手のharassmentを無効化', rarity: 4, price: 850
   },
   aak_injection: {
     id: 'aak_injection', name: 'アークの実験注射', emoji: '💉', type: 'status',
-    effect: 'tipsy',
     applySelfBuffs: [{ id: 'self_atk_up', duration: 2, value: 1.5 }],
     selfDamage: 1,
     description: '「大丈夫大丈夫、たぶん」自分2T drink dmg x1.5 + self 1dmg', rarity: 4, price: 900
