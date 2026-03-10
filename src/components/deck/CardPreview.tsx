@@ -19,6 +19,13 @@ const BUFF_LABELS: Record<string, string> = {
   karaoke: 'カラオケ',
   dimlight: '薄暗い照明',
   excuse: '言い訳',
+  drink_dmg_half: '被ドリンク半減',
+  next_drink_boost: '次ドリンク強化',
+  next_food_boost: '次フード強化',
+  negate_next: '効果無効化',
+  stealth: '隠密',
+  self_atk_up: '攻撃力アップ',
+  all_dmg_up: '全ダメージ増加',
 };
 
 export function CardPreview({ card, pos }: CardPreviewProps) {
@@ -58,6 +65,14 @@ export function CardPreview({ card, pos }: CardPreviewProps) {
           <span className="buff-label">自己:</span>
           {card.applySelfBuffs.map((b, i) => (
             <span key={i} className="buff-tag self-buff">{BUFF_LABELS[b.id] ?? b.id}{b.duration > 0 ? ` ${b.duration}T` : ''}</span>
+          ))}
+        </div>
+      )}
+      {card.applyBothBuffs && card.applyBothBuffs.length > 0 && (
+        <div className="card-preview-buffs">
+          <span className="buff-label">環境:</span>
+          {card.applyBothBuffs.map((b, i) => (
+            <span key={i} className="buff-tag env-buff">{BUFF_LABELS[b.id] ?? b.id}{b.duration > 0 ? ` ${b.duration}T` : ''}</span>
           ))}
         </div>
       )}

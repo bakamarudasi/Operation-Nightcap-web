@@ -47,23 +47,38 @@ const BattleEngine = {
     const result = {
       playerCard: pCard,
       opponentCard: oCard,
-      playerDamage: 0,    // プレイヤーが受けたダメージ
-      opponentDamage: 0,  // 相手が受けたダメージ
+      playerDamage: 0,
+      opponentDamage: 0,
       playerHeal: 0,
       opponentHeal: 0,
       messages: [],
       cgEvent: null,
       instantWin: false,
-      spillNullified: false
+      spillNullified: false,
+      swapDrunk: false,
+      reduceMaxRounds: 0,
     };
 
     // こぼしが前のラウンドで使われた場合は相手カード無効
     if (b.spillActive) {
       b.spillActive = false;
-      // こぼしはもう処理済み、ここでは特に何もしない
     }
 
-    // === 一気飲み系カード処理（先に処理、相手カード関係なし） ===
+    // === 戦略・環境・状態異常カード処理 ===
+    if (pCard.type === 'strategy' || pCard.type === 'environment' || pCard.type === 'status') {
+      this.resolveUtilityCard(pCard, result, 'player');
+    }
+    if (oCard.type === 'strategy' || oCard.type === 'environment' || oCard.type === 'status') {
+      this.resolveUtilityCard(oCard, result, 'opponent');
+    }
+    // 両方ユーティリティなら終了
+    if ((pCard.type === 'strategy' || pCard.type === 'environment' || pCard.type === 'status') &&
+        (oCard.type === 'strategy' || oCard.type === 'environment' || oCard.type === 'status')) {
+      this.applyDamageAndHeal(result);
+      return result;
+    }
+
+    // === 一気飲み系カード処理 ===
     if (pCard.type === 'chug') {
       return this.resolveChugCard(pCard, oCard, result, 'player');
     }
@@ -119,6 +134,58 @@ const BattleEngine = {
   },
 
   /**
+   * 戦略・環境・状態異常カードの解決
+   */
+  resolveUtilityCard(card, result, user) {
+    const isPlayer = user === 'player';
+    switch (card.effect) {
+      case 'rumor':
+        result.messages.push(`${card.emoji} ${card.name}！${isPlayer ? '相手の次の手札が乱される！' : '次の手札が乱された！'}`);
+        break;
+      case 'distract':
+      case 'reveal_and_debuff':
+        result.messages.push(`${card.emoji} ${card.name}！${isPlayer ? '相手の手札が見えた！' : '手の内が見られた！'}`);
+        break;
+      case 'discard_highest':
+        result.messages.push(`${card.emoji} ${card.name}！${isPlayer ? '相手の最強カードが没収された！' : '最強カードが奪われた！'}`);
+        break;
+      case 'swap_drunk':
+        result.swapDrunk = true;
+        result.messages.push(`${card.emoji} ${card.name}！酔いレベルが入れ替わった！`);
+        break;
+      case 'karaoke':
+      case 'rhodes_party':
+        result.messages.push(`${card.emoji} ${card.name}突入！ドリンクのダメージ+1！`);
+        break;
+      case 'lastorder':
+        result.messages.push(`${card.emoji} ${card.name}！次のターン全力勝負！`);
+        break;
+      case 'dimlight':
+        result.messages.push(`${card.emoji} ${card.name}…セクハラの条件が緩和…`);
+        break;
+      case 'penguin_vip':
+        result.messages.push(`${card.emoji} ${card.name}に移動！二人きり＆セクハラ条件緩和！`);
+        break;
+      case 'babel_requiem':
+        result.messages.push(`${card.emoji} ${card.name}…全ダメージ+1＆双方に持続ダメージ！`);
+        break;
+      case 'contingency_contract':
+        result.reduceMaxRounds = card.reduceMaxRounds || 3;
+        result.messages.push(`${card.emoji} ${card.name}！残りラウンドが${result.reduceMaxRounds}減少！`);
+        break;
+      case 'tipsy':
+        result.messages.push(`${card.emoji} ${card.name}！${isPlayer ? '相手はほろ酔いに…' : 'ほろ酔い状態に…'}`);
+        break;
+      case 'blush':
+        result.messages.push(`${card.emoji} ${card.name}！${isPlayer ? '相手は動揺状態に…' : '動揺してしまった…'}`);
+        break;
+      case 'alone':
+        result.messages.push(`${card.emoji} ${card.name}…セクハラのダメージが2倍に！`);
+        break;
+    }
+  },
+
+  /**
    * 一気飲みカード処理
    */
   resolveChugCard(chugCard, otherCard, result, chugUser) {
@@ -128,11 +195,11 @@ const BattleEngine = {
       if (chugUser === 'player') {
         result.opponentDamage = chugCard.enemyDamage;
         result.playerDamage = chugCard.selfDamage;
-        result.messages.push(`🍻 一気飲み！相手に${chugCard.enemyDamage}ダメージ！自分にも${chugCard.selfDamage}ダメージ！`);
+        result.messages.push(`🍻 ${chugCard.name}！相手に${chugCard.enemyDamage}ダメージ！自分にも${chugCard.selfDamage}ダメージ！`);
       } else {
         result.playerDamage = chugCard.enemyDamage;
         result.opponentDamage = chugCard.selfDamage;
-        result.messages.push(`🍻 相手が一気飲み！${chugCard.enemyDamage}ダメージを受けた！`);
+        result.messages.push(`🍻 相手の${chugCard.name}！${chugCard.enemyDamage}ダメージを受けた！`);
       }
     }
     else if (chugCard.effect === 'toast') {
@@ -144,7 +211,6 @@ const BattleEngine = {
       } else {
         result.playerDamage = chugCard.enemyDamage;
         result.opponentDamage = chugCard.selfDamage;
-        // AIが乾杯強制を使った場合、プレイヤーに影響（簡略化：手札減少なし）
         result.messages.push(`🥂 相手が乾杯強制！${chugCard.enemyDamage}ダメージ！`);
       }
     }
@@ -155,6 +221,27 @@ const BattleEngine = {
         result.messages.push('🫗 こぼし！相手のカードを無効化！（次のラウンド手札3枚）');
       } else {
         result.messages.push('🫗 相手がこぼし！カードが無効化された！');
+      }
+    }
+    else if (chugCard.effect === 'roulette') {
+      // ロドス深夜の闇鍋酒: 50/50ダメージ
+      const roll = Math.random();
+      if (roll < 0.5) {
+        if (chugUser === 'player') {
+          result.opponentDamage = 4;
+          result.messages.push(`🎰 ${chugCard.name}…大当たり！相手に4ダメージ！`);
+        } else {
+          result.playerDamage = 4;
+          result.messages.push(`🎰 相手の${chugCard.name}…大当たり！4ダメージを受けた！`);
+        }
+      } else {
+        if (chugUser === 'player') {
+          result.playerDamage = 3;
+          result.messages.push(`🎰 ${chugCard.name}…ハズレ！自分に3ダメージ！`);
+        } else {
+          result.opponentDamage = 3;
+          result.messages.push(`🎰 相手の${chugCard.name}…ハズレ！相手に3自爆ダメージ！`);
+        }
       }
     }
 
@@ -192,13 +279,17 @@ const BattleEngine = {
           }
         }
       } else {
-        // AIがセクハラカードを使うことは通常ない（プレイヤー専用想定）
-        result.messages.push(`${hCard.emoji} 不思議なことが起きた…`);
+        if (cardDef.sanityDamage) {
+          result.playerDamage = cardDef.sanityDamage;
+          result.messages.push(`${hCard.emoji} ${hCard.name}…！理性が${cardDef.sanityDamage}削られた！`);
+        } else if (cardDef.drunkDamage) {
+          result.playerDamage = cardDef.drunkDamage;
+          result.messages.push(`${hCard.emoji} ${hCard.name}…！酔い+${cardDef.drunkDamage}！`);
+        }
       }
     } else {
-      // 不発
       result.messages.push(`${hCard.emoji} ${hCard.name}…不発！条件を満たしていない！`);
-      if (user === 'player') {
+      if (user === 'player' && GameState.currentOpponent) {
         result.messages.push(randomPick(GameState.currentOpponent.battleLines.harassmentFail));
       }
     }
@@ -207,10 +298,10 @@ const BattleEngine = {
     if (!result.spillNullified && otherCard.type === 'drink') {
       const dmg = getCardDamage(otherCard);
       if (user === 'player') {
-        result.playerDamage = dmg;
+        result.playerDamage = (result.playerDamage || 0) + dmg;
         result.messages.push(`相手の${otherCard.emoji}${otherCard.name}で酔い${dmg}ダメージ！`);
       } else {
-        result.opponentDamage = dmg;
+        result.opponentDamage = (result.opponentDamage || 0) + dmg;
       }
     }
 
@@ -223,12 +314,25 @@ const BattleEngine = {
    */
   applyDamageAndHeal(result) {
     const b = GameState.battle;
+
+    // swap_drunk: 酔いLv入れ替え
+    if (result.swapDrunk) {
+      const temp = b.playerDrunk;
+      b.playerDrunk = b.opponentDrunk;
+      b.opponentDrunk = temp;
+    }
+
     // ダメージ適用
     b.playerDrunk = Math.min(10, b.playerDrunk + result.playerDamage);
     b.opponentDrunk = Math.min(10, b.opponentDrunk + result.opponentDamage);
     // 回復適用
     b.playerDrunk = Math.max(0, b.playerDrunk - result.playerHeal);
     b.opponentDrunk = Math.max(0, b.opponentDrunk - result.opponentHeal);
+
+    // maxRounds減少
+    if (result.reduceMaxRounds > 0) {
+      b.maxRounds = Math.max(b.round + 1, b.maxRounds - result.reduceMaxRounds);
+    }
   },
 
   /**

@@ -58,7 +58,7 @@ export const BattleAI = {
     // === 状態異常カード: ハラスメント前の布石 ===
     if (statuses.length > 0 && harassments.length > 0 && myDrunkLevel >= 1) {
       // alone は特に強力 → 積極的に使用
-      const aloneCard = statuses.find(id => CARD_DATA[id]?.effect === 'alone');
+      const aloneCard = statuses.find(id => CARD_DATA[id]?.applyBothBuffs?.some(b => b.id === 'alone'));
       if (aloneCard && !hasBuff(battle.opponentBuffs, 'alone') && Math.random() < 0.7) {
         return aloneCard;
       }
@@ -70,7 +70,7 @@ export const BattleAI = {
     // === 戦略カード ===
     if (strategies.length > 0) {
       // excuse: セクハラカードがある時に先使い
-      const excuseCard = strategies.find(id => CARD_DATA[id]?.effect === 'excuse');
+      const excuseCard = strategies.find(id => CARD_DATA[id]?.applySelfBuffs?.some(b => b.id === 'excuse'));
       if (excuseCard && harassments.length > 0 && !hasBuff(battle.opponentBuffs, 'excuse')) {
         if (Math.random() < 0.5) {
           return excuseCard;
