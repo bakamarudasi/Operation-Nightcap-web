@@ -532,83 +532,6 @@ export function BattleScreen() {
             </div>
           </div>
 
-          {/* 右: ステータスパネル */}
-          <div className="status-panel">
-            <div className="panel-section">
-              <div className="panel-label">ドクター状態</div>
-              <div className={`char-drunk-label ${plDrunkStage.cls}`} style={{ textAlign: 'center', padding: '8px', background: 'rgba(30,18,10,0.4)', borderRadius: '6px', border: '1px solid rgba(80,50,25,0.2)' }}>
-                {plDrunkStage.text}
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <div className="panel-label">酔いレベル</div>
-              <div className="panel-gauge-mini">
-                <div className="panel-gauge-label">
-                  <span className="lbl">酔い度</span>
-                  <span className="val">{battle.playerDrunk} / 10</span>
-                </div>
-                <div className="panel-gauge-track">
-                  <div
-                    className="panel-gauge-fill pl-fill"
-                    style={{ width: `${Math.min(battle.playerDrunk / 10, 1) * 100}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <div className="panel-label">戦績</div>
-              <div className="panel-record">
-                <div className="panel-record-item">
-                  <span className="panel-record-num win-c">{wins}</span>
-                  <span className="panel-record-label">勝ち</span>
-                </div>
-                <div className="panel-record-item">
-                  <span className="panel-record-num lose-c">{losses}</span>
-                  <span className="panel-record-label">負け</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <div className="panel-label">デッキ</div>
-              <div className="panel-deck">
-                <div className="panel-deck-icon">🃏</div>
-                <div className="panel-deck-info">
-                  <div className="panel-deck-label">残りカード</div>
-                  <div className="panel-deck-num">{battle.playerDeckRemaining.length}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <div className="panel-label">相手デッキ</div>
-              <div className="panel-deck">
-                <div className="panel-deck-icon">🎴</div>
-                <div className="panel-deck-info">
-                  <div className="panel-deck-label">残りカード</div>
-                  <div className="panel-deck-num">{battle.opponentDeckRemaining.length}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <div className="panel-label">直前のラウンド</div>
-              <div className="panel-stat">
-                <div className="panel-stat-name">自分</div>
-                <div className="panel-stat-val">{lastRound.pl}</div>
-              </div>
-              <div className="panel-stat">
-                <div className="panel-stat-name">相手</div>
-                <div className="panel-stat-val">{lastRound.op}</div>
-              </div>
-              <div className="panel-stat">
-                <div className="panel-stat-name">結果</div>
-                <div className="panel-stat-val" style={{ color: lastRound.resColor }}>{lastRound.res}</div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* 手札エリア */}
@@ -642,6 +565,34 @@ export function BattleScreen() {
               </div>
             );
           })}
+        </div>
+
+        {/* 下部ステータスバー */}
+        <div className="battle-status-bar">
+          <div className="status-bar-item">
+            <span className="status-bar-label">戦績</span>
+            <span className="status-bar-val">
+              <span className="win-c">{wins}勝</span>
+              <span className="status-bar-sep">/</span>
+              <span className="lose-c">{losses}敗</span>
+            </span>
+          </div>
+          <div className="status-bar-divider" />
+          <div className="status-bar-item">
+            <span className="status-bar-label">🃏 デッキ</span>
+            <span className="status-bar-val">{battle.playerDeckRemaining.length}</span>
+          </div>
+          <div className="status-bar-divider" />
+          <div className="status-bar-item">
+            <span className="status-bar-label">🎴 相手</span>
+            <span className="status-bar-val">{battle.opponentDeckRemaining.length}</span>
+          </div>
+          <div className="status-bar-divider" />
+          <div className="status-bar-item status-bar-lastround">
+            <span className="status-bar-label">前R</span>
+            <span className="status-bar-val" style={{ color: lastRound.resColor }}>{lastRound.res}</span>
+            <span className="status-bar-detail">{lastRound.pl} vs {lastRound.op}</span>
+          </div>
         </div>
       </div>
 
