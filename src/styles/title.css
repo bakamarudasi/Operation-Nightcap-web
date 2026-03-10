@@ -325,120 +325,18 @@
 /* === Title Area === */
 .ts-title-area {
   text-align: center;
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
   opacity: 0;
   animation: tsFadeInUp 1s ease-out 1.2s forwards;
-}
-.ts-title-badges {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  margin-bottom: 1rem;
-}
-.ts-title-badge {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #a02020, #801818);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ts-gold-light);
-  font-family: 'Zen Antique', serif;
-  font-size: 1.2rem;
-  border: 1px solid rgba(240, 212, 138, 0.3);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
-  position: relative;
-}
-.ts-title-badge::before {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  border: 1px solid rgba(240, 212, 138, 0.15);
-}
-
-/* SVG Brush Stroke */
-.ts-title-svg-container {
-  position: relative;
-  width: 420px;
-  height: 90px;
-  margin: 0 auto 0.5rem;
-}
-.ts-title-svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-.ts-title-brush-text {
-  font-family: 'Zen Antique', serif;
-  font-size: 64px;
-  fill: none;
-  stroke: var(--ts-text-warm);
-  stroke-width: 1.5;
-  stroke-dasharray: 600;
-  stroke-dashoffset: 600;
-  letter-spacing: 0.15em;
-}
-.ts-title-brush-fill {
-  font-family: 'Zen Antique', serif;
-  font-size: 64px;
-  fill: var(--ts-text-warm);
-  opacity: 0;
-  letter-spacing: 0.15em;
-  filter: url(#brushTexture);
-}
-.ts-title-brush-shadow {
-  font-family: 'Zen Antique', serif;
-  font-size: 64px;
-  fill: rgba(0,0,0,0.3);
-  opacity: 0;
-  letter-spacing: 0.15em;
-  filter: blur(4px);
-}
-/* Brush animation trigger */
-.brush-animate .ts-title-brush-text {
-  animation: tsBrushStroke 2.5s ease-out forwards;
-}
-.brush-animate .ts-title-brush-fill {
-  animation: tsBrushFillIn 1s ease-out 2s forwards;
-}
-.brush-animate .ts-title-brush-shadow {
-  animation: tsBrushFillIn 1s ease-out 2.2s forwards;
-}
-@keyframes tsBrushStroke {
-  0% { stroke-dashoffset: 600; }
-  100% { stroke-dashoffset: 0; }
-}
-@keyframes tsBrushFillIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-/* Ink splatters */
-.ts-ink-splatter {
-  position: absolute;
-  background: var(--ts-text-warm);
-  border-radius: 50%;
-  opacity: 0;
-  filter: blur(0.5px);
-}
-.brush-animate .ts-ink-splatter {
-  animation: tsSplatAppear 0.3s ease-out forwards;
-}
-@keyframes tsSplatAppear {
-  0% { opacity: 0; transform: scale(0); }
-  60% { opacity: 0.4; transform: scale(1.5); }
-  100% { opacity: 0.15; transform: scale(1); }
 }
 
 .ts-title-sub {
   font-family: 'Shippori Mincho', serif;
-  font-size: 1rem;
+  font-size: 1.2rem;
   color: var(--ts-gold);
   letter-spacing: 0.5em;
   opacity: 0;
-}
-.brush-animate .ts-title-sub {
-  animation: tsFadeInUp 0.8s ease-out 2.8s forwards;
+  animation: tsFadeInUp 0.8s ease-out 1.6s forwards;
 }
 
 /* === Time Indicator === */
@@ -456,7 +354,7 @@
   border-radius: 20px;
   backdrop-filter: blur(8px);
   opacity: 0;
-  animation: tsFadeInUp 0.8s ease-out 3.5s forwards;
+  animation: tsFadeInUp 0.8s ease-out 2.4s forwards;
 }
 .ts-time-dot {
   width: 8px;
@@ -491,7 +389,7 @@
   margin: 0 auto 2.5rem;
   position: relative;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 3s forwards;
+  animation: tsFadeInUp 1s ease-out 1.8s forwards;
 }
 .ts-deco-line::before {
   content: '◆';
@@ -507,12 +405,15 @@
 
 /* === Menu === */
 .ts-menu {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  width: 320px;
+  width: 520px;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 3.2s forwards;
+  animation: tsFadeInUp 1s ease-out 2s forwards;
+}
+.ts-menu-wide {
+  grid-column: 1 / -1;
 }
 .ts-menu-btn {
   position: relative;
@@ -587,7 +488,7 @@
   align-items: center;
   gap: 8px;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 3.4s forwards;
+  animation: tsFadeInUp 1s ease-out 2.2s forwards;
 }
 .ts-currency-icon {
   width: 22px;
@@ -624,7 +525,7 @@
   left: 40px;
   font-size: 2.5rem;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 4s forwards;
+  animation: tsFadeInUp 1s ease-out 2.6s forwards;
   filter: grayscale(0.3) brightness(0.6);
   z-index: 3;
   pointer-events: none;
@@ -635,7 +536,7 @@
   left: 90px;
   font-size: 1.5rem;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 4.2s forwards;
+  animation: tsFadeInUp 1s ease-out 2.8s forwards;
   filter: grayscale(0.3) brightness(0.6);
   z-index: 3;
   pointer-events: none;
@@ -673,7 +574,7 @@
   transition: all 0.3s ease;
   backdrop-filter: blur(8px);
   opacity: 0;
-  animation: tsFadeInUp 0.8s ease-out 3.8s forwards;
+  animation: tsFadeInUp 0.8s ease-out 2.6s forwards;
 }
 .ts-audio-control:hover {
   background: rgba(50, 30, 15, 0.9);
@@ -706,12 +607,14 @@
 }
 
 /* === Responsive === */
-@media (max-width: 480px) {
-  .ts-title-svg-container { width: 300px; height: 70px; }
-  .ts-title-brush-text,
-  .ts-title-brush-fill,
-  .ts-title-brush-shadow { font-size: 48px; }
-  .ts-menu { width: 280px; }
+@media (max-width: 600px) {
+  .ts-menu {
+    grid-template-columns: 1fr;
+    width: 280px;
+  }
+  .ts-menu-wide {
+    grid-column: 1;
+  }
   .ts-lanterns { gap: 1.2rem; }
   .ts-deco-tokkuri, .ts-deco-ochoko { display: none; }
 }
