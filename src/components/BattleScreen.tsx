@@ -103,6 +103,7 @@ export function BattleScreen() {
   const [slamPlayer, setSlamPlayer] = useState(false);
   const [slamOpp, setSlamOpp] = useState(false);
 
+  const [roundPopup, setRoundPopup] = useState<{ text: string; cls: string } | null>(null);
   const [revealedCards, setRevealedCards] = useState<string[] | null>(null);
   const [playingCardIdx, setPlayingCardIdx] = useState<number | null>(null);
   const [lastRound, setLastRound] = useState<{ pl: string; op: string; res: string; resColor: string }>({
@@ -272,6 +273,16 @@ export function BattleScreen() {
             setReaction(null);
           }
           setTimeout(() => setReaction(null), 2000);
+
+          // ラウンド結果ポップアップ
+          if (oppNetDamage > plNetDamage) {
+            setRoundPopup({ text: '勝ち！', cls: 'result-win' });
+          } else if (plNetDamage > oppNetDamage) {
+            setRoundPopup({ text: '負け…', cls: 'result-lose' });
+          } else {
+            setRoundPopup({ text: '引分', cls: 'result-draw' });
+          }
+          setTimeout(() => setRoundPopup(null), 1800);
 
           // distract: 相手の手札を公開
           if (result.revealedHand && result.revealedHand.length > 0) {
@@ -505,6 +516,13 @@ export function BattleScreen() {
                     </div>
                   </div>
                 </div>
+
+                {/* ラウンド結果ポップアップ */}
+                {roundPopup && (
+                  <div className={`card-result-popup show ${roundPopup.cls}`}>
+                    {roundPopup.text}
+                  </div>
+                )}
               </div>
             </div>
 

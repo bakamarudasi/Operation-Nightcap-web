@@ -715,28 +715,43 @@
 }
 
 .dialogue-bar {
-  padding: 10px 16px;
-  background: rgba(30, 18, 10, 0.5);
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(30, 18, 10, 0.6), rgba(20, 12, 6, 0.7));
   border-left: 3px solid rgba(138, 110, 56, 0.6);
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 8px 8px 0;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 52px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.dialogue-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(138, 110, 56, 0.4), transparent 60%);
 }
 
 .dlg-name {
   font-family: 'Noto Serif JP', var(--font-heading);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--gold);
   letter-spacing: 0.1em;
   white-space: nowrap;
+  padding-top: 1px;
+  flex-shrink: 0;
 }
 
 .dlg-text {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   letter-spacing: 0.05em;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--paper);
 }
 
@@ -1442,6 +1457,12 @@
 /* ============================================
    レスポンシブ対応
    ============================================ */
+
+/* デスクトップ: 左パネル表示時は中央の相手名前を隠す */
+@media (min-width: 769px) {
+  .opp-name-row { display: none; }
+  .opponent-bar { padding: 8px 24px; }
+}
 
 /* タブレット以下: 左パネル縮小 */
 @media (max-width: 1024px) {
