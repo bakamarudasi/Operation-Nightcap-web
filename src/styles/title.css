@@ -403,83 +403,192 @@
   padding: 0 8px;
 }
 
-/* === Menu === */
+/* === Menu — 木札 (Wooden Tag) Style === */
 .ts-menu {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  width: 520px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  width: 560px;
   opacity: 0;
   animation: tsFadeInUp 1s ease-out 2s forwards;
 }
 .ts-menu-wide {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
 }
 .ts-menu-btn {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 16px 24px;
-  background: var(--ts-btn-bg);
-  border: 1px solid var(--ts-btn-border);
-  border-radius: 4px;
+  gap: 6px;
+  padding: 20px 18px 16px;
+  min-width: 120px;
+  flex: 1 1 calc(50% - 14px);
+  /* Wood texture */
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,0.06) 0%,
+      transparent 8%,
+      transparent 20%,
+      rgba(0,0,0,0.03) 22%,
+      transparent 24%,
+      transparent 45%,
+      rgba(255,255,255,0.04) 47%,
+      transparent 49%,
+      transparent 70%,
+      rgba(0,0,0,0.04) 72%,
+      transparent 74%,
+      transparent 90%,
+      rgba(0,0,0,0.08) 100%
+    ),
+    linear-gradient(135deg, #5a3d1e, #4a3018 30%, #3d2612 60%, #33200e);
+  border: 1px solid rgba(100, 70, 35, 0.6);
+  border-top-color: rgba(140, 100, 50, 0.5);
+  border-bottom-color: rgba(40, 25, 10, 0.8);
+  border-radius: 3px;
   color: var(--ts-text-warm);
   font-family: 'Shippori Mincho', serif;
   font-size: 1.15rem;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.25em;
   cursor: pointer;
   transition: all 0.3s ease;
   overflow: hidden;
+  box-shadow:
+    2px 3px 8px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  writing-mode: horizontal-tb;
 }
+/* Nail / hook at top center */
 .ts-menu-btn::before {
   content: '';
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 3px;
-  height: 100%;
-  background: var(--ts-gold);
-  transform: scaleY(0);
-  transition: transform 0.3s ease;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle at 35% 35%, #8a7a6a, #4a3a2a);
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.4);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.15);
+  z-index: 2;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
 }
+/* Wood grain overlay */
 .ts-menu-btn::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(212, 168, 83, 0.05), transparent 50%);
-  opacity: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 8px,
+      rgba(0,0,0,0.02) 8px,
+      rgba(0,0,0,0.02) 9px
+    );
+  pointer-events: none;
+  opacity: 0.6;
   transition: opacity 0.3s ease;
 }
 .ts-menu-btn:hover {
-  background: var(--ts-btn-hover);
-  border-color: rgba(212, 168, 83, 0.6);
-  transform: translateX(4px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3), -2px 0 10px rgba(212, 168, 83, 0.1);
+  transform: translateY(-3px) rotate(-0.5deg);
+  box-shadow:
+    3px 6px 16px rgba(0,0,0,0.6),
+    0 0 20px rgba(212, 168, 83, 0.08),
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
+  border-color: rgba(140, 100, 50, 0.7);
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,0.08) 0%,
+      transparent 8%,
+      transparent 20%,
+      rgba(0,0,0,0.03) 22%,
+      transparent 24%,
+      transparent 45%,
+      rgba(255,255,255,0.04) 47%,
+      transparent 49%,
+      transparent 70%,
+      rgba(0,0,0,0.04) 72%,
+      transparent 74%,
+      transparent 90%,
+      rgba(0,0,0,0.08) 100%
+    ),
+    linear-gradient(135deg, #6a4a28, #5a3d1e 30%, #4a3018 60%, #3d2612);
 }
-.ts-menu-btn:hover::before { transform: scaleY(1); }
-.ts-menu-btn:hover::after { opacity: 1; }
+.ts-menu-btn:hover::before { opacity: 1; }
 .ts-menu-btn:active {
-  transform: translateX(2px) scale(0.98);
+  transform: translateY(-1px) rotate(0deg);
+  box-shadow:
+    1px 2px 6px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.08);
 }
 .ts-btn-icon {
-  font-size: 1.3rem;
-  filter: drop-shadow(0 0 4px rgba(255,255,255,0.1));
+  font-size: 1.5rem;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
 }
 .ts-btn-label {
   position: relative;
   z-index: 1;
+  font-size: 1rem;
 }
+/* Primary tag — red lacquer accent */
 .ts-menu-btn.ts-primary {
-  border-color: rgba(201, 48, 48, 0.5);
-  background: linear-gradient(135deg, rgba(120, 30, 30, 0.7), rgba(60, 35, 18, 0.85));
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,0.06) 0%,
+      transparent 8%,
+      transparent 45%,
+      rgba(255,255,255,0.03) 47%,
+      transparent 49%,
+      transparent 90%,
+      rgba(0,0,0,0.1) 100%
+    ),
+    linear-gradient(135deg, #5e2020, #4a1a1a 40%, #3d1515 70%, #301010);
+  border-color: rgba(160, 50, 50, 0.5);
+  border-top-color: rgba(180, 70, 70, 0.5);
+  box-shadow:
+    2px 3px 8px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,200,200,0.08),
+    inset 0 -1px 0 rgba(0,0,0,0.2),
+    0 0 12px rgba(201, 48, 48, 0.08);
 }
-.ts-menu-btn.ts-primary::before { background: var(--ts-lantern-red); }
+.ts-menu-btn.ts-primary::before {
+  background: radial-gradient(circle at 35% 35%, #9a6a5a, #5a3a2a);
+}
 .ts-menu-btn.ts-primary:hover {
-  border-color: rgba(201, 48, 48, 0.8);
-  box-shadow: 0 4px 20px rgba(201, 48, 48, 0.2), -2px 0 10px rgba(201, 48, 48, 0.1);
+  border-color: rgba(180, 60, 60, 0.7);
+  box-shadow:
+    3px 6px 16px rgba(0,0,0,0.6),
+    0 0 20px rgba(201, 48, 48, 0.12),
+    inset 0 1px 0 rgba(255,200,200,0.12);
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,0.08) 0%,
+      transparent 8%,
+      transparent 45%,
+      rgba(255,255,255,0.03) 47%,
+      transparent 49%,
+      transparent 90%,
+      rgba(0,0,0,0.1) 100%
+    ),
+    linear-gradient(135deg, #702828, #5e2020 40%, #4a1a1a 70%, #3d1515);
 }
+/* Stagger: slight random rotations for natural feel */
+.ts-menu-btn:nth-child(2) { transform: rotate(0.4deg); }
+.ts-menu-btn:nth-child(3) { transform: rotate(-0.3deg); }
+.ts-menu-btn:nth-child(4) { transform: rotate(0.5deg); }
+.ts-menu-btn:nth-child(5) { transform: rotate(-0.4deg); }
+.ts-menu-btn:nth-child(2):hover { transform: translateY(-3px) rotate(0deg); }
+.ts-menu-btn:nth-child(3):hover { transform: translateY(-3px) rotate(-0.8deg); }
+.ts-menu-btn:nth-child(4):hover { transform: translateY(-3px) rotate(0.2deg); }
+.ts-menu-btn:nth-child(5):hover { transform: translateY(-3px) rotate(-0.6deg); }
 
 /* === Currency === */
 .ts-currency {
@@ -609,11 +718,17 @@
 /* === Responsive === */
 @media (max-width: 600px) {
   .ts-menu {
-    grid-template-columns: 1fr;
-    width: 280px;
+    width: 300px;
+    gap: 10px;
+  }
+  .ts-menu-btn {
+    flex: 1 1 calc(50% - 10px);
+    min-width: 100px;
+    padding: 16px 12px 12px;
+    font-size: 1rem;
   }
   .ts-menu-wide {
-    grid-column: 1;
+    flex-basis: 100%;
   }
   .ts-lanterns { gap: 1.2rem; }
   .ts-deco-tokkuri, .ts-deco-ochoko { display: none; }
