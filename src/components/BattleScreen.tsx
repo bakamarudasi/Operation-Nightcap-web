@@ -121,7 +121,7 @@ export function BattleScreen() {
         (battle.playerDeckRemaining.length > 0 || battle.playerDiscardPile.length > 0)) {
       drawHands();
       if (currentOpponent) {
-        const line = randomPick(currentOpponent.drunkLevels[0].lines);
+        const line = randomPick(currentOpponent.drunkLevels[0].lines) ?? '';
         setDialogue({ speaker: currentOpponent.name, text: line });
       }
     }
@@ -365,7 +365,7 @@ export function BattleScreen() {
                 const lvl = getDrunkLevel(s.battle.opponentDrunk);
                 const levelData = s.currentOpponent.drunkLevels.find(l => l.level === lvl);
                 if (levelData) {
-                  setDialogue({ speaker: s.currentOpponent.name, text: randomPick(levelData.lines) });
+                  setDialogue({ speaker: s.currentOpponent.name, text: randomPick(levelData.lines) ?? '' });
                 }
               }
             }

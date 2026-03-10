@@ -38,7 +38,8 @@ export const BattleAI = {
     // === 逆セクハラ条件行動 ===
     // 自分の酔いLvが高い（大胆になっている）→ 確定で逆セクハラを仕掛ける
     if (myDrunkLevel >= 3 && harassments.length > 0) {
-      return this.pickStrongestHarassment(harassments);
+      const pick = this.pickStrongestHarassment(harassments);
+      if (pick) return pick;
     }
 
     // プレイヤーが守りに徹している → しびれを切らして逆セクハラ
@@ -86,14 +87,16 @@ export const BattleAI = {
     // 自分の酔いが高い → つまみ優先
     if (myDrunkLevel >= 2 && foods.length > 0) {
       if (Math.random() < 0.7) {
-        return this.pickBestFood(foods);
+        const pick = this.pickBestFood(foods);
+        if (pick) return pick;
       }
     }
 
     // 相手の酔いが高い → ドリンクで畳みかける
     if (playerDrunkLevel >= 2 && drinks.length > 0) {
       if (Math.random() < 0.7) {
-        return this.pickBestDrink(drinks);
+        const pick = this.pickBestDrink(drinks);
+        if (pick) return pick;
       }
     }
 
@@ -115,12 +118,14 @@ export const BattleAI = {
     switch (personality) {
       case 'aggressive':
         if (drinks.length > 0 && Math.random() < 0.7) {
-          return this.pickBestDrink(drinks);
+          const pick = this.pickBestDrink(drinks);
+          if (pick) return pick;
         }
         break;
       case 'defensive':
         if (foods.length > 0 && Math.random() < 0.6) {
-          return this.pickBestFood(foods);
+          const pick = this.pickBestFood(foods);
+          if (pick) return pick;
         }
         break;
       case 'balanced':
@@ -134,10 +139,12 @@ export const BattleAI = {
         break;
     }
 
-    return randomPick(hand);
+    // 最終フォールバック: 手札からランダム（手札が空ならnull）
+    return hand.length > 0 ? hand[Math.floor(Math.random() * hand.length)] : null;
   },
 
-  pickBestDrink(drinks: string[]): string {
+  pickBestDrink(drinks: string[]): string | null {
+    if (drinks.length === 0) return null;
     return drinks.reduce((best, id) => {
       const card = CARD_DATA[id];
       const bestCard = CARD_DATA[best];
@@ -147,7 +154,8 @@ export const BattleAI = {
     }, drinks[0]);
   },
 
-  pickBestFood(foods: string[]): string {
+  pickBestFood(foods: string[]): string | null {
+    if (foods.length === 0) return null;
     return foods.reduce((best, id) => {
       const card = CARD_DATA[id];
       const bestCard = CARD_DATA[best];
@@ -156,7 +164,8 @@ export const BattleAI = {
   },
 
   /** 最も強力なセクハラカードを選択 */
-  pickStrongestHarassment(cards: string[]): string {
+  pickStrongestHarassment(cards: string[]): string | null {
+    if (cards.length === 0) return null;
     return cards.reduce((best, id) => {
       const card = CARD_DATA[id];
       const bestCard = CARD_DATA[best];

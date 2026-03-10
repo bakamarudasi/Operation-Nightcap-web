@@ -41,7 +41,7 @@ export function GalleryScreen() {
     if (char) {
       const lvData = char.drunkLevels.find(l => l.level === level);
       if (lvData) {
-        setCurrentLine(randomPick(lvData.lines));
+        setCurrentLine(randomPick(lvData.lines) ?? '');
       }
     }
   };
@@ -50,7 +50,7 @@ export function GalleryScreen() {
     if (char) {
       const lvData = char.drunkLevels.find(l => l.level === drunkLevel);
       if (lvData) {
-        setCurrentLine(randomPick(lvData.lines));
+        setCurrentLine(randomPick(lvData.lines) ?? '');
       }
     }
   };

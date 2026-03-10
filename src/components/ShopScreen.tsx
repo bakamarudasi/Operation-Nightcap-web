@@ -15,7 +15,7 @@ export function ShopScreen() {
   const [closureLine, setClosureLine] = useState('');
 
   useEffect(() => {
-    setClosureLine(randomPick([...SHOP_DATA.closureLines.greeting]));
+    setClosureLine(randomPick([...SHOP_DATA.closureLines.greeting]) ?? '');
   }, []);
 
   const handleBuy = (cardId: string) => {
@@ -23,16 +23,16 @@ export function ShopScreen() {
     if (!card) return;
 
     if (money < card.price) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.insufficient]));
+      setClosureLine(randomPick([...SHOP_DATA.closureLines.insufficient]) ?? '');
       return;
     }
     if (playerDeck.length >= 12) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.deckFull]));
+      setClosureLine(randomPick([...SHOP_DATA.closureLines.deckFull]) ?? '');
       return;
     }
     const sameCount = playerDeck.filter(id => id === cardId).length;
     if (sameCount >= 3) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.cardLimit]));
+      setClosureLine(randomPick([...SHOP_DATA.closureLines.cardLimit]) ?? '');
       return;
     }
 
@@ -40,7 +40,7 @@ export function ShopScreen() {
     if (success) {
       const category = getShopLineCategory(cardId);
       const lines = SHOP_DATA.closureLines[category];
-      setClosureLine(randomPick([...lines]));
+      setClosureLine(randomPick([...lines]) ?? '');
     }
   };
 
@@ -52,7 +52,7 @@ export function ShopScreen() {
     if (!window.confirm(`${card.name}を売却しますか？（${refund}龍門幣）`)) return;
     const success = sellCard(index);
     if (success) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.sell]));
+      setClosureLine(randomPick([...SHOP_DATA.closureLines.sell]) ?? '');
     }
   };
 

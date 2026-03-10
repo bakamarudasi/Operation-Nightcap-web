@@ -267,6 +267,16 @@ export const useGameStore = create<GameStore>()(
             pRemaining[newCardIdx] = replacedCard;
           }
 
+          // 汚染スロットを実際の手札サイズに合わせる（デッキ枯渇で手札が少ない場合）
+          let adjustedCorrupted = b.corruptedSlots;
+          if (adjustedCorrupted.length > pHand.length) {
+            adjustedCorrupted = adjustedCorrupted.slice(0, pHand.length);
+          }
+          let adjustedOppCorrupted = b.opponentCorruptedSlots;
+          if (adjustedOppCorrupted.length > oHand.length) {
+            adjustedOppCorrupted = adjustedOppCorrupted.slice(0, oHand.length);
+          }
+
           return {
             battle: {
               ...b,
@@ -274,6 +284,8 @@ export const useGameStore = create<GameStore>()(
               opponentDeckRemaining: oRemaining,
               playerHand: pHand,
               opponentHand: oHand,
+              corruptedSlots: adjustedCorrupted,
+              opponentCorruptedSlots: adjustedOppCorrupted,
               selectedCard: null,
               isProcessing: false,
               opponentDiscardNext: false,
@@ -567,7 +579,10 @@ export const useGameStore = create<GameStore>()(
         const b = get().battle;
         if (b.opponentDrunk >= 10) return 'player_win';
         if (b.playerDrunk >= 10) return 'opponent_win';
-        if (b.round >= b.maxRounds) {
+        // デッキ・捨て札・手札が全て空なら強制終了（詰み防止）
+        const playerOutOfCards = b.playerDeckRemaining.length === 0 && b.playerDiscardPile.length === 0 && b.playerHand.length === 0;
+        const opponentOutOfCards = b.opponentDeckRemaining.length === 0 && b.opponentDiscardPile.length === 0 && b.opponentHand.length === 0;
+        if (playerOutOfCards || opponentOutOfCards || b.round >= b.maxRounds) {
           if (b.playerDrunk < b.opponentDrunk) return 'player_win';
           if (b.playerDrunk > b.opponentDrunk) return 'opponent_win';
           return 'draw';
