@@ -12,12 +12,12 @@ export const GACHA_RATE_TABLE: { rarity: number; weight: number }[] = [
 
 /** ダブり時の龍門幣変換レート */
 export const DUPLICATE_REFUND: Record<number, number> = {
-  1: 30,
-  2: 80,
-  3: 150,
-  4: 300,
-  5: 600,
-  6: 1500,
+  1: 60,
+  2: 120,
+  3: 200,
+  4: 400,
+  5: 800,
+  6: 2000,
 };
 
 /** ガチャ1回の価格 */

@@ -67,11 +67,13 @@ function applyDrinkBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBuffs: 
   return dmg;
 }
 
-/** ハラスメントの必要酔いLvを環境バフで補正 */
-function getAdjustedRequiredLevel(requiredLevel: number, userBuffs: Buff[]): number {
+/** ハラスメントの必要酔いLvを環境バフで補正（即勝利カードは最低Lv2） */
+function getAdjustedRequiredLevel(requiredLevel: number, userBuffs: Buff[], isInstantWin?: boolean): number {
   let lv = requiredLevel;
   if (hasBuff(userBuffs, 'dimlight')) lv = Math.max(0, lv - 1);
   if (hasBuff(userBuffs, 'excuse')) lv = Math.max(0, lv - 1);
+  // 即勝利カード（Kiss等）はバフで下げても最低Lv2を要求
+  if (isInstantWin) lv = Math.max(2, lv);
   return lv;
 }
 
@@ -439,7 +441,7 @@ export const BattleEngine = {
     // バフによる必要Lv補正
     const userBuffs = user === 'player' ? battle.playerBuffs : battle.opponentBuffs;
     const targetBuffs = user === 'player' ? battle.opponentBuffs : battle.playerBuffs;
-    const adjustedRequired = getAdjustedRequiredLevel(hCard.requiredDrunkLevel ?? 0, userBuffs);
+    const adjustedRequired = getAdjustedRequiredLevel(hCard.requiredDrunkLevel ?? 0, userBuffs, !!hCard.instantWin);
 
     if (triggerLevel >= adjustedRequired) {
       // === 成功 ===
