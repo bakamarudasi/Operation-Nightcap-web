@@ -30,6 +30,10 @@ export interface ExtendedResult extends RoundResult {
   playerCleanseSelf?: number;
   /** プレイヤーのdot除去フラグ */
   playerCleanseDot?: boolean;
+  /** 相手のデバフ除去数 */
+  opponentCleanseSelf?: number;
+  /** 相手のdot除去フラグ */
+  opponentCleanseDot?: boolean;
   /** 消費するプレイヤーバフID（使い切り系） */
   consumePlayerBuffs?: string[];
   /** 消費する相手バフID（使い切り系） */
@@ -199,15 +203,25 @@ function applyFoodExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   const isPlayer = user === 'player';
 
   // cleanseSelf → デバフ除去
-  if (card.cleanseSelf && isPlayer) {
-    result.playerCleanseSelf = (result.playerCleanseSelf ?? 0) + card.cleanseSelf;
-    result.messages.push(`💊 ${card.name}の効果！デバフ${card.cleanseSelf}つ除去！`);
+  if (card.cleanseSelf) {
+    if (isPlayer) {
+      result.playerCleanseSelf = (result.playerCleanseSelf ?? 0) + card.cleanseSelf;
+      result.messages.push(`💊 ${card.name}の効果！デバフ${card.cleanseSelf}つ除去！`);
+    } else {
+      result.opponentCleanseSelf = (result.opponentCleanseSelf ?? 0) + card.cleanseSelf;
+      result.messages.push(`💊 相手の${card.name}でデバフ${card.cleanseSelf}つ除去！`);
+    }
   }
 
   // cleanseDot → dot除去
-  if (card.cleanseDot && isPlayer) {
-    result.playerCleanseDot = true;
-    result.messages.push(`🌿 ${card.name}の効果！持続ダメージを除去！`);
+  if (card.cleanseDot) {
+    if (isPlayer) {
+      result.playerCleanseDot = true;
+      result.messages.push(`🌿 ${card.name}の効果！持続ダメージを除去！`);
+    } else {
+      result.opponentCleanseDot = true;
+      result.messages.push(`🌿 相手の${card.name}で持続ダメージ除去！`);
+    }
   }
 
   // applySelfBuffs → 自分にバフ付与
@@ -852,18 +866,41 @@ export const BattleEngine = {
     }
 
     // 相手のカードも処理
-    if (!result.spillNullified && otherCard.type === 'drink') {
-      const baseDmg = getCardDamage(otherCard);
-      if (user === 'player') {
-        const dmg = applyDrinkBuffs(baseDmg, battle.opponentBuffs, battle.playerBuffs);
-        result.playerDamage += dmg;
-        result.messages.push(`相手の${otherCard.emoji}${otherCard.name}で酔い${dmg}ダメージ！`);
-        applyDrinkExtras(otherCard, result, 'opponent');
-      } else {
-        const dmg = applyDrinkBuffs(baseDmg, battle.playerBuffs, battle.opponentBuffs);
-        result.opponentDamage += dmg;
-        result.messages.push(`${otherCard.emoji}${otherCard.name}で相手に酔い${dmg}ダメージ！`);
-        applyDrinkExtras(otherCard, result, 'player');
+    if (!result.spillNullified) {
+      if (otherCard.type === 'drink') {
+        const baseDmg = getCardDamage(otherCard);
+        if (user === 'player') {
+          const dmg = applyDrinkBuffs(baseDmg, battle.opponentBuffs, battle.playerBuffs);
+          result.playerDamage += dmg;
+          result.messages.push(`相手の${otherCard.emoji}${otherCard.name}で酔い${dmg}ダメージ！`);
+          applyDrinkExtras(otherCard, result, 'opponent');
+        } else {
+          const dmg = applyDrinkBuffs(baseDmg, battle.playerBuffs, battle.opponentBuffs);
+          result.opponentDamage += dmg;
+          result.messages.push(`${otherCard.emoji}${otherCard.name}で相手に酔い${dmg}ダメージ！`);
+          applyDrinkExtras(otherCard, result, 'player');
+        }
+      } else if (otherCard.type === 'food') {
+        // フードカードの回復も処理
+        const otherUser = user === 'player' ? 'opponent' : 'player';
+        const foodUserBuffs = user === 'player' ? battle.opponentBuffs : battle.playerBuffs;
+        if (hasBuff(foodUserBuffs, 'no_food')) {
+          result.messages.push(`🚫 つまみ封じ中！${otherCard.emoji}${otherCard.name}が使えない！`);
+        } else {
+          const drunkVal = user === 'player' ? battle.opponentDrunk : battle.playerDrunk;
+          let heal = otherCard.heal === 99 ? Math.max(0, drunkVal) : (otherCard.heal ?? 0);
+          heal = applyFoodBuffs(heal, foodUserBuffs);
+          if (otherUser === 'player') {
+            result.playerHeal += heal;
+          } else {
+            result.opponentHeal += heal;
+          }
+          result.messages.push(`${otherCard.emoji} ${otherCard.name}で${heal}回復！`);
+          applyFoodExtras(otherCard, result, otherUser);
+          if (hasBuff(foodUserBuffs, 'next_food_boost')) {
+            trackBuffConsumption(result, otherUser, 'next_food_boost');
+          }
+        }
       }
     }
 

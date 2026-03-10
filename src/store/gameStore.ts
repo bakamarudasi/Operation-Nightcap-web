@@ -393,6 +393,23 @@ export const useGameStore = create<GameStore>()(
           newPlayerBuffs = newPlayerBuffs.filter(bf => bf.id !== 'dot');
         }
 
+        // 相手側のデバフ除去
+        if (extResult.opponentCleanseSelf && extResult.opponentCleanseSelf > 0) {
+          const debuffIds = ['dot', 'tipsy', 'blush', 'atk_down', 'stun', 'no_food', 'corrupted_hand'] as const;
+          let remaining = extResult.opponentCleanseSelf;
+          for (const debuffId of debuffIds) {
+            if (remaining <= 0) break;
+            const idx = newOpponentBuffs.findIndex(bf => bf.id === debuffId);
+            if (idx >= 0) {
+              newOpponentBuffs.splice(idx, 1);
+              remaining--;
+            }
+          }
+        }
+        if (extResult.opponentCleanseDot) {
+          newOpponentBuffs = newOpponentBuffs.filter(bf => bf.id !== 'dot');
+        }
+
         // 今回のラウンドで付与されたバフを追加
         if (result.newPlayerBuffs) {
           newPlayerBuffs = [...newPlayerBuffs, ...result.newPlayerBuffs];
@@ -404,13 +421,15 @@ export const useGameStore = create<GameStore>()(
         // === 手札汚染処理（プレイヤー側） ===
         let corruptedSlots = [...b.corruptedSlots];
         if (result.corruptCount && result.corruptCount > 0) {
-          corruptedSlots = [false, false, false, false];
-          const indices = [0, 1, 2, 3];
+          // 次のラウンドの手札サイズに合わせる（spill等で3枚の場合がある）
+          const nextHandSize = (result.playerReducedHand ?? b.playerReducedHand) ? 3 : 4;
+          corruptedSlots = Array(nextHandSize).fill(false);
+          const indices = Array.from({ length: nextHandSize }, (_, i) => i);
           for (let i = indices.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [indices[i], indices[j]] = [indices[j], indices[i]];
           }
-          for (let i = 0; i < Math.min(result.corruptCount, 4); i++) {
+          for (let i = 0; i < Math.min(result.corruptCount, nextHandSize); i++) {
             corruptedSlots[indices[i]] = true;
           }
         }
@@ -418,13 +437,14 @@ export const useGameStore = create<GameStore>()(
         // === 手札汚染処理（相手側） ===
         let opponentCorruptedSlots = [...b.opponentCorruptedSlots];
         if (extResult.opponentCorruptCount && extResult.opponentCorruptCount > 0) {
-          opponentCorruptedSlots = [false, false, false, false];
-          const indices = [0, 1, 2, 3];
+          const nextOHandSize = (result.opponentReducedHand ?? b.opponentReducedHand) ? 3 : 4;
+          opponentCorruptedSlots = Array(nextOHandSize).fill(false);
+          const indices = Array.from({ length: nextOHandSize }, (_, i) => i);
           for (let i = indices.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [indices[i], indices[j]] = [indices[j], indices[i]];
           }
-          for (let i = 0; i < Math.min(extResult.opponentCorruptCount, 4); i++) {
+          for (let i = 0; i < Math.min(extResult.opponentCorruptCount, nextOHandSize); i++) {
             opponentCorruptedSlots[indices[i]] = true;
           }
         }
