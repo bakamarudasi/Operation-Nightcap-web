@@ -103,6 +103,7 @@ export function BattleScreen() {
   const [slamPlayer, setSlamPlayer] = useState(false);
   const [slamOpp, setSlamOpp] = useState(false);
 
+  const [roundPopup, setRoundPopup] = useState<{ text: string; cls: string } | null>(null);
   const [revealedCards, setRevealedCards] = useState<string[] | null>(null);
   const [playingCardIdx, setPlayingCardIdx] = useState<number | null>(null);
   const [lastRound, setLastRound] = useState<{ pl: string; op: string; res: string; resColor: string }>({
@@ -116,14 +117,14 @@ export function BattleScreen() {
 
   // 最初の手札を配る
   useEffect(() => {
-    if (battle.playerHand.length === 0 && !battle.isProcessing && !gameResult) {
+    if (battle.playerHand.length === 0 && !battle.isProcessing && !gameResult && battle.playerDeckRemaining.length > 0) {
       drawHands();
       if (currentOpponent) {
         const line = randomPick(currentOpponent.drunkLevels[0].lines);
         setDialogue({ speaker: currentOpponent.name, text: line });
       }
     }
-  }, [battle.playerHand.length, battle.isProcessing, gameResult, drawHands, currentOpponent]);
+  }, [battle.playerHand.length, battle.playerDeckRemaining.length, battle.isProcessing, gameResult, drawHands, currentOpponent]);
 
   // タイピングエフェクト
   useEffect(() => {
@@ -204,6 +205,14 @@ export function BattleScreen() {
     const result = playRound();
     if (!result) return;
 
+    // cardPlayLock の安全タイムアウト（15秒で強制解除）
+    const lockSafetyTimer = setTimeout(() => {
+      if (cardPlayLock.current) {
+        cardPlayLock.current = false;
+        setPlayingCardIdx(null);
+      }
+    }, 15000);
+
     // プレイヤーカードをフィールドに表示
     if (pCard) {
       const val = pCard.type === 'food' ? (pCard.heal === 99 ? '+MAX' : `+${pCard.heal ?? 0}`) :
@@ -265,6 +274,16 @@ export function BattleScreen() {
           }
           setTimeout(() => setReaction(null), 2000);
 
+          // ラウンド結果ポップアップ
+          if (oppNetDamage > plNetDamage) {
+            setRoundPopup({ text: '勝ち！', cls: 'result-win' });
+          } else if (plNetDamage > oppNetDamage) {
+            setRoundPopup({ text: '負け…', cls: 'result-lose' });
+          } else {
+            setRoundPopup({ text: '引分', cls: 'result-draw' });
+          }
+          setTimeout(() => setRoundPopup(null), 1800);
+
           // distract: 相手の手札を公開
           if (result.revealedHand && result.revealedHand.length > 0) {
             setRevealedCards(result.revealedHand);
@@ -289,6 +308,7 @@ export function BattleScreen() {
           // 即勝利
           if (result.instantWin) {
             setTimeout(() => {
+              clearTimeout(lockSafetyTimer);
               cardPlayLock.current = false;
               const reward = endBattle('player_win');
               setResultReward(reward);
@@ -304,6 +324,7 @@ export function BattleScreen() {
           setTimeout(() => {
             const end = checkGameEnd();
             if (end) {
+              clearTimeout(lockSafetyTimer);
               cardPlayLock.current = false;
               const reward = endBattle(end);
               setResultReward(reward);
@@ -333,6 +354,7 @@ export function BattleScreen() {
               setPlayerFlipped(false);
               setOppFlipped(false);
               setPlayingCardIdx(null);
+              clearTimeout(lockSafetyTimer);
               cardPlayLock.current = false;
               drawHands();
 
@@ -350,7 +372,7 @@ export function BattleScreen() {
         }, 400);
       }, 400);
     }, 800);
-  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, getDrunkLevel, playRound, selectCard]);
+  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, getDrunkLevel, playRound, checkAfterEvent]);
 
   // カード選択後に自動で出す
   useEffect(() => {
@@ -441,7 +463,7 @@ export function BattleScreen() {
                   <div className="gauge-track">
                     <div
                       className="gauge-fill opp-fill"
-                      style={{ width: `${(battle.opponentDrunk / 10) * 100}%` }}
+                      style={{ width: `${Math.min(battle.opponentDrunk / 10, 1) * 100}%` }}
                     />
                   </div>
                   <div className="gauge-lvl">
@@ -494,6 +516,13 @@ export function BattleScreen() {
                     </div>
                   </div>
                 </div>
+
+                {/* ラウンド結果ポップアップ */}
+                {roundPopup && (
+                  <div className={`card-result-popup show ${roundPopup.cls}`}>
+                    {roundPopup.text}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -511,7 +540,7 @@ export function BattleScreen() {
               <div className="gauge-track">
                 <div
                   className="gauge-fill player-fill"
-                  style={{ width: `${(battle.playerDrunk / 10) * 100}%` }}
+                  style={{ width: `${Math.min(battle.playerDrunk / 10, 1) * 100}%` }}
                 />
               </div>
               <div className="gauge-lvl">
@@ -521,83 +550,6 @@ export function BattleScreen() {
             </div>
           </div>
 
-          {/* 右: ステータスパネル */}
-          <div className="status-panel">
-            <div className="panel-section">
-              <div className="panel-label">ドクター状態</div>
-              <div className={`char-drunk-label ${plDrunkStage.cls}`} style={{ textAlign: 'center', padding: '8px', background: 'rgba(30,18,10,0.4)', borderRadius: '6px', border: '1px solid rgba(80,50,25,0.2)' }}>
-                {plDrunkStage.text}
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <div className="panel-label">酔いレベル</div>
-              <div className="panel-gauge-mini">
-                <div className="panel-gauge-label">
-                  <span className="lbl">酔い度</span>
-                  <span className="val">{battle.playerDrunk} / 10</span>
-                </div>
-                <div className="panel-gauge-track">
-                  <div
-                    className="panel-gauge-fill pl-fill"
-                    style={{ width: `${(battle.playerDrunk / 10) * 100}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <div className="panel-label">戦績</div>
-              <div className="panel-record">
-                <div className="panel-record-item">
-                  <span className="panel-record-num win-c">{wins}</span>
-                  <span className="panel-record-label">勝ち</span>
-                </div>
-                <div className="panel-record-item">
-                  <span className="panel-record-num lose-c">{losses}</span>
-                  <span className="panel-record-label">負け</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <div className="panel-label">デッキ</div>
-              <div className="panel-deck">
-                <div className="panel-deck-icon">🃏</div>
-                <div className="panel-deck-info">
-                  <div className="panel-deck-label">残りカード</div>
-                  <div className="panel-deck-num">{battle.playerDeckRemaining.length}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <div className="panel-label">相手デッキ</div>
-              <div className="panel-deck">
-                <div className="panel-deck-icon">🎴</div>
-                <div className="panel-deck-info">
-                  <div className="panel-deck-label">残りカード</div>
-                  <div className="panel-deck-num">{battle.opponentDeckRemaining.length}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <div className="panel-label">直前のラウンド</div>
-              <div className="panel-stat">
-                <div className="panel-stat-name">自分</div>
-                <div className="panel-stat-val">{lastRound.pl}</div>
-              </div>
-              <div className="panel-stat">
-                <div className="panel-stat-name">相手</div>
-                <div className="panel-stat-val">{lastRound.op}</div>
-              </div>
-              <div className="panel-stat">
-                <div className="panel-stat-name">結果</div>
-                <div className="panel-stat-val" style={{ color: lastRound.resColor }}>{lastRound.res}</div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* 手札エリア */}
@@ -631,6 +583,34 @@ export function BattleScreen() {
               </div>
             );
           })}
+        </div>
+
+        {/* 下部ステータスバー */}
+        <div className="battle-status-bar">
+          <div className="status-bar-item">
+            <span className="status-bar-label">戦績</span>
+            <span className="status-bar-val">
+              <span className="win-c">{wins}勝</span>
+              <span className="status-bar-sep">/</span>
+              <span className="lose-c">{losses}敗</span>
+            </span>
+          </div>
+          <div className="status-bar-divider" />
+          <div className="status-bar-item">
+            <span className="status-bar-label">🃏 デッキ</span>
+            <span className="status-bar-val">{battle.playerDeckRemaining.length}</span>
+          </div>
+          <div className="status-bar-divider" />
+          <div className="status-bar-item">
+            <span className="status-bar-label">🎴 相手</span>
+            <span className="status-bar-val">{battle.opponentDeckRemaining.length}</span>
+          </div>
+          <div className="status-bar-divider" />
+          <div className="status-bar-item status-bar-lastround">
+            <span className="status-bar-label">前R</span>
+            <span className="status-bar-val" style={{ color: lastRound.resColor }}>{lastRound.res}</span>
+            <span className="status-bar-detail">{lastRound.pl} vs {lastRound.op}</span>
+          </div>
         </div>
       </div>
 

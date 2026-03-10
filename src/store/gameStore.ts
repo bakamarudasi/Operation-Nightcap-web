@@ -375,11 +375,11 @@ export const useGameStore = create<GameStore>()(
         const state = get();
         let reward = 0;
         if (result === 'player_win') {
-          reward = state.battle.playerDrunk === 0 ? 800 : 500;
+          reward = state.battle.playerDrunk === 0 ? 1000 : 700;
         } else if (result === 'opponent_win') {
-          reward = 100;
-        } else {
           reward = 200;
+        } else {
+          reward = 300;
         }
         set({
           money: state.money + reward,

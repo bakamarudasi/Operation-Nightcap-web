@@ -39,7 +39,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   ukon: {
     id: 'ukon', name: 'ケルシー処方薬', emoji: '💊', type: 'food',
-    heal: 99, description: 'クロージャが裏ルートで横流しした禁断の回復薬。「お前には過ぎた代物だ」', rarity: 5, price: 1200
+    heal: 5, description: 'クロージャが裏ルートで横流しした禁断の回復薬。「お前には過ぎた代物だ」', rarity: 5, price: 1500
   },
 
   // === 戦略・妨害カード ===
@@ -312,10 +312,10 @@ export function getCardDamage(card: CardDef): number {
 }
 
 export const DEFAULT_DECK: string[] = [
-  'beer', 'beer', 'beer', 'beer',
-  'wine', 'wine',
-  'nuts', 'nuts', 'nuts',
-  'yakitori',
+  'beer', 'beer', 'beer',
+  'wine', 'wine', 'wine',
+  'nuts', 'nuts',
+  'yakitori', 'yakitori',
   'whiskey',
   'chug'
 ];

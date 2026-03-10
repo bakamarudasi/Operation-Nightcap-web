@@ -28,7 +28,6 @@ export function TitleScreen() {
   const [timeLabel, setTimeLabel] = useState('--:--');
   const [timeStatus, setTimeStatus] = useState('営業中');
   const [timeClass, setTimeClass] = useState('');
-  const [brushAnimate, setBrushAnimate] = useState(false);
   const [currencyDisplay, setCurrencyDisplay] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -87,12 +86,6 @@ export function TitleScreen() {
     }
   }, []);
 
-  // Brush stroke animation trigger
-  useEffect(() => {
-    const id = setTimeout(() => setBrushAnimate(true), 1500);
-    return () => clearTimeout(id);
-  }, []);
-
   // Currency count-up
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -106,7 +99,7 @@ export function TitleScreen() {
         if (progress < 1) requestAnimationFrame(tick);
       }
       requestAnimationFrame(tick);
-    }, 3600);
+    }, 2200);
     return () => clearTimeout(delay);
   }, [money]);
 
@@ -295,29 +288,8 @@ export function TitleScreen() {
           ))}
         </div>
 
-        {/* Brush Stroke Title */}
-        <div className={`ts-title-area ${brushAnimate ? 'brush-animate' : ''}`}>
-          <div className="ts-title-badges">
-            {(['ロ', 'ド', 'ス'] as const).map((ch, i) => (
-              <div className="ts-title-badge" key={i}>{ch}</div>
-            ))}
-          </div>
-          <div className="ts-title-svg-container">
-            <svg className="ts-title-svg" viewBox="0 0 420 90">
-              <defs>
-                <filter id="brushTexture">
-                  <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves={4} result="noise" />
-                  <feDisplacementMap in="SourceGraphic" in2="noise" scale={2} xChannelSelector="R" yChannelSelector="G" />
-                </filter>
-              </defs>
-              <text x="212" y="68" textAnchor="middle" className="ts-title-brush-shadow">ロドスバー</text>
-              <text x="210" y="66" textAnchor="middle" className="ts-title-brush-text">ロドスバー</text>
-              <text x="210" y="66" textAnchor="middle" className="ts-title-brush-fill">ロドスバー</text>
-            </svg>
-            <div className="ts-ink-splatter" style={{ top: 15, right: 20, width: 5, height: 5, animationDelay: '1.8s' }} />
-            <div className="ts-ink-splatter" style={{ bottom: 20, left: 30, width: 4, height: 4, animationDelay: '2.2s' }} />
-            <div className="ts-ink-splatter" style={{ top: 25, left: 60, width: 3, height: 3, animationDelay: '1.5s' }} />
-          </div>
+        {/* Subtitle */}
+        <div className="ts-title-area">
           <p className="ts-title-sub">～今夜は帰さない～</p>
         </div>
 
@@ -325,7 +297,7 @@ export function TitleScreen() {
 
         {/* Menu */}
         <nav className="ts-menu">
-          <button className="ts-menu-btn ts-primary" onClick={() => setScreen('select')}>
+          <button className="ts-menu-btn ts-primary ts-menu-wide" onClick={() => setScreen('select')}>
             <span className="ts-btn-icon">🍶</span>
             <span className="ts-btn-label">対戦する</span>
           </button>
