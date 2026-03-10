@@ -87,13 +87,16 @@ const initialBattle: BattleState = {
   selectedCard: null,
   isProcessing: false,
   opponentDiscardNext: false,
+  playerDiscardNext: false,
   playerReducedHand: false,
   opponentReducedHand: false,
   spillActive: false,
   playerBuffs: [],
   opponentBuffs: [],
   corruptedSlots: [],
+  opponentCorruptedSlots: [],
   rumorActive: false,
+  playerRumorActive: false,
 };
 
 export const useGameStore = create<GameStore>()(
@@ -182,6 +185,13 @@ export const useGameStore = create<GameStore>()(
             oRemaining.push(discardedCard);
           }
 
+          // プレイヤー側の手札破棄
+          if (b.playerDiscardNext && pHand.length > 1) {
+            const discardIdx = Math.floor(Math.random() * pHand.length);
+            const [discardedCard] = pHand.splice(discardIdx, 1);
+            pRemaining.push(discardedCard);
+          }
+
           // rumor: 相手の手札1枚をデッキからランダムに差し替え
           if (b.rumorActive && oHand.length > 0 && oRemaining.length > 0) {
             const replaceIdx = Math.floor(Math.random() * oHand.length);
@@ -189,6 +199,15 @@ export const useGameStore = create<GameStore>()(
             const newCardIdx = Math.floor(Math.random() * oRemaining.length);
             oHand[replaceIdx] = oRemaining[newCardIdx];
             oRemaining[newCardIdx] = replacedCard;
+          }
+
+          // playerRumor: プレイヤーの手札1枚をデッキからランダムに差し替え
+          if (b.playerRumorActive && pHand.length > 0 && pRemaining.length > 0) {
+            const replaceIdx = Math.floor(Math.random() * pHand.length);
+            const replacedCard = pHand[replaceIdx];
+            const newCardIdx = Math.floor(Math.random() * pRemaining.length);
+            pHand[replaceIdx] = pRemaining[newCardIdx];
+            pRemaining[newCardIdx] = replacedCard;
           }
 
           return {
@@ -201,7 +220,9 @@ export const useGameStore = create<GameStore>()(
               selectedCard: null,
               isProcessing: false,
               opponentDiscardNext: false,
+              playerDiscardNext: false,
               rumorActive: false,
+              playerRumorActive: false,
             },
           };
         });
@@ -223,11 +244,18 @@ export const useGameStore = create<GameStore>()(
 
         const result = BattleEngine.resolveRound(b.selectedCard, opponentCardId, b);
 
-        // BUG-006: 汚染カード使用時の自分へのダメージ処理
+        // BUG-006: 汚染カード使用時の自分へのダメージ処理（プレイヤー）
         const selectedIdx = b.playerHand.indexOf(b.selectedCard);
         if (selectedIdx >= 0 && b.corruptedSlots[selectedIdx]) {
           result.playerDamage += 1;
           result.messages.push('🔥 発情状態のカードを使った…自分に酔い+1！');
+        }
+
+        // 汚染カード使用時の自傷ダメージ（相手）
+        const opSelectedIdx = b.opponentHand.indexOf(opponentCardId);
+        if (opSelectedIdx >= 0 && b.opponentCorruptedSlots[opSelectedIdx]) {
+          result.opponentDamage += 1;
+          result.messages.push('🔥 相手が発情状態のカードを使った…相手に酔い+1！');
         }
 
         // === プレイヤーのセクハラ成功時 → CGイベント検索 ===
@@ -325,10 +353,9 @@ export const useGameStore = create<GameStore>()(
           newOpponentBuffs = [...newOpponentBuffs, ...result.newOpponentBuffs];
         }
 
-        // === 手札汚染処理 ===
+        // === 手札汚染処理（プレイヤー側） ===
         let corruptedSlots = [...b.corruptedSlots];
         if (result.corruptCount && result.corruptCount > 0) {
-          // 次のラウンドの手札に対して汚染を予約（4枠分のフラグ）
           corruptedSlots = [false, false, false, false];
           const indices = [0, 1, 2, 3];
           for (let i = indices.length - 1; i > 0; i--) {
@@ -337,6 +364,20 @@ export const useGameStore = create<GameStore>()(
           }
           for (let i = 0; i < Math.min(result.corruptCount, 4); i++) {
             corruptedSlots[indices[i]] = true;
+          }
+        }
+
+        // === 手札汚染処理（相手側） ===
+        let opponentCorruptedSlots = [...b.opponentCorruptedSlots];
+        if (extResult.opponentCorruptCount && extResult.opponentCorruptCount > 0) {
+          opponentCorruptedSlots = [false, false, false, false];
+          const indices = [0, 1, 2, 3];
+          for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+          }
+          for (let i = 0; i < Math.min(extResult.opponentCorruptCount, 4); i++) {
+            opponentCorruptedSlots[indices[i]] = true;
           }
         }
 
@@ -354,9 +395,11 @@ export const useGameStore = create<GameStore>()(
         // === maxRounds減少（危機契約発令） ===
         const roundReduction = extResult.reduceMaxRounds ?? 0;
 
-        // === 相手の手札破棄（サーミ・オーロラ: 次のドロー時） ===
+        // === 手札破棄フラグ ===
         const discardEnemyCount = extResult.discardEnemyHandCount ?? 0;
         const shouldDiscardHighest = extResult.discardHighest ?? false;
+        const discardPlayerCount = extResult.discardPlayerHandCount ?? 0;
+        const shouldDiscardPlayerHighest = extResult.discardPlayerHighest ?? false;
 
         set((state) => {
           const pDeckReturn = [...state.battle.playerDeckRemaining, ...unusedPlayerCards];
@@ -384,6 +427,11 @@ export const useGameStore = create<GameStore>()(
             || discardEnemyCount > 0
             || shouldDiscardHighest;
 
+          // playerDiscardNext: 相手の効果でプレイヤーの手札を破棄
+          const plDiscard = state.battle.playerDiscardNext
+            || discardPlayerCount > 0
+            || shouldDiscardPlayerHighest;
+
           return {
             battle: {
               ...state.battle,
@@ -398,13 +446,16 @@ export const useGameStore = create<GameStore>()(
               selectedCard: null,
               isProcessing: true,
               opponentDiscardNext: opDiscard,
+              playerDiscardNext: plDiscard,
               playerReducedHand: result.playerReducedHand ?? state.battle.playerReducedHand,
               opponentReducedHand: result.opponentReducedHand ?? state.battle.opponentReducedHand,
               spillActive: result.spillNullified,
               playerBuffs: newPlayerBuffs,
               opponentBuffs: newOpponentBuffs,
               corruptedSlots,
+              opponentCorruptedSlots,
               rumorActive: result.rumorActive ?? false,
+              playerRumorActive: extResult.playerRumorActive ?? false,
             },
           };
         });

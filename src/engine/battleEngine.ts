@@ -8,6 +8,8 @@ export interface ExtendedResult extends RoundResult {
   opponentReducedHand?: boolean;
   /** rumor: 相手の次ラウンド手札をランダム差替 */
   rumorActive?: boolean;
+  /** rumor: プレイヤーの次ラウンド手札をランダム差替 */
+  playerRumorActive?: boolean;
   /** distract: 相手の手札を公開 */
   revealedHand?: string[];
   /** swap_drunk: 酔いLv入れ替えフラグ */
@@ -16,8 +18,14 @@ export interface ExtendedResult extends RoundResult {
   reduceMaxRounds?: number;
   /** discardEnemyHand: 相手の次の手札からN枚破棄 */
   discardEnemyHandCount?: number;
+  /** discardPlayerHand: プレイヤーの次の手札からN枚破棄 */
+  discardPlayerHandCount?: number;
   /** discardHighest: 相手の最高dmgカードを破棄 */
   discardHighest?: boolean;
+  /** discardPlayerHighest: プレイヤーの最高dmgカードを破棄 */
+  discardPlayerHighest?: boolean;
+  /** 相手の手札を汚染（相手側corruptedSlots） */
+  opponentCorruptCount?: number;
   /** プレイヤーのデバフ除去数 */
   playerCleanseSelf?: number;
   /** プレイヤーのdot除去フラグ */
@@ -166,22 +174,27 @@ function applyDrinkExtras(card: CardDef, result: ExtendedResult, user: 'player' 
     }
   }
 
-  // corruptHand → 手札汚染
+  // corruptHand → 敵の手札汚染
   if (card.corruptHand) {
     if (isPlayer) {
-      // プレイヤーが使う → 相手の手札汚染（相手にはcorruptedSlotsがないので、opponentへの効果として別途）
+      // プレイヤーが使う → 相手の手札を汚染
+      result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand;
       result.messages.push(`🔥 ${card.name}の効果！相手の手札${card.corruptHand}枚が発情状態に！`);
     } else {
+      // 相手が使う → プレイヤーの手札を汚染
       result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
       result.messages.push(`🔥 ${card.name}の効果！手札${card.corruptHand}枚が発情状態に…！`);
     }
   }
 
-  // discardEnemyHand → 相手の手札破棄（次のドロー時処理）
+  // discardEnemyHand → 敵の手札破棄（次のドロー時処理）
   if (card.discardEnemyHand) {
     if (isPlayer) {
       result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
       result.messages.push(`🌌 ${card.name}の効果！相手の手札${card.discardEnemyHand}枚が記憶から消える…`);
+    } else {
+      result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand;
+      result.messages.push(`🌌 ${card.name}の効果！手札${card.discardEnemyHand}枚が記憶から消える…`);
     }
   }
 }
@@ -522,8 +535,13 @@ export const BattleEngine = {
 
     // 噂話（次ラウンド手札差替）
     if (card.triggerRumor) {
-      result.rumorActive = true;
-      result.messages.push(isPlayer ? `相手の次の手札が乱される！` : `次の手札が乱された！`);
+      if (isPlayer) {
+        result.rumorActive = true;
+        result.messages.push(`相手の次の手札が乱される！`);
+      } else {
+        result.playerRumorActive = true;
+        result.messages.push(`次の手札が乱された！`);
+      }
     }
 
     // 酔いLv入れ替え
@@ -534,14 +552,23 @@ export const BattleEngine = {
 
     // 最高dmgカード破棄
     if (card.discardHighest) {
-      result.discardHighest = true;
-      result.messages.push(isPlayer ? `相手の最強カードが没収された！` : `最強のカードが奪われた！`);
+      if (isPlayer) {
+        result.discardHighest = true;
+        result.messages.push(`相手の最強カードが没収された！`);
+      } else {
+        result.discardPlayerHighest = true;
+        result.messages.push(`最強のカードが奪われた！`);
+      }
     }
 
     // 手札破棄（ランダム）
     if (card.discardEnemyHand) {
-      result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
-      result.messages.push(`相手の手札${card.discardEnemyHand}枚が消える…`);
+      if (isPlayer) {
+        result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
+      } else {
+        result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand;
+      }
+      result.messages.push(isPlayer ? `相手の手札${card.discardEnemyHand}枚が消える…` : `手札${card.discardEnemyHand}枚が消された…`);
     }
 
     // maxRounds減少
@@ -598,10 +625,17 @@ export const BattleEngine = {
       result.messages.push(`💉 副作用…${card.selfDamage}ダメージ！`);
     }
 
-    // 手札汚染
+    // 手札汚染（使用者の「敵」の手札を汚染）
     if (card.corruptHand) {
-      result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
-      result.messages.push(`🔥 手札${card.corruptHand}枚が発情状態に…！`);
+      if (isPlayer) {
+        // プレイヤーが使う → 相手の手札を汚染
+        result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand;
+        result.messages.push(`🔥 相手の手札${card.corruptHand}枚が発情状態に！`);
+      } else {
+        // 相手が使う → プレイヤーの手札を汚染
+        result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
+        result.messages.push(`🔥 手札${card.corruptHand}枚が発情状態に…！`);
+      }
     }
   },
 

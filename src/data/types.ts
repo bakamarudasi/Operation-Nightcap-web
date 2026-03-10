@@ -193,6 +193,8 @@ export interface BattleState {
   selectedCard: string | null;
   isProcessing: boolean;
   opponentDiscardNext: boolean;
+  /** 相手の効果でプレイヤーの手札を破棄 */
+  playerDiscardNext: boolean;
   playerReducedHand: boolean;
   opponentReducedHand: boolean;
   spillActive: boolean;
@@ -202,8 +204,12 @@ export interface BattleState {
   opponentBuffs: Buff[];
   /** 手札の汚染状態 (カードindex → true で「発情」状態) */
   corruptedSlots: boolean[];
+  /** 相手の手札の汚染状態 */
+  opponentCorruptedSlots: boolean[];
   /** rumor: 次ラウンドの相手手札をランダム差替 */
   rumorActive: boolean;
+  /** rumor: 次ラウンドのプレイヤー手札をランダム差替 */
+  playerRumorActive: boolean;
 }
 
 export interface RoundResult {
