@@ -219,6 +219,9 @@ export interface BattleState {
   rumorActive: boolean;
   /** rumor: 次ラウンドのプレイヤー手札をランダム差替 */
   playerRumorActive: boolean;
+  /** 使用済みカードの捨て札（デッキ枯渇時にリシャッフル） */
+  playerDiscardPile: string[];
+  opponentDiscardPile: string[];
 }
 
 export interface RoundResult {
