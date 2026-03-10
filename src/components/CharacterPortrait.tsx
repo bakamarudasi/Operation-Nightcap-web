@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { CharacterTheme, CostumeState } from '../data/types.ts';
 
 interface PortraitProps {
@@ -23,13 +23,11 @@ export function CharacterPortrait({ theme, variant, className = '', style, drunk
     ? (theme.portraitDrunkImgs?.[drunkLevel] ?? theme.portraitImg)
     : theme.iconImg;
   const [imgError, setImgError] = useState(false);
-  const [imgErrorSrc, setImgErrorSrc] = useState<string | undefined>();
 
   // 画像ソースが変わったらエラー状態をリセット
-  if (imgError && imgErrorSrc !== imgSrc) {
+  useEffect(() => {
     setImgError(false);
-    setImgErrorSrc(undefined);
-  }
+  }, [imgSrc]);
 
   const showImage = imgSrc && !imgError;
   const costume = costumeStates?.find(c => c.level === drunkLevel);
@@ -54,7 +52,7 @@ export function CharacterPortrait({ theme, variant, className = '', style, drunk
       alt=""
       className={`char-img ${className}`}
       style={{ ...style, ...costumeVars }}
-      onError={() => { setImgError(true); setImgErrorSrc(imgSrc); }}
+      onError={() => { setImgError(true); }}
       draggable={false}
     />
   ) : (
