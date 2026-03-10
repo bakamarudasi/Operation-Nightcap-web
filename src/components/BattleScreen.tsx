@@ -116,14 +116,14 @@ export function BattleScreen() {
 
   // 最初の手札を配る
   useEffect(() => {
-    if (battle.playerHand.length === 0 && !battle.isProcessing && !gameResult) {
+    if (battle.playerHand.length === 0 && !battle.isProcessing && !gameResult && battle.playerDeckRemaining.length > 0) {
       drawHands();
       if (currentOpponent) {
         const line = randomPick(currentOpponent.drunkLevels[0].lines);
         setDialogue({ speaker: currentOpponent.name, text: line });
       }
     }
-  }, [battle.playerHand.length, battle.isProcessing, gameResult, drawHands, currentOpponent]);
+  }, [battle.playerHand.length, battle.playerDeckRemaining.length, battle.isProcessing, gameResult, drawHands, currentOpponent]);
 
   // タイピングエフェクト
   useEffect(() => {
@@ -203,6 +203,14 @@ export function BattleScreen() {
     const pCard = CARD_DATA[selectedId];
     const result = playRound();
     if (!result) return;
+
+    // cardPlayLock の安全タイムアウト（15秒で強制解除）
+    const lockSafetyTimer = setTimeout(() => {
+      if (cardPlayLock.current) {
+        cardPlayLock.current = false;
+        setPlayingCardIdx(null);
+      }
+    }, 15000);
 
     // プレイヤーカードをフィールドに表示
     if (pCard) {
@@ -289,6 +297,7 @@ export function BattleScreen() {
           // 即勝利
           if (result.instantWin) {
             setTimeout(() => {
+              clearTimeout(lockSafetyTimer);
               cardPlayLock.current = false;
               const reward = endBattle('player_win');
               setResultReward(reward);
@@ -304,6 +313,7 @@ export function BattleScreen() {
           setTimeout(() => {
             const end = checkGameEnd();
             if (end) {
+              clearTimeout(lockSafetyTimer);
               cardPlayLock.current = false;
               const reward = endBattle(end);
               setResultReward(reward);
@@ -333,6 +343,7 @@ export function BattleScreen() {
               setPlayerFlipped(false);
               setOppFlipped(false);
               setPlayingCardIdx(null);
+              clearTimeout(lockSafetyTimer);
               cardPlayLock.current = false;
               drawHands();
 
@@ -350,7 +361,7 @@ export function BattleScreen() {
         }, 400);
       }, 400);
     }, 800);
-  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, getDrunkLevel, playRound, selectCard]);
+  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, getDrunkLevel, playRound, checkAfterEvent]);
 
   // カード選択後に自動で出す
   useEffect(() => {
@@ -441,7 +452,7 @@ export function BattleScreen() {
                   <div className="gauge-track">
                     <div
                       className="gauge-fill opp-fill"
-                      style={{ width: `${(battle.opponentDrunk / 10) * 100}%` }}
+                      style={{ width: `${Math.min(battle.opponentDrunk / 10, 1) * 100}%` }}
                     />
                   </div>
                   <div className="gauge-lvl">
@@ -511,7 +522,7 @@ export function BattleScreen() {
               <div className="gauge-track">
                 <div
                   className="gauge-fill player-fill"
-                  style={{ width: `${(battle.playerDrunk / 10) * 100}%` }}
+                  style={{ width: `${Math.min(battle.playerDrunk / 10, 1) * 100}%` }}
                 />
               </div>
               <div className="gauge-lvl">
@@ -540,7 +551,7 @@ export function BattleScreen() {
                 <div className="panel-gauge-track">
                   <div
                     className="panel-gauge-fill pl-fill"
-                    style={{ width: `${(battle.playerDrunk / 10) * 100}%` }}
+                    style={{ width: `${Math.min(battle.playerDrunk / 10, 1) * 100}%` }}
                   />
                 </div>
               </div>
