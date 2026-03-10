@@ -101,6 +101,8 @@ const initialBattle: BattleState = {
   opponentCorruptedSlots: [],
   rumorActive: false,
   playerRumorActive: false,
+  playerDiscardPile: [],
+  opponentDiscardPile: [],
 };
 
 export const useGameStore = create<GameStore>()(
@@ -164,18 +166,30 @@ export const useGameStore = create<GameStore>()(
           const handSize = b.playerReducedHand ? 3 : 4;
           b.playerReducedHand = false;
 
-          // プレイヤー手札
-          const pRemaining = [...b.playerDeckRemaining];
+          // プレイヤー手札（デッキが足りなければ捨て札をリシャッフルして補充）
+          let pRemaining = [...b.playerDeckRemaining];
+          let pDiscard = [...b.playerDiscardPile];
+          if (pRemaining.length < handSize && pDiscard.length > 0) {
+            shuffleArray(pDiscard);
+            pRemaining = [...pRemaining, ...pDiscard];
+            pDiscard = [];
+          }
           const pHand: string[] = [];
           const pCount = Math.min(handSize, pRemaining.length);
           for (let i = 0; i < pCount; i++) {
             pHand.push(pRemaining.shift()!);
           }
 
-          // 相手手札
+          // 相手手札（デッキが足りなければ捨て札をリシャッフルして補充）
           const oHandSize = b.opponentReducedHand ? 3 : 4;
           b.opponentReducedHand = false;
-          const oRemaining = [...b.opponentDeckRemaining];
+          let oRemaining = [...b.opponentDeckRemaining];
+          let oDiscard = [...b.opponentDiscardPile];
+          if (oRemaining.length < oHandSize && oDiscard.length > 0) {
+            shuffleArray(oDiscard);
+            oRemaining = [...oRemaining, ...oDiscard];
+            oDiscard = [];
+          }
           const oHand: string[] = [];
           const oCount = Math.min(oHandSize, oRemaining.length);
           for (let i = 0; i < oCount; i++) {
@@ -253,6 +267,16 @@ export const useGameStore = create<GameStore>()(
             pRemaining[newCardIdx] = replacedCard;
           }
 
+          // 汚染スロットを実際の手札サイズに合わせる（デッキ枯渇で手札が少ない場合）
+          let adjustedCorrupted = b.corruptedSlots;
+          if (adjustedCorrupted.length > pHand.length) {
+            adjustedCorrupted = adjustedCorrupted.slice(0, pHand.length);
+          }
+          let adjustedOppCorrupted = b.opponentCorruptedSlots;
+          if (adjustedOppCorrupted.length > oHand.length) {
+            adjustedOppCorrupted = adjustedOppCorrupted.slice(0, oHand.length);
+          }
+
           return {
             battle: {
               ...b,
@@ -260,6 +284,8 @@ export const useGameStore = create<GameStore>()(
               opponentDeckRemaining: oRemaining,
               playerHand: pHand,
               opponentHand: oHand,
+              corruptedSlots: adjustedCorrupted,
+              opponentCorruptedSlots: adjustedOppCorrupted,
               selectedCard: null,
               isProcessing: false,
               opponentDiscardNext: false,
@@ -270,6 +296,8 @@ export const useGameStore = create<GameStore>()(
               playerDiscardHighest: false,
               rumorActive: false,
               playerRumorActive: false,
+              playerDiscardPile: pDiscard,
+              opponentDiscardPile: oDiscard,
             },
           };
         });
@@ -475,6 +503,10 @@ export const useGameStore = create<GameStore>()(
           shuffleArray(pDeckReturn);
           shuffleArray(oDeckReturn);
 
+          // 使用したカードを捨て札に追加
+          const pDiscardPile = [...state.battle.playerDiscardPile, b.selectedCard!];
+          const oDiscardPile = [...state.battle.opponentDiscardPile, opponentCardId];
+
           // 酔いLv計算
           let newPlayerDrunk = state.battle.playerDrunk + result.playerDamage - result.playerHeal;
           let newOpponentDrunk = state.battle.opponentDrunk + result.opponentDamage - result.opponentHeal;
@@ -522,6 +554,8 @@ export const useGameStore = create<GameStore>()(
               opponentCorruptedSlots,
               rumorActive: result.rumorActive ?? false,
               playerRumorActive: extResult.playerRumorActive ?? false,
+              playerDiscardPile: pDiscardPile,
+              opponentDiscardPile: oDiscardPile,
             },
           };
         });
@@ -545,7 +579,10 @@ export const useGameStore = create<GameStore>()(
         const b = get().battle;
         if (b.opponentDrunk >= 10) return 'player_win';
         if (b.playerDrunk >= 10) return 'opponent_win';
-        if (b.round >= b.maxRounds) {
+        // デッキ・捨て札・手札が全て空なら強制終了（詰み防止）
+        const playerOutOfCards = b.playerDeckRemaining.length === 0 && b.playerDiscardPile.length === 0 && b.playerHand.length === 0;
+        const opponentOutOfCards = b.opponentDeckRemaining.length === 0 && b.opponentDiscardPile.length === 0 && b.opponentHand.length === 0;
+        if (playerOutOfCards || opponentOutOfCards || b.round >= b.maxRounds) {
           if (b.playerDrunk < b.opponentDrunk) return 'player_win';
           if (b.playerDrunk > b.opponentDrunk) return 'opponent_win';
           return 'draw';

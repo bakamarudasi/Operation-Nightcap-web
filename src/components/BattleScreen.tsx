@@ -117,14 +117,15 @@ export function BattleScreen() {
 
   // 最初の手札を配る
   useEffect(() => {
-    if (battle.playerHand.length === 0 && !battle.isProcessing && !gameResult && battle.playerDeckRemaining.length > 0) {
+    if (battle.playerHand.length === 0 && !battle.isProcessing && !gameResult &&
+        (battle.playerDeckRemaining.length > 0 || battle.playerDiscardPile.length > 0)) {
       drawHands();
       if (currentOpponent) {
-        const line = randomPick(currentOpponent.drunkLevels[0].lines);
+        const line = randomPick(currentOpponent.drunkLevels[0].lines) ?? '';
         setDialogue({ speaker: currentOpponent.name, text: line });
       }
     }
-  }, [battle.playerHand.length, battle.playerDeckRemaining.length, battle.isProcessing, gameResult, drawHands, currentOpponent]);
+  }, [battle.playerHand.length, battle.playerDeckRemaining.length, battle.playerDiscardPile.length, battle.isProcessing, gameResult, drawHands, currentOpponent]);
 
   // タイピングエフェクト
   useEffect(() => {
@@ -364,7 +365,7 @@ export function BattleScreen() {
                 const lvl = getDrunkLevel(s.battle.opponentDrunk);
                 const levelData = s.currentOpponent.drunkLevels.find(l => l.level === lvl);
                 if (levelData) {
-                  setDialogue({ speaker: s.currentOpponent.name, text: randomPick(levelData.lines) });
+                  setDialogue({ speaker: s.currentOpponent.name, text: randomPick(levelData.lines) ?? '' });
                 }
               }
             }

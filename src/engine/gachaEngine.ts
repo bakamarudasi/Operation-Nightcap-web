@@ -32,11 +32,11 @@ export function pullOne(inventory: string[]): GachaResult {
   if (!pool || pool.length === 0) {
     // フォールバック: ★1から排出
     const fallbackPool = cardsByRarity[1];
-    const cardId = randomPick(fallbackPool);
+    const cardId = randomPick(fallbackPool)!;
     return { cardId, rarity: 1, isNew: true, isDuplicate: false, refund: 0 };
   }
 
-  const cardId = randomPick(pool);
+  const cardId = randomPick(pool)!;
   const card = CARD_DATA[cardId];
   const ownedCount = inventory.filter(id => id === cardId).length;
   const isNew = ownedCount === 0;
