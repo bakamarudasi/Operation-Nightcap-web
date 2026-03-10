@@ -88,6 +88,10 @@ const initialBattle: BattleState = {
   isProcessing: false,
   opponentDiscardNext: false,
   playerDiscardNext: false,
+  opponentDiscardCount: 0,
+  playerDiscardCount: 0,
+  opponentDiscardHighest: false,
+  playerDiscardHighest: false,
   playerReducedHand: false,
   opponentReducedHand: false,
   spillActive: false,
@@ -178,14 +182,53 @@ export const useGameStore = create<GameStore>()(
             oHand.push(oRemaining.shift()!);
           }
 
-          // 乾杯強制の効果（破棄したカードはデッキの底に戻す）
+          // --- 相手の手札破棄処理 ---
+          // 最高dmgカード破棄（スワイヤーの命令等）
+          if (b.opponentDiscardHighest && oHand.length > 1) {
+            let maxDmg = -1;
+            let maxIdx = 0;
+            for (let i = 0; i < oHand.length; i++) {
+              const c = CARD_DATA[oHand[i]];
+              const dmg = c?.damage ?? c?.enemyDamage ?? 0;
+              if (dmg > maxDmg) { maxDmg = dmg; maxIdx = i; }
+            }
+            const [discardedCard] = oHand.splice(maxIdx, 1);
+            oRemaining.push(discardedCard);
+          }
+          // ランダムN枚破棄（サーミ・オーロラ等）
+          if (b.opponentDiscardCount > 0) {
+            for (let n = 0; n < b.opponentDiscardCount && oHand.length > 1; n++) {
+              const discardIdx = Math.floor(Math.random() * oHand.length);
+              const [discardedCard] = oHand.splice(discardIdx, 1);
+              oRemaining.push(discardedCard);
+            }
+          }
+          // 乾杯強制（ランダム1枚）
           if (b.opponentDiscardNext && oHand.length > 1) {
             const discardIdx = Math.floor(Math.random() * oHand.length);
             const [discardedCard] = oHand.splice(discardIdx, 1);
             oRemaining.push(discardedCard);
           }
 
-          // プレイヤー側の手札破棄
+          // --- プレイヤーの手札破棄処理 ---
+          if (b.playerDiscardHighest && pHand.length > 1) {
+            let maxDmg = -1;
+            let maxIdx = 0;
+            for (let i = 0; i < pHand.length; i++) {
+              const c = CARD_DATA[pHand[i]];
+              const dmg = c?.damage ?? c?.enemyDamage ?? 0;
+              if (dmg > maxDmg) { maxDmg = dmg; maxIdx = i; }
+            }
+            const [discardedCard] = pHand.splice(maxIdx, 1);
+            pRemaining.push(discardedCard);
+          }
+          if (b.playerDiscardCount > 0) {
+            for (let n = 0; n < b.playerDiscardCount && pHand.length > 1; n++) {
+              const discardIdx = Math.floor(Math.random() * pHand.length);
+              const [discardedCard] = pHand.splice(discardIdx, 1);
+              pRemaining.push(discardedCard);
+            }
+          }
           if (b.playerDiscardNext && pHand.length > 1) {
             const discardIdx = Math.floor(Math.random() * pHand.length);
             const [discardedCard] = pHand.splice(discardIdx, 1);
@@ -221,6 +264,10 @@ export const useGameStore = create<GameStore>()(
               isProcessing: false,
               opponentDiscardNext: false,
               playerDiscardNext: false,
+              opponentDiscardCount: 0,
+              playerDiscardCount: 0,
+              opponentDiscardHighest: false,
+              playerDiscardHighest: false,
               rumorActive: false,
               playerRumorActive: false,
             },
@@ -267,6 +314,8 @@ export const useGameStore = create<GameStore>()(
           let adjustedRequired = pCard.requiredDrunkLevel ?? 0;
           if (b.playerBuffs.some(bf => bf.id === 'dimlight')) adjustedRequired = Math.max(0, adjustedRequired - 1);
           if (b.playerBuffs.some(bf => bf.id === 'excuse')) adjustedRequired = Math.max(0, adjustedRequired - 1);
+          // 即勝利カード（Kiss等）はバフで下げても最低Lv2を要求
+          if (pCard.instantWin) adjustedRequired = Math.max(2, adjustedRequired);
           if (targetLevel >= adjustedRequired) {
             const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === b.selectedCard);
             if (cgEvent) {
@@ -279,13 +328,12 @@ export const useGameStore = create<GameStore>()(
         const oCard = CARD_DATA[opponentCardId];
         let opponentCgEvent: CGEvent | null = null;
         if (oCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
-          // BUG-012修正: 相手のセクハラはプレイヤーの酔い度で判定
           const playerDrunk = b.playerDrunk;
           const playerLevel = get().getDrunkLevel(playerDrunk);
-          // バフによる必要Lv補正を考慮
           let adjustedRequired = oCard.requiredDrunkLevel ?? 0;
           if (b.opponentBuffs.some(bf => bf.id === 'dimlight')) adjustedRequired = Math.max(0, adjustedRequired - 1);
           if (b.opponentBuffs.some(bf => bf.id === 'excuse')) adjustedRequired = Math.max(0, adjustedRequired - 1);
+          if (oCard.instantWin) adjustedRequired = Math.max(2, adjustedRequired);
           if (playerLevel >= adjustedRequired) {
             const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === opponentCardId);
             if (cgEvent) {
@@ -422,15 +470,9 @@ export const useGameStore = create<GameStore>()(
           // maxRounds減少
           const newMaxRounds = Math.max(state.battle.round + 1, state.battle.maxRounds - roundReduction);
 
-          // opponentDiscardNext: 通常の乾杯強制 or 手札破棄系
-          const opDiscard = (result.opponentDiscardNext ?? state.battle.opponentDiscardNext)
-            || discardEnemyCount > 0
-            || shouldDiscardHighest;
-
-          // playerDiscardNext: 相手の効果でプレイヤーの手札を破棄
-          const plDiscard = state.battle.playerDiscardNext
-            || discardPlayerCount > 0
-            || shouldDiscardPlayerHighest;
+          // 乾杯強制（toast効果のランダム1枚破棄）
+          const opToastDiscard = result.opponentDiscardNext ?? state.battle.opponentDiscardNext;
+          const plToastDiscard = state.battle.playerDiscardNext;
 
           return {
             battle: {
@@ -445,8 +487,12 @@ export const useGameStore = create<GameStore>()(
               opponentHand: [],
               selectedCard: null,
               isProcessing: true,
-              opponentDiscardNext: opDiscard,
-              playerDiscardNext: plDiscard,
+              opponentDiscardNext: opToastDiscard,
+              playerDiscardNext: plToastDiscard,
+              opponentDiscardCount: discardEnemyCount,
+              playerDiscardCount: discardPlayerCount,
+              opponentDiscardHighest: shouldDiscardHighest,
+              playerDiscardHighest: shouldDiscardPlayerHighest,
               playerReducedHand: result.playerReducedHand ?? state.battle.playerReducedHand,
               opponentReducedHand: result.opponentReducedHand ?? state.battle.opponentReducedHand,
               spillActive: result.spillNullified,

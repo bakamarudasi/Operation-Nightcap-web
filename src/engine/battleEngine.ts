@@ -108,11 +108,6 @@ function applyDrinkBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBuffs: 
     dmg = Math.floor(dmg * 1.5);
   }
 
-  // negate_next: 相手の次のカード効果を無効化
-  if (hasBuff(defenderBuffs, 'negate_next')) {
-    dmg = 0;
-  }
-
   return dmg;
 }
 
@@ -278,14 +273,33 @@ export const BattleEngine = {
       result.messages.push(`💔 相手も持続ダメージ…酔い+${opponentDoT}！`);
     }
 
-    // === フェーズ0.5: negate_nextチェック（無効化バフ消費予約） ===
-    if (hasBuff(battle.playerBuffs, 'negate_next')) {
-      result.messages.push(`🃏 ポーカーフェイス発動！相手のカード効果を無効化！`);
+    // === フェーズ0.5: negate_nextチェック ===
+    // プレイヤーがnegate_next → 相手のカード効果を完全無効化
+    const opponentNegated = hasBuff(battle.playerBuffs, 'negate_next');
+    // 相手がnegate_next → プレイヤーのカード効果を完全無効化
+    const playerNegated = hasBuff(battle.opponentBuffs, 'negate_next');
+    if (opponentNegated) {
+      result.messages.push(`🃏 ポーカーフェイス発動！相手の${oCard.emoji}${oCard.name}を無効化！`);
       trackBuffConsumption(result, 'player', 'negate_next');
     }
-    if (hasBuff(battle.opponentBuffs, 'negate_next')) {
-      result.messages.push(`🃏 相手のポーカーフェイス発動！カード効果が無効化された！`);
+    if (playerNegated) {
+      result.messages.push(`🃏 相手のポーカーフェイス発動！${pCard.emoji}${pCard.name}が無効化された！`);
       trackBuffConsumption(result, 'opponent', 'negate_next');
+    }
+
+    // 両方無効化なら何も起きない
+    if (playerNegated && opponentNegated) {
+      return result;
+    }
+
+    // 片方だけ無効化：無効化されてない側のカードだけ通す
+    if (playerNegated) {
+      // プレイヤーのカード無効 → 相手のカードだけ処理
+      return this.resolveSingleCard(oCard, pCard, result, 'opponent', battle);
+    }
+    if (opponentNegated) {
+      // 相手のカード無効 → プレイヤーのカードだけ処理
+      return this.resolveSingleCard(pCard, oCard, result, 'player', battle);
     }
 
     // === フェーズ0.5: スタンチェック ===
@@ -504,6 +518,57 @@ export const BattleEngine = {
         }
       }
       result.messages.push('平和なラウンド…お互いつまみを食べた');
+    }
+
+    return result;
+  },
+
+  /**
+   * 片方のカードだけ解決（negate_nextで相手が無効化された場合）
+   */
+  resolveSingleCard(activeCard: CardDef, _nullifiedCard: CardDef, result: ExtendedResult, user: 'player' | 'opponent', battle: BattleState): ExtendedResult {
+    const isPlayer = user === 'player';
+
+    if (activeCard.type === 'strategy' || activeCard.type === 'environment' || activeCard.type === 'status') {
+      this.resolveUtilityCard(activeCard, result, user, battle);
+    } else if (activeCard.type === 'drink') {
+      const attackerBuffs = isPlayer ? battle.playerBuffs : battle.opponentBuffs;
+      const defenderBuffs = isPlayer ? battle.opponentBuffs : battle.playerBuffs;
+      const dmg = applyDrinkBuffs(getCardDamage(activeCard), attackerBuffs, defenderBuffs);
+      if (isPlayer) {
+        result.opponentDamage += dmg;
+        result.messages.push(`${activeCard.emoji} ${activeCard.name}で酔い${dmg}ダメージ！`);
+      } else {
+        result.playerDamage += dmg;
+        result.messages.push(`${activeCard.emoji} ${activeCard.name}で酔い${dmg}ダメージ！`);
+      }
+      applyDrinkExtras(activeCard, result, user);
+      if (hasBuff(attackerBuffs, 'next_drink_boost')) {
+        trackBuffConsumption(result, user, 'next_drink_boost');
+      }
+    } else if (activeCard.type === 'food') {
+      const userBuffs = isPlayer ? battle.playerBuffs : battle.opponentBuffs;
+      if (hasBuff(userBuffs, 'no_food')) {
+        result.messages.push(`🚫 つまみ封じ中！${activeCard.emoji}${activeCard.name}が使えない！`);
+      } else {
+        const drunkVal = isPlayer ? battle.playerDrunk : battle.opponentDrunk;
+        let heal = activeCard.heal === 99 ? Math.max(0, drunkVal) : (activeCard.heal ?? 0);
+        heal = applyFoodBuffs(heal, userBuffs);
+        if (isPlayer) {
+          result.playerHeal = heal;
+        } else {
+          result.opponentHeal = heal;
+        }
+        result.messages.push(`${activeCard.emoji} ${activeCard.name}で${heal}回復！`);
+        applyFoodExtras(activeCard, result, user);
+        if (hasBuff(userBuffs, 'next_food_boost')) {
+          trackBuffConsumption(result, user, 'next_food_boost');
+        }
+      }
+    } else if (activeCard.type === 'chug') {
+      this.resolveChugCard(activeCard, _nullifiedCard, result, user, battle);
+    } else if (activeCard.type === 'harassment') {
+      this.resolveHarassmentCard(activeCard, _nullifiedCard, result, user, battle);
     }
 
     return result;
@@ -742,6 +807,9 @@ export const BattleEngine = {
             const label = buffLabel(buff);
             if (label) result.messages.push(label);
           }
+        }
+        if (hCard.applySelfBuffs) {
+          result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), ...hCard.applySelfBuffs];
         }
       } else {
         // === 相手の逆セクハラ → プレイヤーに理性ダメージ ===

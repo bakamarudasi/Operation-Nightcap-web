@@ -282,7 +282,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   eyja_eruption: {
     id: 'eyja_eruption', name: 'エイヤの噴火カクテル', emoji: '🌋', type: 'status',
-    applyBuffs: [{ id: 'tipsy', duration: 2 }],
+    applyBuffs: [{ id: 'tipsy', duration: 2, value: 1.5 }],
     description: '火山のように熱い一杯。体温が上がって酔いが回りやすくなる', rarity: 3, price: 650
   },
   manticore_stealth: {
@@ -306,7 +306,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   doctor_coat: {
     id: 'doctor_coat', name: '白衣を掛けてあげる', emoji: '🥼', type: 'harassment',
     requiredDrunkLevel: 1, drunkDamage: 1,
-    applyBuffs: [{ id: 'blush', duration: 1 }],
+    applyBuffs: [{ id: 'blush', duration: 1, value: 1 }],
     description: '「寒いでしょ」肩に白衣。ドクターの匂いがする', rarity: 3, price: 520
   },
   wall_pin: {
@@ -317,7 +317,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   piggyback: {
     id: 'piggyback', name: 'おんぶして帰る', emoji: '🌙', type: 'harassment',
     requiredDrunkLevel: 3, drunkDamage: 2,
-    applyBuffs: [{ id: 'blush', duration: 2 }],
+    applyBuffs: [{ id: 'blush', duration: 2, value: 1 }],
     description: '「帰れないでしょ、ほら背中」体温と鼓動が伝わるCG', rarity: 5, price: 3000
   },
   oripathy_check: {

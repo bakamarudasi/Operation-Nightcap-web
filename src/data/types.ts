@@ -192,9 +192,18 @@ export interface BattleState {
   opponentHand: string[];
   selectedCard: string | null;
   isProcessing: boolean;
+  /** 乾杯強制: 相手の手札1枚ランダム破棄 */
   opponentDiscardNext: boolean;
   /** 相手の効果でプレイヤーの手札を破棄 */
   playerDiscardNext: boolean;
+  /** 相手の手札をN枚ランダム破棄（discardEnemyHand用） */
+  opponentDiscardCount: number;
+  /** プレイヤーの手札をN枚ランダム破棄 */
+  playerDiscardCount: number;
+  /** 相手の最高dmgカードを破棄 */
+  opponentDiscardHighest: boolean;
+  /** プレイヤーの最高dmgカードを破棄 */
+  playerDiscardHighest: boolean;
   playerReducedHand: boolean;
   opponentReducedHand: boolean;
   spillActive: boolean;
