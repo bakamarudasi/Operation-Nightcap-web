@@ -492,7 +492,7 @@ export const useGameStore = create<GameStore>()(
 
           // 乾杯強制（toast効果のランダム1枚破棄）
           const opToastDiscard = result.opponentDiscardNext ?? state.battle.opponentDiscardNext;
-          const plToastDiscard = state.battle.playerDiscardNext;
+          const plToastDiscard = result.playerDiscardNext ?? state.battle.playerDiscardNext;
 
           return {
             battle: {

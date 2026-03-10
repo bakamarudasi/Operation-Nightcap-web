@@ -4,6 +4,7 @@ import { randomPick } from './utils.ts';
 
 export interface ExtendedResult extends RoundResult {
   opponentDiscardNext?: boolean;
+  playerDiscardNext?: boolean;
   playerReducedHand?: boolean;
   opponentReducedHand?: boolean;
   /** rumor: 相手の次ラウンド手札をランダム差替 */
@@ -77,9 +78,13 @@ export function calcDoTDamage(buffs: Buff[]): number {
 function applyDrinkBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBuffs: Buff[]): number {
   let dmg = baseDmg;
 
-  // karaoke: ドリンクダメージ+1
-  if (hasBuff(attackerBuffs, 'karaoke') || hasBuff(defenderBuffs, 'karaoke')) {
-    dmg += 1;
+  // karaoke: ドリンクダメージ+N（環境効果は両方に付与されるためmax取得）
+  const karaokeVal = Math.max(
+    getBuffValue(attackerBuffs, 'karaoke', 0),
+    getBuffValue(defenderBuffs, 'karaoke', 0)
+  );
+  if (karaokeVal > 0) {
+    dmg += karaokeVal;
   }
 
   // all_dmg_up: 全カードdmg+N（バベルの残響）
@@ -748,7 +753,8 @@ export const BattleEngine = {
       } else {
         result.playerDamage += chugCard.enemyDamage ?? 0;
         result.opponentDamage += chugCard.selfDamage ?? 0;
-        result.messages.push(`🥂 相手が乾杯強制！${chugCard.enemyDamage}ダメージ！`);
+        result.playerDiscardNext = true;
+        result.messages.push(`🥂 相手が乾杯強制！${chugCard.enemyDamage}ダメージ＋次のラウンド手札1枚破棄！`);
       }
     }
     else if (chugCard.effect === 'spill') {
