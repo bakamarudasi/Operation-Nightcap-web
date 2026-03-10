@@ -1,7 +1,9 @@
 /** バトル中の一時的な状態変化 */
 export interface Buff {
   id: 'stun' | 'atk_down' | 'dot' | 'no_food' | 'corrupted_hand'
-    | 'tipsy' | 'blush' | 'alone' | 'karaoke' | 'dimlight' | 'excuse';
+    | 'tipsy' | 'blush' | 'alone' | 'karaoke' | 'dimlight' | 'excuse'
+    | 'drink_dmg_half' | 'next_drink_boost' | 'next_food_boost'
+    | 'negate_next' | 'stealth' | 'self_atk_up' | 'all_dmg_up';
   duration: number;   // -1 = 永続, 1~ = 残りターン数
   value?: number;     // ダメージ量・倍率など
   source?: string;    // 付与元カードID
@@ -11,7 +13,10 @@ export type CardType = 'drink' | 'food' | 'chug' | 'harassment' | 'strategy' | '
 export type CardEffect = 'chug' | 'toast' | 'spill'
   | 'rumor' | 'excuse' | 'distract'
   | 'karaoke' | 'lastorder' | 'dimlight'
-  | 'tipsy' | 'blush' | 'alone';
+  | 'tipsy' | 'blush' | 'alone'
+  | 'discard_enemy_hand' | 'swap_drunk' | 'reduce_max_rounds'
+  | 'roulette' | 'cleanse' | 'discard_highest' | 'reveal_and_debuff'
+  | 'rhodes_party' | 'penguin_vip' | 'babel_requiem' | 'contingency_contract';
 
 export interface CardDef {
   id: string;
@@ -36,6 +41,18 @@ export interface CardDef {
   applySelfBuffs?: Buff[];
   /** 手札汚染: ランダムでN枚を「発情」状態に変える */
   corruptHand?: number;
+  /** 自分へのHP回復（攻撃カードが持つ場合ドレイン効果） */
+  selfHeal?: number;
+  /** 確率分岐ダメージ: [確率, 成功dmg, 失敗自傷dmg] */
+  rouletteDmg?: [number, number, number];
+  /** 相手の手札をランダムにN枚破棄 */
+  discardEnemyHand?: number;
+  /** maxRounds減少量 */
+  reduceMaxRounds?: number;
+  /** デバフ除去数 */
+  cleanseSelf?: number;
+  /** dot除去 */
+  cleanseDot?: boolean;
   description: string;
   rarity: number;
   price: number;
