@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { CARD_DATA } from '../../data/cards.ts';
 import type { CardDef } from '../../data/types.ts';
 
@@ -62,7 +62,7 @@ export function DeckGrid({
           <div
             key={`deck-${i}`}
             className={[
-              'deck-card',
+              'deck-slot',
               `type-${card.type}`,
               isBeingDragged ? 'dragging' : '',
               isReorderTarget ? 'reorder-target' : '',
@@ -79,31 +79,31 @@ export function DeckGrid({
             }}
             onTouchEnd={() => { onCancelLongPress(); onHidePreview(); }}
           >
-            <div className="deck-card-remove">×</div>
-            <div className="deck-card-emoji">{card.emoji}</div>
-            <div className="deck-card-name">{card.name}</div>
-            <div className="deck-card-info">
+            <div className="deck-slot-remove">×</div>
+            <div className="deck-slot-emoji">{card.emoji}</div>
+            <div className="deck-slot-name">{card.name}</div>
+            <div className="deck-slot-info">
               {card.type === 'drink' ? `攻${card.damage === -1 ? '1~3' : card.damage}` :
                card.type === 'food' ? `回${card.heal === 99 ? 'MAX' : card.heal}` :
                card.type === 'harassment' ? `Lv${card.requiredDrunkLevel}` :
                '特殊'}
             </div>
             {/* レアリティ星 */}
-            <div className="deck-card-stars">{'★'.repeat(card.rarity)}</div>
+            <div className="deck-slot-stars">{'★'.repeat(card.rarity)}</div>
             {/* 同名カード枚数バッジ */}
             {isFirstOfKind && count > 1 && (
-              <div className="deck-card-count">×{count}</div>
+              <div className="deck-slot-count">×{count}</div>
             )}
           </div>
         );
       })}
       {Array.from({ length: 12 - playerDeck.length }).map((_, i) => (
-        <div key={`empty-${i}`} className={`deck-card deck-card-empty ${
+        <div key={`empty-${i}`} className={`deck-slot deck-slot-empty ${
           animCards.some(a => a.type === 'add') && i === 0 ? 'slot-pulse' : ''
         }`}>
-          <div className="deck-card-emoji">＋</div>
+          <div className="deck-slot-emoji">＋</div>
           {i === 0 && playerDeck.length < 12 && (
-            <div className="deck-card-hint">クリックか<br/>ドラッグで追加</div>
+            <div className="deck-slot-hint">クリックか<br/>ドラッグで追加</div>
           )}
         </div>
       ))}

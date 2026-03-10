@@ -128,7 +128,7 @@
   gap: 8px;
 }
 
-.deck-card {
+.deck-slot {
   aspect-ratio: 3 / 4;
   border-radius: 8px;
   display: flex;
@@ -143,55 +143,55 @@
   user-select: none;
 }
 
-.deck-card:hover {
+.deck-slot:hover {
   transform: translateY(-4px);
   border-color: rgba(212, 168, 83, 0.5);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 /* タイプ別カラー */
-.deck-card.type-drink {
+.deck-slot.type-drink {
   background: linear-gradient(160deg, rgba(60, 25, 15, 0.9), rgba(40, 18, 10, 0.95));
   border-bottom: 3px solid #884444;
 }
-.deck-card.type-food {
+.deck-slot.type-food {
   background: linear-gradient(160deg, rgba(20, 40, 20, 0.9), rgba(15, 30, 15, 0.95));
   border-bottom: 3px solid #448844;
 }
-.deck-card.type-chug {
+.deck-slot.type-chug {
   background: linear-gradient(160deg, rgba(35, 20, 50, 0.9), rgba(25, 15, 35, 0.95));
   border-bottom: 3px solid #665588;
 }
-.deck-card.type-harassment {
+.deck-slot.type-harassment {
   background: linear-gradient(160deg, rgba(50, 18, 35, 0.9), rgba(35, 12, 25, 0.95));
   border-bottom: 3px solid #884466;
 }
-.deck-card.type-strategy {
+.deck-slot.type-strategy {
   background: linear-gradient(160deg, rgba(30, 35, 50, 0.9), rgba(20, 25, 35, 0.95));
   border-bottom: 3px solid #556688;
 }
-.deck-card.type-environment {
+.deck-slot.type-environment {
   background: linear-gradient(160deg, rgba(35, 40, 25, 0.9), rgba(25, 30, 15, 0.95));
   border-bottom: 3px solid #668855;
 }
-.deck-card.type-status {
+.deck-slot.type-status {
   background: linear-gradient(160deg, rgba(45, 30, 15, 0.9), rgba(35, 20, 10, 0.95));
   border-bottom: 3px solid #886644;
 }
 
 /* 空スロット */
-.deck-card-empty {
+.deck-slot-empty {
   background: rgba(30, 18, 10, 0.3);
   border: 2px dashed rgba(80, 50, 25, 0.3);
   cursor: default;
 }
-.deck-card-empty:hover {
+.deck-slot-empty:hover {
   transform: none;
   box-shadow: none;
 }
 
 /* 削除ボタン */
-.deck-card-remove {
+.deck-slot-remove {
   position: absolute;
   top: 2px;
   right: 4px;
@@ -200,20 +200,20 @@
   opacity: 0;
   transition: opacity 0.2s;
 }
-.deck-card:hover .deck-card-remove {
+.deck-slot:hover .deck-slot-remove {
   opacity: 1;
 }
 
-.deck-card-emoji {
+.deck-slot-emoji {
   font-size: 1.6rem;
 }
 
-.deck-card-empty .deck-card-emoji {
+.deck-slot-empty .deck-slot-emoji {
   font-size: 1.2rem;
   color: rgba(80, 50, 25, 0.4);
 }
 
-.deck-card-name {
+.deck-slot-name {
   font-family: 'Noto Serif JP', var(--font-heading);
   font-size: 0.55rem;
   color: var(--paper);
@@ -226,13 +226,13 @@
   padding: 0 2px;
 }
 
-.deck-card-info {
+.deck-slot-info {
   font-size: 0.5rem;
   color: var(--text-dim);
 }
 
 /* レアリティ星 */
-.deck-card-stars {
+.deck-slot-stars {
   font-size: 0.4rem;
   color: var(--gold-bright);
   letter-spacing: -1px;
@@ -240,7 +240,7 @@
 }
 
 /* 同名枚数バッジ */
-.deck-card-count {
+.deck-slot-count {
   position: absolute;
   top: 2px;
   left: 2px;
@@ -254,7 +254,7 @@
 }
 
 /* 空スロットのヒント */
-.deck-card-hint {
+.deck-slot-hint {
   font-size: 0.4rem;
   color: rgba(160, 139, 116, 0.5);
   text-align: center;
@@ -263,7 +263,7 @@
 }
 
 /* ── カードアニメーション ── */
-.deck-card.removing {
+.deck-slot.removing {
   animation: cardRemove 0.3s ease-out forwards;
 }
 
@@ -273,7 +273,7 @@
   100% { transform: scale(0) rotate(15deg) translateY(20px); opacity: 0; }
 }
 
-.deck-card.card-adding {
+.deck-slot.card-adding {
   animation: cardAdd 0.35s ease-out;
 }
 
@@ -283,7 +283,7 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-.deck-card-empty.slot-pulse {
+.deck-slot-empty.slot-pulse {
   animation: slotPulse 0.4s ease;
 }
 
@@ -294,12 +294,12 @@
 }
 
 /* ── ドラッグ中 ── */
-.deck-card.dragging {
+.deck-slot.dragging {
   opacity: 0.3;
   transform: scale(0.9);
 }
 
-.deck-card.reorder-target {
+.deck-slot.reorder-target {
   border-color: var(--gold-bright) !important;
   box-shadow: 0 0 16px rgba(240, 214, 138, 0.4);
   transform: scale(1.05);

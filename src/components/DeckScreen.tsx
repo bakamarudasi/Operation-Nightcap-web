@@ -70,8 +70,7 @@ export function DeckScreen() {
   }
 
   const inventoryList = Object.entries(availableCards)
-    .filter(([, v]) => v.total > v.inDeck)
-    .filter(([cardId]) => filter === 'all' || CARD_DATA[cardId]?.type === filter);
+    .filter(([, v]) => v.total > v.inDeck);
 
   /* ── アニメーション付きカード追加 ── */
   const handleAdd = useCallback((cardId: string) => {
@@ -196,7 +195,7 @@ export function DeckScreen() {
       setDragRender({ ...d });
 
       if (d.source === 'deck' && deckGridRef.current) {
-        const cards = deckGridRef.current.querySelectorAll('.deck-card:not(.deck-card-empty)');
+        const cards = deckGridRef.current.querySelectorAll('.deck-slot:not(.deck-slot-empty)');
         let target: number | null = null;
         cards.forEach((el, i) => {
           const rect = el.getBoundingClientRect();
@@ -226,7 +225,7 @@ export function DeckScreen() {
             }
           }
         } else if (d.source === 'deck' && d.deckIndex !== undefined) {
-          const reorderEl = deckGridRef.current?.querySelectorAll('.deck-card:not(.deck-card-empty)');
+          const reorderEl = deckGridRef.current?.querySelectorAll('.deck-slot:not(.deck-slot-empty)');
           let dropTarget: number | null = null;
           reorderEl?.forEach((el, i) => {
             const rect = el.getBoundingClientRect();
@@ -333,7 +332,7 @@ export function DeckScreen() {
               onHidePreview={hidePreview}
               onShowTouchPreview={showTouchPreview}
             />
-            {playerDeck.length > 0 && playerDeck.length <= 4 && (
+            {playerDeck.length > 0 && playerDeck.length < 4 && (
               <div className="deck-warning">
                 <span className="warning-icon">⚠</span>
                 最低4枚は必要です（現在 {playerDeck.length} 枚）

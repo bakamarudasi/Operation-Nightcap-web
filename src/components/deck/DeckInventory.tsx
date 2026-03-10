@@ -1,13 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { CARD_DATA } from '../../data/cards.ts';
 import type { CardDef } from '../../data/types.ts';
 
 type SortMode = 'rarity' | 'name' | 'power';
-
-interface InventoryEntry {
-  cardId: string;
-  remaining: number;
-}
 
 interface DeckInventoryProps {
   inventoryList: [string, { total: number; inDeck: number }][];
@@ -41,7 +36,7 @@ export function DeckInventory({
 }: DeckInventoryProps) {
   const [sortMode, setSortMode] = useState<SortMode>('rarity');
 
-  // フィルター別枚数集計
+  // フィルター別枚数集計（全リストから計算）
   const filterCounts: Record<string, number> = {};
   for (const [cardId, counts] of inventoryList) {
     const card = CARD_DATA[cardId];
@@ -51,8 +46,13 @@ export function DeckInventory({
     filterCounts['all'] = (filterCounts['all'] ?? 0) + remaining;
   }
 
+  // フィルター適用
+  const filtered = inventoryList.filter(([cardId]) =>
+    filter === 'all' || CARD_DATA[cardId]?.type === filter
+  );
+
   // ソート
-  const sorted = [...inventoryList].sort((a, b) => {
+  const sorted = [...filtered].sort((a, b) => {
     const ca = CARD_DATA[a[0]];
     const cb = CARD_DATA[b[0]];
     if (!ca || !cb) return 0;
@@ -63,7 +63,7 @@ export function DeckInventory({
         const pb = cb.damage ?? cb.heal ?? 0;
         return pb - pa;
       }
-      default: return ca.rarity - cb.rarity;
+      default: return cb.rarity - ca.rarity;
     }
   });
 
@@ -116,7 +116,7 @@ export function DeckInventory({
               onMouseEnter={(e) => onShowPreview(card, e)}
               onMouseLeave={onHidePreview}
               onMouseDown={(e) => onMouseDown(cardId, cantAdd, e)}
-              onTouchStart={(e) => onTouchStart(cardId, cantAdd, e)}
+              onTouchStart={(e) => { onTouchStart(cardId, cantAdd, e); onShowTouchPreview(card, e); }}
               onTouchEnd={() => { onCancelLongPress(); onHidePreview(); }}
             >
               <div className="inv-card-emoji">{card.emoji}</div>
