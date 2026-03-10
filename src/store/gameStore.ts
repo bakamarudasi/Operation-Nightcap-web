@@ -4,7 +4,7 @@ import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, Ga
 import { DEFAULT_DECK, CARD_DATA } from '../data/cards.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import { shuffleArray, randomPick } from '../engine/utils.ts';
-import { BattleEngine, tickBuffs } from '../engine/battleEngine.ts';
+import { BattleEngine, tickBuffs, type ExtendedResult } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
 import { pullMulti } from '../engine/gachaEngine.ts';
 import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
@@ -283,6 +283,40 @@ export const useGameStore = create<GameStore>()(
         let newPlayerBuffs = tickBuffs([...b.playerBuffs]);
         let newOpponentBuffs = tickBuffs([...b.opponentBuffs]);
 
+        // 消費型バフの除去（next_drink_boost, next_food_boost, negate_next等）
+        const extResult = result as ExtendedResult;
+        if (extResult.consumePlayerBuffs) {
+          for (const buffId of extResult.consumePlayerBuffs) {
+            const idx = newPlayerBuffs.findIndex(bf => bf.id === buffId);
+            if (idx >= 0) newPlayerBuffs.splice(idx, 1);
+          }
+        }
+        if (extResult.consumeOpponentBuffs) {
+          for (const buffId of extResult.consumeOpponentBuffs) {
+            const idx = newOpponentBuffs.findIndex(bf => bf.id === buffId);
+            if (idx >= 0) newOpponentBuffs.splice(idx, 1);
+          }
+        }
+
+        // デバフ除去（クロージャの錠剤等）
+        if (extResult.playerCleanseSelf && extResult.playerCleanseSelf > 0) {
+          const debuffIds = ['dot', 'tipsy', 'blush', 'atk_down', 'stun', 'no_food', 'corrupted_hand'] as const;
+          let remaining = extResult.playerCleanseSelf;
+          for (const debuffId of debuffIds) {
+            if (remaining <= 0) break;
+            const idx = newPlayerBuffs.findIndex(bf => bf.id === debuffId);
+            if (idx >= 0) {
+              newPlayerBuffs.splice(idx, 1);
+              remaining--;
+            }
+          }
+        }
+
+        // dot除去（ガヴィルの薬草スープ等）
+        if (extResult.playerCleanseDot) {
+          newPlayerBuffs = newPlayerBuffs.filter(bf => bf.id !== 'dot');
+        }
+
         // 今回のラウンドで付与されたバフを追加
         if (result.newPlayerBuffs) {
           newPlayerBuffs = [...newPlayerBuffs, ...result.newPlayerBuffs];
@@ -314,25 +348,56 @@ export const useGameStore = create<GameStore>()(
         const oIdx = unusedOpponentCards.indexOf(opponentCardId);
         if (oIdx >= 0) unusedOpponentCards.splice(oIdx, 1);
 
+        // === 酔いLv入れ替え（プロジェクト・レッドの奇襲） ===
+        const shouldSwap = extResult.swapDrunk ?? false;
+
+        // === maxRounds減少（危機契約発令） ===
+        const roundReduction = extResult.reduceMaxRounds ?? 0;
+
+        // === 相手の手札破棄（サーミ・オーロラ: 次のドロー時） ===
+        const discardEnemyCount = extResult.discardEnemyHandCount ?? 0;
+        const shouldDiscardHighest = extResult.discardHighest ?? false;
+
         set((state) => {
           const pDeckReturn = [...state.battle.playerDeckRemaining, ...unusedPlayerCards];
           const oDeckReturn = [...state.battle.opponentDeckRemaining, ...unusedOpponentCards];
           shuffleArray(pDeckReturn);
           shuffleArray(oDeckReturn);
 
+          // 酔いLv計算
+          let newPlayerDrunk = state.battle.playerDrunk + result.playerDamage - result.playerHeal;
+          let newOpponentDrunk = state.battle.opponentDrunk + result.opponentDamage - result.opponentHeal;
+
+          // swap_drunk: 入れ替え（ダメージ適用後に入れ替え）
+          if (shouldSwap) {
+            [newPlayerDrunk, newOpponentDrunk] = [newOpponentDrunk, newPlayerDrunk];
+          }
+
+          newPlayerDrunk = Math.max(0, Math.min(10, newPlayerDrunk));
+          newOpponentDrunk = Math.max(0, Math.min(10, newOpponentDrunk));
+
+          // maxRounds減少
+          const newMaxRounds = Math.max(state.battle.round + 1, state.battle.maxRounds - roundReduction);
+
+          // opponentDiscardNext: 通常の乾杯強制 or 手札破棄系
+          const opDiscard = (result.opponentDiscardNext ?? state.battle.opponentDiscardNext)
+            || discardEnemyCount > 0
+            || shouldDiscardHighest;
+
           return {
             battle: {
               ...state.battle,
               round: state.battle.round + 1,
-              playerDrunk: Math.max(0, Math.min(10, state.battle.playerDrunk + result.playerDamage - result.playerHeal)),
-              opponentDrunk: Math.max(0, Math.min(10, state.battle.opponentDrunk + result.opponentDamage - result.opponentHeal)),
+              maxRounds: newMaxRounds,
+              playerDrunk: newPlayerDrunk,
+              opponentDrunk: newOpponentDrunk,
               playerDeckRemaining: pDeckReturn,
               opponentDeckRemaining: oDeckReturn,
               playerHand: [],
               opponentHand: [],
               selectedCard: null,
               isProcessing: true,
-              opponentDiscardNext: result.opponentDiscardNext ?? state.battle.opponentDiscardNext,
+              opponentDiscardNext: opDiscard,
               playerReducedHand: result.playerReducedHand ?? state.battle.playerReducedHand,
               opponentReducedHand: result.opponentReducedHand ?? state.battle.opponentReducedHand,
               spillActive: result.spillNullified,
