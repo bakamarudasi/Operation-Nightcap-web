@@ -3,7 +3,8 @@ export interface Buff {
   id: 'stun' | 'atk_down' | 'dot' | 'no_food' | 'corrupted_hand'
     | 'tipsy' | 'blush' | 'alone' | 'karaoke' | 'dimlight' | 'excuse'
     | 'drink_dmg_half' | 'next_drink_boost' | 'next_food_boost'
-    | 'negate_next' | 'stealth' | 'self_atk_up' | 'all_dmg_up';
+    | 'negate_next' | 'stealth' | 'self_atk_up' | 'all_dmg_up'
+    | 'sanity_negate' | 'thorns' | 'reflect_all';
   duration: number;   // -1 = 永続, 1~ = 残りターン数
   value?: number;     // ダメージ量・倍率など
   source?: string;    // 付与元カードID
@@ -63,6 +64,10 @@ export interface CardDef {
   discardHighest?: boolean;
   /** 相手の次ラウンド手札をランダム差替 */
   triggerRumor?: boolean;
+  /** ルーレット成功時に即勝利（conviction_luck用） */
+  rouletteInstantWin?: boolean;
+  /** 相手のバフを全除去し、除去数×1ダメージ（leizi_lightning用） */
+  cleanseEnemyBuffs?: boolean;
   description: string;
   rarity: number;
   price: number;

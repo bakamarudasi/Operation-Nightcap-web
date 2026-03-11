@@ -447,6 +447,16 @@ export const useGameStore = create<GameStore>()(
           newOpponentBuffs = newOpponentBuffs.filter(bf => bf.id !== 'dot');
         }
 
+        // 敵バフ全除去（レイジの落雷）
+        if (extResult.clearAllOpponentBuffs) {
+          const buffIds = ['next_drink_boost', 'next_food_boost', 'drink_dmg_half', 'self_atk_up', 'negate_next', 'stealth', 'karaoke', 'all_dmg_up'] as const;
+          newOpponentBuffs = newOpponentBuffs.filter(bf => !(buffIds as readonly string[]).includes(bf.id));
+        }
+        if (extResult.clearAllPlayerBuffs) {
+          const buffIds = ['next_drink_boost', 'next_food_boost', 'drink_dmg_half', 'self_atk_up', 'negate_next', 'stealth', 'karaoke', 'all_dmg_up'] as const;
+          newPlayerBuffs = newPlayerBuffs.filter(bf => !(buffIds as readonly string[]).includes(bf.id));
+        }
+
         // 今回のラウンドで付与されたバフを追加
         if (result.newPlayerBuffs) {
           newPlayerBuffs = [...newPlayerBuffs, ...result.newPlayerBuffs];

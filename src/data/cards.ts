@@ -776,6 +776,36 @@ export const CARD_DATA: Record<string, CardDef> = {
     applySelfBuffs: [{ id: 'stealth', duration: 1 }],
     description: 'ことりと肩にもたれかかって寝息を立てる。酔いLv.2以上。理性+2 & 隠密1T', rarity: 4, price: 2000
   },
+
+  // ============================================
+  // === オペレーター特殊能力カード ===
+  // ============================================
+
+  shining_blessing: {
+    id: 'shining_blessing', name: 'シャイニングの加護', emoji: '✨', type: 'status',
+    applySelfBuffs: [{ id: 'sanity_negate', duration: 2 }],
+    description: '「私の盾は…あなたのために」2T: 逆セクハラの理性ダメージを完全無効化。光の守護術', rarity: 4, price: 850
+  },
+  penance_judgment: {
+    id: 'penance_judgment', name: 'ペナンスの裁き', emoji: '⚖️', type: 'status',
+    applySelfBuffs: [{ id: 'thorns', duration: 3, value: 1 }],
+    description: '「裁きを受けよ」3T: ダメージを受ける度、相手に1反射ダメージ。因果応報の法', rarity: 4, price: 900
+  },
+  hoshiguma_shield: {
+    id: 'hoshiguma_shield', name: '般若の酒壁', emoji: '🛡️', type: 'strategy',
+    applySelfBuffs: [{ id: 'reflect_all', duration: 1 }],
+    description: '「鬼の盾、甘く見るなよ」1T: 受けるダメージを全て相手に跳ね返す。般若面が光る', rarity: 5, price: 1200
+  },
+  conviction_luck: {
+    id: 'conviction_luck', name: 'コンヴィクションの神判', emoji: '🎲', type: 'chug',
+    effect: 'roulette', rouletteDmg: [0.1, 0, 4], rouletteInstantWin: true,
+    description: '「神よ、審判を！」10%で即勝利！…90%で自分に4ダメージ。信仰か蛮勇か', rarity: 6, price: 5000
+  },
+  leizi_lightning: {
+    id: 'leizi_lightning', name: 'レイジの落雷', emoji: '⚡', type: 'strategy',
+    cleanseEnemyBuffs: true,
+    description: '「雷よ、裁け」相手のバフを全て剥がし、剥がした数×1ダメージ。対バフメタの切り札', rarity: 4, price: 1000
+  },
 };
 
 export function getCardDamage(card: CardDef): number {

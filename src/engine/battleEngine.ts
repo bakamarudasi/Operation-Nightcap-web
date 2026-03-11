@@ -39,6 +39,10 @@ export interface ExtendedResult extends RoundResult {
   consumePlayerBuffs?: string[];
   /** 消費する相手バフID（使い切り系） */
   consumeOpponentBuffs?: string[];
+  /** 相手のバフを全除去（レイジの落雷） */
+  clearAllOpponentBuffs?: boolean;
+  /** プレイヤーのバフを全除去 */
+  clearAllPlayerBuffs?: boolean;
 }
 
 function getDrunkLevel(drunkValue: number): number {
@@ -262,6 +266,53 @@ function applyFoodBuffs(baseHeal: number, userBuffs: Buff[]): number {
 
 export const BattleEngine = {
   resolveRound(playerCardId: string, opponentCardId: string, battle: BattleState, currentOpponent?: CharacterDef | null): ExtendedResult {
+    const result = this._resolveRoundCore(playerCardId, opponentCardId, battle, currentOpponent);
+    return this.applyPostEffects(result, battle);
+  },
+
+  /** thorns / reflect_all のダメージ後処理 */
+  applyPostEffects(result: ExtendedResult, battle: BattleState): ExtendedResult {
+    // reflect_all: 受けたダメージを全て相手に跳ね返す（DoT除外）
+    const playerDoT = calcDoTDamage(battle.playerBuffs);
+    const opponentDoT = calcDoTDamage(battle.opponentBuffs);
+
+    if (hasBuff(battle.playerBuffs, 'reflect_all')) {
+      const reflectable = result.playerDamage - playerDoT;
+      if (reflectable > 0) {
+        result.opponentDamage += reflectable;
+        result.playerDamage -= reflectable;
+        result.messages.push(`🛡️ 般若の酒壁！${reflectable}ダメージが全て跳ね返った！`);
+      }
+    }
+    if (hasBuff(battle.opponentBuffs, 'reflect_all')) {
+      const reflectable = result.opponentDamage - opponentDoT;
+      if (reflectable > 0) {
+        result.playerDamage += reflectable;
+        result.opponentDamage -= reflectable;
+        result.messages.push(`🛡️ 相手の酒壁！${reflectable}ダメージが跳ね返された！`);
+      }
+    }
+
+    // thorns: ダメージを受けたら固定値を反射
+    if (result.playerDamage > 0 && hasBuff(battle.playerBuffs, 'thorns')) {
+      const thornsVal = getBuffValue(battle.playerBuffs, 'thorns', 0);
+      if (thornsVal > 0) {
+        result.opponentDamage += thornsVal;
+        result.messages.push(`⚖️ 裁きの反射！相手に${thornsVal}ダメージ！`);
+      }
+    }
+    if (result.opponentDamage > 0 && hasBuff(battle.opponentBuffs, 'thorns')) {
+      const thornsVal = getBuffValue(battle.opponentBuffs, 'thorns', 0);
+      if (thornsVal > 0) {
+        result.playerDamage += thornsVal;
+        result.messages.push(`⚖️ 相手の裁き反射！${thornsVal}ダメージ！`);
+      }
+    }
+
+    return result;
+  },
+
+  _resolveRoundCore(playerCardId: string, opponentCardId: string, battle: BattleState, currentOpponent?: CharacterDef | null): ExtendedResult {
     const pCard = CARD_DATA[playerCardId];
     const oCard = CARD_DATA[opponentCardId];
     const result: ExtendedResult = {
@@ -607,6 +658,27 @@ export const BattleEngine = {
 
     // --- フラグ駆動の効果処理 ---
 
+    // 相手のバフ全除去 + 除去数×1ダメージ（レイジの落雷）
+    if (card.cleanseEnemyBuffs) {
+      const enemyBuffs = isPlayer ? battle.opponentBuffs : battle.playerBuffs;
+      // バフのみ対象（デバフは除外）
+      const buffIds = ['next_drink_boost', 'next_food_boost', 'drink_dmg_half', 'self_atk_up', 'negate_next', 'stealth', 'karaoke', 'all_dmg_up'] as const;
+      const buffCount = enemyBuffs.filter(b => (buffIds as readonly string[]).includes(b.id)).length;
+      if (buffCount > 0) {
+        if (isPlayer) {
+          result.clearAllOpponentBuffs = true;
+          result.opponentDamage += buffCount;
+          result.messages.push(`⚡ ${buffCount}個のバフを剥がし、${buffCount}ダメージ！`);
+        } else {
+          result.clearAllPlayerBuffs = true;
+          result.playerDamage += buffCount;
+          result.messages.push(`⚡ ${buffCount}個のバフが剥がされ、${buffCount}ダメージ！`);
+        }
+      } else {
+        result.messages.push(`⚡ …しかし相手にバフがなかった！`);
+      }
+    }
+
     // 手札公開
     if (card.revealHand) {
       if (isPlayer) {
@@ -768,12 +840,21 @@ export const BattleEngine = {
       }
     }
     else if (chugCard.effect === 'roulette') {
-      // ロドス深夜の闇鍋酒: 確率分岐ダメージ
+      // 確率分岐ダメージ（ロドス闇鍋酒 / コンヴィクション神判等）
       const [chance, successDmg, failDmg] = chugCard.rouletteDmg ?? [0.5, 4, 3];
       const roll = Math.random();
       if (roll < chance) {
-        // 成功: 相手にダメージ
-        if (chugUser === 'player') {
+        // 成功
+        if (chugCard.rouletteInstantWin) {
+          // 即勝利（コンヴィクションの神判）
+          if (chugUser === 'player') {
+            result.instantWin = true;
+            result.messages.push(`🎲 ${chugCard.name}…神の審判！奇跡の即勝利！！`);
+          } else {
+            result.playerDamage += 99;
+            result.messages.push(`🎲 相手の${chugCard.name}…神の審判！一撃で沈められた…！`);
+          }
+        } else if (chugUser === 'player') {
           result.opponentDamage += successDmg;
           result.messages.push(`🎰 ${chugCard.name}…大当たり！相手に${successDmg}ダメージ！`);
         } else {
@@ -834,10 +915,15 @@ export const BattleEngine = {
       } else {
         // === 相手の逆セクハラ → プレイヤーに理性ダメージ ===
         if (hCard.sanityDamage) {
-          let dmg = hCard.sanityDamage;
-          dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
-          result.playerDamage += dmg;
-          result.messages.push(`${hCard.emoji} ${hCard.name}…！理性が${dmg}削られた！`);
+          // sanity_negate: 理性ダメージ無効化
+          if (hasBuff(targetBuffs, 'sanity_negate')) {
+            result.messages.push(`✨ シャイニングの加護！${hCard.name}の理性ダメージを無効化！`);
+          } else {
+            let dmg = hCard.sanityDamage;
+            dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
+            result.playerDamage += dmg;
+            result.messages.push(`${hCard.emoji} ${hCard.name}…！理性が${dmg}削られた！`);
+          }
         } else if (hCard.drunkDamage) {
           let dmg = hCard.drunkDamage;
           dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
@@ -933,6 +1019,9 @@ function buffLabel(buff: Buff): string | null {
     case 'stealth': return `👻 隠密状態…セクハラを回避！`;
     case 'self_atk_up': return `💉 攻撃バフ！ドリンクダメージ${buff.value ?? 1}倍！`;
     case 'all_dmg_up': return `💮 全ダメージ+${buff.value ?? 0}！場の空気が重い…`;
+    case 'sanity_negate': return `✨ 加護展開！理性ダメージを無効化！`;
+    case 'thorns': return `⚖️ 裁きの棘！ダメージを受けると${buff.value ?? 0}反射！`;
+    case 'reflect_all': return `🛡️ 酒壁展開！全ダメージを跳ね返す！`;
     default: return null;
   }
 }
