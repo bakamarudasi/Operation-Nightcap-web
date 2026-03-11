@@ -71,6 +71,9 @@ interface GameStore {
   // 設定
   resetData: () => void;
 
+  // テストプレイ用
+  loadTestData: () => void;
+
   // ユーティリティ
   getDrunkLevel: (drunkValue: number) => number;
 }
@@ -772,6 +775,31 @@ export const useGameStore = create<GameStore>()(
           currentScreen: 'title',
           currentOpponent: null,
           battle: { ...initialBattle },
+        });
+      },
+
+      loadTestData: () => {
+        // テストプレイ用プリセット：ハラスメントカード全種 + 大量の所持金 + 勝利数
+        const testDeck = [
+          'shoulder_lean', 'headpat', 'breast_touch',
+          'hip_touch', 'ear_bite', 'kiss',
+          'lap_pillow', 'hand_hold', 'wall_pin',
+          'whiskey', 'baijiu', 'excuse',
+        ];
+        const allHarassmentCards = [
+          'shoulder_lean', 'headpat', 'breast_touch', 'hip_touch',
+          'ear_bite', 'kiss', 'lap_pillow', 'hand_hold', 'wall_pin',
+          'piggyback', 'oripathy_check', 'fix_collar', 'check_pulse',
+          'foot_tease', 'dirty_talk',
+          ...DEFAULT_DECK,
+        ];
+        set({
+          money: 99999,
+          inventory: allHarassmentCards,
+          playerDeck: testDeck,
+          wins: 10,
+          losses: 0,
+          currentScreen: 'title',
         });
       },
 

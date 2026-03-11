@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { BattleEngine, tickBuffs, calcDoTDamage } from '../engine/battleEngine.ts';
+import { CARD_DATA } from '../data/cards.ts';
 import type { BattleState, Buff } from '../data/types.ts';
 
 function createBattleState(overrides: Partial<BattleState> = {}): BattleState {
@@ -138,7 +139,6 @@ describe('BattleEngine.resolveRound', () => {
       opponentDrunk: 10, // 高酔い状態
     });
     // kissカードが存在するか確認
-    const { CARD_DATA } = require('../data/cards.ts');
     if (CARD_DATA['kiss']) {
       const result = BattleEngine.resolveRound('kiss', 'nuts', battle);
       // 酔いLvが足りていればinstantWin

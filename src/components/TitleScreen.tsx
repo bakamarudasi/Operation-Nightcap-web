@@ -24,6 +24,7 @@ interface AudioNodes {
 export function TitleScreen() {
   const money = useGameStore((s) => s.money);
   const setScreen = useGameStore((s) => s.setScreen);
+  const loadTestData = useGameStore((s) => s.loadTestData);
 
   const [timeLabel, setTimeLabel] = useState('--:--');
   const [timeStatus, setTimeStatus] = useState('営業中');
@@ -322,6 +323,10 @@ export function TitleScreen() {
           <button className="ts-menu-btn" onClick={() => setScreen('settings')}>
             <span className="ts-btn-icon">⚙️</span>
             <span className="ts-btn-label">設定</span>
+          </button>
+          <button className="ts-menu-btn" onClick={() => { loadTestData(); alert('テストデータをロードしました！\n・所持金: 99,999\n・デッキ: ハラスメントカード全種\n・勝利数: 10'); }} style={{ opacity: 0.6 }}>
+            <span className="ts-btn-icon">🧪</span>
+            <span className="ts-btn-label">テストプレイ</span>
           </button>
         </nav>
 
