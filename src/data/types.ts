@@ -10,6 +10,32 @@ export interface Buff {
   source?: string;    // 付与元カードID
 }
 
+/**
+ * 宣言的カード効果システム
+ * カードの effects フィールドに配列で指定することで、
+ * エンジンのコードを触らずにデータだけで新カードを定義できる。
+ */
+export type EffectDef =
+  | { type: 'damage'; target: 'self' | 'enemy' | 'both'; value: number }
+  | { type: 'heal'; target: 'self' | 'enemy'; value: number }
+  | { type: 'apply_buff'; target: 'self' | 'enemy'; buff: Buff }
+  | { type: 'cleanse_enemy_buffs' }
+  | { type: 'cleanse_self'; count: number }
+  | { type: 'cleanse_dot' }
+  | { type: 'swap_hands' }
+  | { type: 'swap_drunk' }
+  | { type: 'transform_card'; target: 'enemy'; cardId: string }
+  | { type: 'grant_card'; target: 'self' | 'enemy'; cardId: string }
+  | { type: 'discard_hand'; target: 'enemy'; count: number }
+  | { type: 'discard_highest'; target: 'enemy' }
+  | { type: 'reveal_hand' }
+  | { type: 'rumor' }
+  | { type: 'reduce_max_rounds'; value: number }
+  | { type: 'corrupt_hand'; target: 'enemy'; count: number }
+  | { type: 'reduce_hand'; target: 'self' | 'enemy' }
+  | { type: 'instant_win' }
+  | { type: 'roulette'; chance: number; success: EffectDef[]; failure: EffectDef[] };
+
 export type CardType = 'drink' | 'food' | 'chug' | 'harassment' | 'strategy' | 'environment' | 'status';
 export type CardEffect = 'chug' | 'toast' | 'spill'
   | 'rumor' | 'excuse' | 'distract'
@@ -76,6 +102,11 @@ export interface CardDef {
   transformEnemyCard?: string;
   /** 全体効果: 全員にダメージ（pallas_banquet用） */
   mutualDamage?: number;
+  /**
+   * 宣言的効果配列。ここに EffectDef を並べるだけで効果が発動する。
+   * 既存フィールド (damage, heal, applySelfBuffs 等) より優先される。
+   */
+  effects?: EffectDef[];
   description: string;
   rarity: number;
   price: number;

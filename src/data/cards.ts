@@ -781,49 +781,74 @@ export const CARD_DATA: Record<string, CardDef> = {
   // === オペレーター特殊能力カード ===
   // ============================================
 
+  // ============================================
+  // === effects 駆動カード（データだけで効果が決まる） ===
+  // ============================================
+
   shining_blessing: {
     id: 'shining_blessing', name: 'シャイニングの加護', emoji: '✨', type: 'status',
-    applySelfBuffs: [{ id: 'sanity_negate', duration: 2 }],
+    effects: [
+      { type: 'apply_buff', target: 'self', buff: { id: 'sanity_negate', duration: 2 } },
+    ],
     description: '「私の盾は…あなたのために」2T: 逆セクハラの理性ダメージを完全無効化。光の守護術', rarity: 4, price: 850
   },
   penance_judgment: {
     id: 'penance_judgment', name: 'ペナンスの裁き', emoji: '⚖️', type: 'status',
-    applySelfBuffs: [{ id: 'thorns', duration: 3, value: 1 }],
+    effects: [
+      { type: 'apply_buff', target: 'self', buff: { id: 'thorns', duration: 3, value: 1 } },
+    ],
     description: '「裁きを受けよ」3T: ダメージを受ける度、相手に1反射ダメージ。因果応報の法', rarity: 4, price: 900
   },
   hoshiguma_shield: {
     id: 'hoshiguma_shield', name: '般若の酒壁', emoji: '🛡️', type: 'strategy',
-    applySelfBuffs: [{ id: 'reflect_all', duration: 1 }],
+    effects: [
+      { type: 'apply_buff', target: 'self', buff: { id: 'reflect_all', duration: 1 } },
+    ],
     description: '「鬼の盾、甘く見るなよ」1T: 受けるダメージを全て相手に跳ね返す。般若面が光る', rarity: 5, price: 1200
   },
   conviction_luck: {
     id: 'conviction_luck', name: 'コンヴィクションの神判', emoji: '🎲', type: 'chug',
-    effect: 'roulette', rouletteDmg: [0.1, 0, 4], rouletteInstantWin: true,
+    effects: [
+      { type: 'roulette', chance: 0.1,
+        success: [{ type: 'instant_win' }],
+        failure: [{ type: 'damage', target: 'self', value: 4 }],
+      },
+    ],
     description: '「神よ、審判を！」10%で即勝利！…90%で自分に4ダメージ。信仰か蛮勇か', rarity: 6, price: 5000
   },
   leizi_lightning: {
     id: 'leizi_lightning', name: 'レイジの落雷', emoji: '⚡', type: 'strategy',
-    cleanseEnemyBuffs: true,
+    effects: [
+      { type: 'cleanse_enemy_buffs' },
+    ],
     description: '「雷よ、裁け」相手のバフを全て剥がし、剥がした数×1ダメージ。対バフメタの切り札', rarity: 4, price: 1000
   },
   croissant_trade: {
     id: 'croissant_trade', name: 'クロワッサンの手札交換', emoji: '🔄', type: 'strategy',
-    swapHands: true,
+    effects: [
+      { type: 'swap_hands' },
+    ],
     description: '「あんたのカード、ちょっと貸しな」次ラウンドの手札を相手と入れ替える。運命の交差', rarity: 5, price: 1500
   },
   deepcolor_paint: {
     id: 'deepcolor_paint', name: 'ディープカラーの彩筆', emoji: '🎨', type: 'strategy',
-    transformEnemyCard: 'paint_dummy',
+    effects: [
+      { type: 'transform_card', target: 'enemy', cardId: 'paint_dummy' },
+    ],
     description: '「絵筆が…動いて…」相手の次の手札の最強カードを無力な絵に変える。芸術は爆発', rarity: 5, price: 1300
   },
   pallas_banquet: {
     id: 'pallas_banquet', name: 'パラスの大宴会', emoji: '🍺', type: 'chug',
-    mutualDamage: 2,
+    effects: [
+      { type: 'damage', target: 'both', value: 2 },
+    ],
     description: '「さぁ、皆で飲もう！」全員の酔いLv+2。祭りの熱気に逃げ場なし', rarity: 3, price: 600
   },
   kaltsit_mon3tr: {
     id: 'kaltsit_mon3tr', name: 'ケルシーのMon3tr', emoji: '🐉', type: 'strategy',
-    grantExtraCard: 'mon3tr_strike',
+    effects: [
+      { type: 'grant_card', target: 'self', cardId: 'mon3tr_strike' },
+    ],
     description: '「Mon3tr、行きなさい」次ラウンドの手札にMon3trカードを追加。5枚目の切り札', rarity: 5, price: 1800
   },
 

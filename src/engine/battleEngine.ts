@@ -1,5 +1,5 @@
 import { CARD_DATA, getCardDamage } from '../data/cards.ts';
-import type { BattleState, RoundResult, CGEvent, CharacterDef, Buff, CardDef } from '../data/types.ts';
+import type { BattleState, RoundResult, CGEvent, CharacterDef, Buff, CardDef, EffectDef } from '../data/types.ts';
 import { randomPick } from './utils.ts';
 
 export interface ExtendedResult extends RoundResult {
@@ -272,6 +272,271 @@ function applyFoodBuffs(baseHeal: number, userBuffs: Buff[]): number {
     heal += getBuffValue(userBuffs, 'next_food_boost', 0);
   }
   return heal;
+}
+
+// ============================================
+// === 宣言的効果処理システム ===
+// ============================================
+
+/**
+ * EffectDef 配列を順番に処理する。
+ * カードの effects フィールドに定義を並べるだけで、
+ * エンジンのコードを変更せずに新カード効果が動く。
+ */
+function processEffects(
+  effects: EffectDef[],
+  cardName: string,
+  cardEmoji: string,
+  isPlayer: boolean,
+  result: ExtendedResult,
+  battle: BattleState,
+): void {
+  for (const fx of effects) {
+    processEffect(fx, cardName, cardEmoji, isPlayer, result, battle);
+  }
+}
+
+function processEffect(
+  fx: EffectDef,
+  cardName: string,
+  cardEmoji: string,
+  isPlayer: boolean,
+  result: ExtendedResult,
+  battle: BattleState,
+): void {
+  switch (fx.type) {
+    // --- ダメージ ---
+    case 'damage': {
+      const v = fx.value;
+      if (fx.target === 'enemy' || fx.target === 'both') {
+        if (isPlayer) result.opponentDamage += v;
+        else result.playerDamage += v;
+      }
+      if (fx.target === 'self' || fx.target === 'both') {
+        if (isPlayer) result.playerDamage += v;
+        else result.opponentDamage += v;
+      }
+      if (fx.target === 'both') {
+        result.messages.push(`${cardEmoji} ${cardName}！全員に${v}ダメージ！`);
+      } else if (fx.target === 'enemy') {
+        result.messages.push(`${cardEmoji} ${cardName}！${isPlayer ? '相手' : 'こちら'}に${v}ダメージ！`);
+      } else {
+        result.messages.push(`${cardEmoji} ${cardName}！自分に${v}ダメージ！`);
+      }
+      break;
+    }
+
+    // --- 回復 ---
+    case 'heal': {
+      const v = fx.value;
+      if (fx.target === 'self') {
+        if (isPlayer) result.playerHeal += v;
+        else result.opponentHeal += v;
+      } else {
+        if (isPlayer) result.opponentHeal += v;
+        else result.playerHeal += v;
+      }
+      result.messages.push(`${cardEmoji} ${cardName}！${v}回復！`);
+      break;
+    }
+
+    // --- バフ付与 ---
+    case 'apply_buff': {
+      const buff = { ...fx.buff };
+      if (fx.target === 'self') {
+        if (isPlayer) {
+          result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), buff];
+        } else {
+          result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), buff];
+        }
+      } else {
+        if (isPlayer) {
+          result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), buff];
+        } else {
+          result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), buff];
+        }
+      }
+      break;
+    }
+
+    // --- 敵バフ全除去 ---
+    case 'cleanse_enemy_buffs': {
+      const enemyBuffs = isPlayer ? battle.opponentBuffs : battle.playerBuffs;
+      const buffIds = ['next_drink_boost', 'next_food_boost', 'drink_dmg_half', 'self_atk_up',
+        'negate_next', 'stealth', 'karaoke', 'all_dmg_up', 'sanity_negate', 'thorns', 'reflect_all'] as const;
+      const count = enemyBuffs.filter(b => (buffIds as readonly string[]).includes(b.id)).length;
+      if (count > 0) {
+        if (isPlayer) {
+          result.clearAllOpponentBuffs = true;
+          result.opponentDamage += count;
+        } else {
+          result.clearAllPlayerBuffs = true;
+          result.playerDamage += count;
+        }
+        result.messages.push(`${cardEmoji} ${count}個のバフを剥がし、${count}ダメージ！`);
+      } else {
+        result.messages.push(`${cardEmoji} …しかし相手にバフがなかった！`);
+      }
+      break;
+    }
+
+    // --- 自己デバフ除去 ---
+    case 'cleanse_self': {
+      if (isPlayer) {
+        result.playerCleanseSelf = (result.playerCleanseSelf ?? 0) + fx.count;
+      } else {
+        result.opponentCleanseSelf = (result.opponentCleanseSelf ?? 0) + fx.count;
+      }
+      result.messages.push(`${cardEmoji} デバフを${fx.count}個除去！`);
+      break;
+    }
+
+    // --- DoT除去 ---
+    case 'cleanse_dot': {
+      if (isPlayer) result.playerCleanseDot = true;
+      else result.opponentCleanseDot = true;
+      result.messages.push(`${cardEmoji} 継続ダメージを除去！`);
+      break;
+    }
+
+    // --- 手札入れ替え ---
+    case 'swap_hands': {
+      result.swapHandsNextRound = true;
+      result.messages.push(`${cardEmoji} ${cardName}！次ラウンドの手札が入れ替わる！`);
+      break;
+    }
+
+    // --- 酔いLv入れ替え ---
+    case 'swap_drunk': {
+      result.swapDrunk = true;
+      result.messages.push(`${cardEmoji} ${cardName}！酔いレベルが入れ替わった！`);
+      break;
+    }
+
+    // --- カード変身 ---
+    case 'transform_card': {
+      if (isPlayer) {
+        result.transformEnemyCard = fx.cardId;
+        result.messages.push(`${cardEmoji} ${cardName}…相手の手札が変えられる…！`);
+      } else {
+        result.transformPlayerCard = fx.cardId;
+        result.messages.push(`${cardEmoji} ${cardName}…手札の一枚が変えられた…！`);
+      }
+      break;
+    }
+
+    // --- トークンカード追加 ---
+    case 'grant_card': {
+      const cardTarget = fx.target === 'self' ? isPlayer : !isPlayer;
+      if (cardTarget) {
+        result.playerExtraCard = fx.cardId;
+      } else {
+        result.opponentExtraCard = fx.cardId;
+      }
+      const tokenCard = CARD_DATA[fx.cardId];
+      const tokenName = tokenCard?.name ?? fx.cardId;
+      result.messages.push(`${cardEmoji} ${cardName}…${tokenName}が次ラウンドに参戦！`);
+      break;
+    }
+
+    // --- 手札破棄 ---
+    case 'discard_hand': {
+      if (isPlayer) {
+        result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + fx.count;
+      } else {
+        result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + fx.count;
+      }
+      result.messages.push(`${cardEmoji} 相手の手札を${fx.count}枚破棄！`);
+      break;
+    }
+
+    // --- 最強カード破棄 ---
+    case 'discard_highest': {
+      if (isPlayer) result.discardHighest = true;
+      else result.discardPlayerHighest = true;
+      result.messages.push(`${cardEmoji} 相手の最強カードを破棄！`);
+      break;
+    }
+
+    // --- 手札公開 ---
+    case 'reveal_hand': {
+      if (isPlayer) {
+        result.revealedHand = [...battle.opponentHand];
+        result.messages.push(`${cardEmoji} 相手の手札が見えた！`);
+      } else {
+        result.messages.push(`${cardEmoji} 手の内が見られている…！`);
+      }
+      break;
+    }
+
+    // --- 噂話 ---
+    case 'rumor': {
+      if (isPlayer) {
+        result.rumorActive = true;
+        result.messages.push(`${cardEmoji} 相手の次の手札が乱される！`);
+      } else {
+        result.playerRumorActive = true;
+        result.messages.push(`${cardEmoji} 次の手札が乱された！`);
+      }
+      break;
+    }
+
+    // --- maxRounds減少 ---
+    case 'reduce_max_rounds': {
+      result.reduceMaxRounds = (result.reduceMaxRounds ?? 0) + fx.value;
+      result.messages.push(`${cardEmoji} 残りラウンドが${fx.value}減少！`);
+      break;
+    }
+
+    // --- 手札汚染 ---
+    case 'corrupt_hand': {
+      if (isPlayer) {
+        result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + fx.count;
+      } else {
+        result.corruptCount = (result.corruptCount ?? 0) + fx.count;
+      }
+      result.messages.push(`${cardEmoji} 相手の手札を${fx.count}枚汚染！`);
+      break;
+    }
+
+    // --- 手札枚数削減 ---
+    case 'reduce_hand': {
+      if (fx.target === 'self') {
+        if (isPlayer) result.playerReducedHand = true;
+        else result.opponentReducedHand = true;
+      } else {
+        if (isPlayer) result.opponentReducedHand = true;
+        else result.playerReducedHand = true;
+      }
+      result.messages.push(`${cardEmoji} 次ラウンドの手札が減る！`);
+      break;
+    }
+
+    // --- 即勝利 ---
+    case 'instant_win': {
+      if (isPlayer) {
+        result.instantWin = true;
+        result.messages.push(`${cardEmoji} ${cardName}…奇跡！即勝利！！`);
+      } else {
+        result.playerDamage += 99;
+        result.messages.push(`${cardEmoji} ${cardName}…一撃で沈められた…！`);
+      }
+      break;
+    }
+
+    // --- ルーレット（再帰的に子効果を処理） ---
+    case 'roulette': {
+      const roll = Math.random();
+      if (roll < fx.chance) {
+        result.messages.push(`🎲 ${cardName}…当たり！`);
+        processEffects(fx.success, cardName, cardEmoji, isPlayer, result, battle);
+      } else {
+        result.messages.push(`🎲 ${cardName}…ハズレ！`);
+        processEffects(fx.failure, cardName, cardEmoji, isPlayer, result, battle);
+      }
+      break;
+    }
+  }
 }
 
 export const BattleEngine = {
@@ -664,9 +929,36 @@ export const BattleEngine = {
     const selfBuffs = isPlayer ? result.newPlayerBuffs! : result.newOpponentBuffs!;
     const targetBuffs = isPlayer ? result.newOpponentBuffs! : result.newPlayerBuffs!;
 
+    // === 宣言的効果システム（effects配列があればそちらを優先） ===
+    if (card.effects && card.effects.length > 0) {
+      result.messages.push(`${card.emoji} ${card.name}！`);
+      processEffects(card.effects, card.name, card.emoji, isPlayer, result, battle);
+      // applySelfBuffs / applyBuffs は effects 側で apply_buff として定義するが、
+      // 後方互換のため従来フィールドも処理する
+      if (card.applySelfBuffs) {
+        for (const buff of card.applySelfBuffs) {
+          if (isPlayer) {
+            result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { ...buff }];
+          } else {
+            result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { ...buff }];
+          }
+        }
+      }
+      if (card.applyBuffs) {
+        for (const buff of card.applyBuffs) {
+          if (isPlayer) {
+            result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { ...buff }];
+          } else {
+            result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { ...buff }];
+          }
+        }
+      }
+      return;
+    }
+
     result.messages.push(`${card.emoji} ${card.name}！`);
 
-    // --- フラグ駆動の効果処理 ---
+    // --- フラグ駆動の効果処理（レガシー） ---
 
     // 相手のバフ全除去 + 除去数×1ダメージ（レイジの落雷）
     if (card.cleanseEnemyBuffs) {
@@ -834,6 +1126,22 @@ export const BattleEngine = {
   },
 
   resolveChugCard(chugCard: CardDef, otherCard: CardDef, result: ExtendedResult, chugUser: 'player' | 'opponent', battle: BattleState): ExtendedResult {
+    // === 宣言的効果システム ===
+    if (chugCard.effects && chugCard.effects.length > 0) {
+      const isPlayer = chugUser === 'player';
+      processEffects(chugCard.effects, chugCard.name, chugCard.emoji, isPlayer, result, battle);
+      if (chugCard.applySelfBuffs) {
+        for (const buff of chugCard.applySelfBuffs) {
+          if (isPlayer) {
+            result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { ...buff }];
+          } else {
+            result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { ...buff }];
+          }
+        }
+      }
+      return result;
+    }
+
     if (chugCard.effect === 'chug') {
       if (chugUser === 'player') {
         result.opponentDamage += chugCard.enemyDamage ?? 0;
