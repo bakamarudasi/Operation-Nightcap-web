@@ -1,6 +1,6 @@
 import { CARD_DATA, getCardDamage } from '../data/cards.ts';
 import type { BattleState, RoundResult, CGEvent, CharacterDef, Buff, CardDef, EffectDef } from '../data/types.ts';
-import { randomPick } from './utils.ts';
+import { randomPick, POSITIVE_BUFF_IDS } from './utils.ts';
 
 export interface ExtendedResult extends RoundResult {
   opponentDiscardNext?: boolean;
@@ -274,6 +274,31 @@ function applyFoodBuffs(baseHeal: number, userBuffs: Buff[]): number {
   return heal;
 }
 
+/**
+ * effects[]使用カードの後方互換: applySelfBuffs / applyBuffs をresultに反映。
+ * effects[] 内で apply_buff を使っているカードでは呼ばない（二重付与防止）。
+ */
+function applyLegacyBuffs(card: CardDef, isPlayer: boolean, result: ExtendedResult): void {
+  if (card.applySelfBuffs) {
+    for (const buff of card.applySelfBuffs) {
+      if (isPlayer) {
+        result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { ...buff }];
+      } else {
+        result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { ...buff }];
+      }
+    }
+  }
+  if (card.applyBuffs) {
+    for (const buff of card.applyBuffs) {
+      if (isPlayer) {
+        result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { ...buff }];
+      } else {
+        result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { ...buff }];
+      }
+    }
+  }
+}
+
 // ============================================
 // === 宣言的効果処理システム ===
 // ============================================
@@ -362,9 +387,7 @@ function processEffect(
     // --- 敵バフ全除去 ---
     case 'cleanse_enemy_buffs': {
       const enemyBuffs = isPlayer ? battle.opponentBuffs : battle.playerBuffs;
-      const buffIds = ['next_drink_boost', 'next_food_boost', 'drink_dmg_half', 'self_atk_up',
-        'negate_next', 'stealth', 'karaoke', 'all_dmg_up', 'sanity_negate', 'thorns', 'reflect_all'] as const;
-      const count = enemyBuffs.filter(b => (buffIds as readonly string[]).includes(b.id)).length;
+      const count = enemyBuffs.filter(b => (POSITIVE_BUFF_IDS as readonly string[]).includes(b.id)).length;
       if (count > 0) {
         if (isPlayer) {
           result.clearAllOpponentBuffs = true;
@@ -933,26 +956,7 @@ export const BattleEngine = {
     if (card.effects && card.effects.length > 0) {
       result.messages.push(`${card.emoji} ${card.name}！`);
       processEffects(card.effects, card.name, card.emoji, isPlayer, result, battle);
-      // applySelfBuffs / applyBuffs は effects 側で apply_buff として定義するが、
-      // 後方互換のため従来フィールドも処理する
-      if (card.applySelfBuffs) {
-        for (const buff of card.applySelfBuffs) {
-          if (isPlayer) {
-            result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { ...buff }];
-          } else {
-            result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { ...buff }];
-          }
-        }
-      }
-      if (card.applyBuffs) {
-        for (const buff of card.applyBuffs) {
-          if (isPlayer) {
-            result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { ...buff }];
-          } else {
-            result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { ...buff }];
-          }
-        }
-      }
+      applyLegacyBuffs(card, isPlayer, result);
       return;
     }
 
@@ -961,54 +965,6 @@ export const BattleEngine = {
     // --- フラグ駆動の効果処理（レガシー） ---
 
     // 相手のバフ全除去 + 除去数×1ダメージ（レイジの落雷）
-    if (card.cleanseEnemyBuffs) {
-      const enemyBuffs = isPlayer ? battle.opponentBuffs : battle.playerBuffs;
-      // バフのみ対象（デバフは除外）
-      const buffIds = ['next_drink_boost', 'next_food_boost', 'drink_dmg_half', 'self_atk_up', 'negate_next', 'stealth', 'karaoke', 'all_dmg_up'] as const;
-      const buffCount = enemyBuffs.filter(b => (buffIds as readonly string[]).includes(b.id)).length;
-      if (buffCount > 0) {
-        if (isPlayer) {
-          result.clearAllOpponentBuffs = true;
-          result.opponentDamage += buffCount;
-          result.messages.push(`⚡ ${buffCount}個のバフを剥がし、${buffCount}ダメージ！`);
-        } else {
-          result.clearAllPlayerBuffs = true;
-          result.playerDamage += buffCount;
-          result.messages.push(`⚡ ${buffCount}個のバフが剥がされ、${buffCount}ダメージ！`);
-        }
-      } else {
-        result.messages.push(`⚡ …しかし相手にバフがなかった！`);
-      }
-    }
-
-    // 手札交換（クロワッサン）
-    if (card.swapHands) {
-      result.swapHandsNextRound = true;
-      result.messages.push(`🔄 ${card.name}！次ラウンドの手札が入れ替わる！`);
-    }
-
-    // カード変身（ディープカラー）
-    if (card.transformEnemyCard) {
-      if (isPlayer) {
-        result.transformEnemyCard = card.transformEnemyCard;
-        result.messages.push(`🎨 ${card.name}…相手の手札が絵に変わる…！`);
-      } else {
-        result.transformPlayerCard = card.transformEnemyCard;
-        result.messages.push(`🎨 ${card.name}…手札の一枚が絵に変えられた…！`);
-      }
-    }
-
-    // Mon3trトークン追加（ケルシー）
-    if (card.grantExtraCard) {
-      if (isPlayer) {
-        result.playerExtraCard = card.grantExtraCard;
-        result.messages.push(`🐉 ${card.name}…Mon3trが次ラウンドに参戦！`);
-      } else {
-        result.opponentExtraCard = card.grantExtraCard;
-        result.messages.push(`🐉 ${card.name}…相手にMon3trが加勢！`);
-      }
-    }
-
     // 手札公開
     if (card.revealHand) {
       if (isPlayer) {
@@ -1130,15 +1086,7 @@ export const BattleEngine = {
     if (chugCard.effects && chugCard.effects.length > 0) {
       const isPlayer = chugUser === 'player';
       processEffects(chugCard.effects, chugCard.name, chugCard.emoji, isPlayer, result, battle);
-      if (chugCard.applySelfBuffs) {
-        for (const buff of chugCard.applySelfBuffs) {
-          if (isPlayer) {
-            result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { ...buff }];
-          } else {
-            result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { ...buff }];
-          }
-        }
-      }
+      applyLegacyBuffs(chugCard, isPlayer, result);
       return result;
     }
 
@@ -1185,29 +1133,12 @@ export const BattleEngine = {
         result.messages.push('🫗 相手がこぼし！カードが無効化された！（相手の次ラウンド手札3枚）');
       }
     }
-    // 全体ダメージ（パラスの大宴会）
-    if (chugCard.mutualDamage) {
-      const dmg = chugCard.mutualDamage;
-      result.playerDamage += dmg;
-      result.opponentDamage += dmg;
-      result.messages.push(`🍺 ${chugCard.name}！全員に${dmg}ダメージ！宴は止まらない！`);
-    }
     else if (chugCard.effect === 'roulette') {
-      // 確率分岐ダメージ（ロドス闇鍋酒 / コンヴィクション神判等）
+      // 確率分岐ダメージ（ロドス闇鍋酒等）
       const [chance, successDmg, failDmg] = chugCard.rouletteDmg ?? [0.5, 4, 3];
       const roll = Math.random();
       if (roll < chance) {
-        // 成功
-        if (chugCard.rouletteInstantWin) {
-          // 即勝利（コンヴィクションの神判）
-          if (chugUser === 'player') {
-            result.instantWin = true;
-            result.messages.push(`🎲 ${chugCard.name}…神の審判！奇跡の即勝利！！`);
-          } else {
-            result.playerDamage += 99;
-            result.messages.push(`🎲 相手の${chugCard.name}…神の審判！一撃で沈められた…！`);
-          }
-        } else if (chugUser === 'player') {
+        if (chugUser === 'player') {
           result.opponentDamage += successDmg;
           result.messages.push(`🎰 ${chugCard.name}…大当たり！相手に${successDmg}ダメージ！`);
         } else {

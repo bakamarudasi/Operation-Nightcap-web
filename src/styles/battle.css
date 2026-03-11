@@ -871,6 +871,20 @@
 .hand-area[data-card-count="6"] .hand-name { font-size: 0.55rem; }
 .hand-area[data-card-count="6"] .hand-val { font-size: 0.6rem; }
 
+/* 7枚以上: さらに縮小（フォールバック） */
+.hand-area[data-card-count="7"] .hand-card,
+.hand-area[data-card-count="8"] .hand-card {
+  width: 64px;
+  height: 90px;
+  margin: 0 -7px;
+}
+.hand-area[data-card-count="7"] .hand-icon,
+.hand-area[data-card-count="8"] .hand-icon { font-size: 1.2rem; }
+.hand-area[data-card-count="7"] .hand-name,
+.hand-area[data-card-count="8"] .hand-name { font-size: 0.5rem; }
+.hand-area[data-card-count="7"] .hand-val,
+.hand-area[data-card-count="8"] .hand-val { font-size: 0.55rem; }
+
 .hand-card::before {
   content: '';
   position: absolute;

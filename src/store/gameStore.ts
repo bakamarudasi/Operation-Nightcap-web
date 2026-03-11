@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, GachaResult } from '../data/types.ts';
 import { DEFAULT_DECK, CARD_DATA } from '../data/cards.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
-import { shuffleArray, randomPick } from '../engine/utils.ts';
+import { shuffleArray, randomPick, POSITIVE_BUFF_IDS, DEBUFF_IDS, findHighestValueCardIndex } from '../engine/utils.ts';
 import { BattleEngine, tickBuffs, type ExtendedResult } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
 import { pullMulti } from '../engine/gachaEngine.ts';
@@ -213,14 +213,7 @@ export const useGameStore = create<GameStore>()(
           // --- 相手の手札破棄処理 ---
           // 最高dmgカード破棄（スワイヤーの命令等）
           if (b.opponentDiscardHighest && oHand.length > 1) {
-            let maxDmg = -1;
-            let maxIdx = 0;
-            for (let i = 0; i < oHand.length; i++) {
-              const c = CARD_DATA[oHand[i]];
-              const dmg = c?.damage ?? c?.enemyDamage ?? 0;
-              if (dmg > maxDmg) { maxDmg = dmg; maxIdx = i; }
-            }
-            const [discardedCard] = oHand.splice(maxIdx, 1);
+            const [discardedCard] = oHand.splice(findHighestValueCardIndex(oHand), 1);
             oRemaining.push(discardedCard);
           }
           // ランダムN枚破棄（サーミ・オーロラ等）
@@ -240,14 +233,7 @@ export const useGameStore = create<GameStore>()(
 
           // --- プレイヤーの手札破棄処理 ---
           if (b.playerDiscardHighest && pHand.length > 1) {
-            let maxDmg = -1;
-            let maxIdx = 0;
-            for (let i = 0; i < pHand.length; i++) {
-              const c = CARD_DATA[pHand[i]];
-              const dmg = c?.damage ?? c?.enemyDamage ?? 0;
-              if (dmg > maxDmg) { maxDmg = dmg; maxIdx = i; }
-            }
-            const [discardedCard] = pHand.splice(maxIdx, 1);
+            const [discardedCard] = pHand.splice(findHighestValueCardIndex(pHand), 1);
             pRemaining.push(discardedCard);
           }
           if (b.playerDiscardCount > 0) {
@@ -292,24 +278,10 @@ export const useGameStore = create<GameStore>()(
 
           // カード変身（ディープカラーの彩筆）— 最強カードを変身
           if (b.opponentTransformCard && oHand.length > 0) {
-            let maxDmg = -1;
-            let maxIdx = 0;
-            for (let i = 0; i < oHand.length; i++) {
-              const c = CARD_DATA[oHand[i]];
-              const dmg = c?.damage ?? c?.enemyDamage ?? c?.heal ?? 0;
-              if (dmg > maxDmg) { maxDmg = dmg; maxIdx = i; }
-            }
-            oHand[maxIdx] = b.opponentTransformCard;
+            oHand[findHighestValueCardIndex(oHand)] = b.opponentTransformCard;
           }
           if (b.playerTransformCard && pHand.length > 0) {
-            let maxDmg = -1;
-            let maxIdx = 0;
-            for (let i = 0; i < pHand.length; i++) {
-              const c = CARD_DATA[pHand[i]];
-              const dmg = c?.damage ?? c?.enemyDamage ?? c?.heal ?? 0;
-              if (dmg > maxDmg) { maxDmg = dmg; maxIdx = i; }
-            }
-            pHand[maxIdx] = b.playerTransformCard;
+            pHand[findHighestValueCardIndex(pHand)] = b.playerTransformCard;
           }
 
           // トークンカード追加（Mon3tr等）
@@ -462,7 +434,7 @@ export const useGameStore = create<GameStore>()(
 
         // デバフ除去（クロージャの錠剤等）
         if (extResult.playerCleanseSelf && extResult.playerCleanseSelf > 0) {
-          const debuffIds = ['dot', 'tipsy', 'blush', 'atk_down', 'stun', 'no_food', 'corrupted_hand'] as const;
+          const debuffIds = DEBUFF_IDS;
           let remaining = extResult.playerCleanseSelf;
           for (const debuffId of debuffIds) {
             if (remaining <= 0) break;
@@ -481,7 +453,7 @@ export const useGameStore = create<GameStore>()(
 
         // 相手側のデバフ除去
         if (extResult.opponentCleanseSelf && extResult.opponentCleanseSelf > 0) {
-          const debuffIds = ['dot', 'tipsy', 'blush', 'atk_down', 'stun', 'no_food', 'corrupted_hand'] as const;
+          const debuffIds = DEBUFF_IDS;
           let remaining = extResult.opponentCleanseSelf;
           for (const debuffId of debuffIds) {
             if (remaining <= 0) break;
@@ -498,12 +470,10 @@ export const useGameStore = create<GameStore>()(
 
         // 敵バフ全除去（レイジの落雷）
         if (extResult.clearAllOpponentBuffs) {
-          const buffIds = ['next_drink_boost', 'next_food_boost', 'drink_dmg_half', 'self_atk_up', 'negate_next', 'stealth', 'karaoke', 'all_dmg_up'] as const;
-          newOpponentBuffs = newOpponentBuffs.filter(bf => !(buffIds as readonly string[]).includes(bf.id));
+          newOpponentBuffs = newOpponentBuffs.filter(bf => !(POSITIVE_BUFF_IDS as readonly string[]).includes(bf.id));
         }
         if (extResult.clearAllPlayerBuffs) {
-          const buffIds = ['next_drink_boost', 'next_food_boost', 'drink_dmg_half', 'self_atk_up', 'negate_next', 'stealth', 'karaoke', 'all_dmg_up'] as const;
-          newPlayerBuffs = newPlayerBuffs.filter(bf => !(buffIds as readonly string[]).includes(bf.id));
+          newPlayerBuffs = newPlayerBuffs.filter(bf => !(POSITIVE_BUFF_IDS as readonly string[]).includes(bf.id));
         }
 
         // 今回のラウンドで付与されたバフを追加

@@ -90,18 +90,6 @@ export interface CardDef {
   discardHighest?: boolean;
   /** 相手の次ラウンド手札をランダム差替 */
   triggerRumor?: boolean;
-  /** ルーレット成功時に即勝利（conviction_luck用） */
-  rouletteInstantWin?: boolean;
-  /** 相手のバフを全除去し、除去数×1ダメージ（leizi_lightning用） */
-  cleanseEnemyBuffs?: boolean;
-  /** 手札交換（croissant_trade用） */
-  swapHands?: boolean;
-  /** 手札にトークンカードを追加（kaltsit_mon3tr用） */
-  grantExtraCard?: string;
-  /** 相手の手札1枚を変身させる（deepcolor_paint用） */
-  transformEnemyCard?: string;
-  /** 全体効果: 全員にダメージ（pallas_banquet用） */
-  mutualDamage?: number;
   /**
    * 宣言的効果配列。ここに EffectDef を並べるだけで効果が発動する。
    * 既存フィールド (damage, heal, applySelfBuffs 等) より優先される。
