@@ -806,6 +806,41 @@ export const CARD_DATA: Record<string, CardDef> = {
     cleanseEnemyBuffs: true,
     description: '「雷よ、裁け」相手のバフを全て剥がし、剥がした数×1ダメージ。対バフメタの切り札', rarity: 4, price: 1000
   },
+  croissant_trade: {
+    id: 'croissant_trade', name: 'クロワッサンの手札交換', emoji: '🔄', type: 'strategy',
+    swapHands: true,
+    description: '「あんたのカード、ちょっと貸しな」次ラウンドの手札を相手と入れ替える。運命の交差', rarity: 5, price: 1500
+  },
+  deepcolor_paint: {
+    id: 'deepcolor_paint', name: 'ディープカラーの彩筆', emoji: '🎨', type: 'strategy',
+    transformEnemyCard: 'paint_dummy',
+    description: '「絵筆が…動いて…」相手の次の手札の最強カードを無力な絵に変える。芸術は爆発', rarity: 5, price: 1300
+  },
+  pallas_banquet: {
+    id: 'pallas_banquet', name: 'パラスの大宴会', emoji: '🍺', type: 'chug',
+    mutualDamage: 2,
+    description: '「さぁ、皆で飲もう！」全員の酔いLv+2。祭りの熱気に逃げ場なし', rarity: 3, price: 600
+  },
+  kaltsit_mon3tr: {
+    id: 'kaltsit_mon3tr', name: 'ケルシーのMon3tr', emoji: '🐉', type: 'strategy',
+    grantExtraCard: 'mon3tr_strike',
+    description: '「Mon3tr、行きなさい」次ラウンドの手札にMon3trカードを追加。5枚目の切り札', rarity: 5, price: 1800
+  },
+
+  // ============================================
+  // === トークンカード（購入不可・効果で生成） ===
+  // ============================================
+
+  mon3tr_strike: {
+    id: 'mon3tr_strike', name: 'Mon3trの一撃', emoji: '🐲', type: 'drink',
+    damage: 4,
+    description: 'Mon3trの凶暴な一撃。酔いダメージ4。このカードは1回限り', rarity: 0, price: 0
+  },
+  paint_dummy: {
+    id: 'paint_dummy', name: '動く絵画', emoji: '🖼️', type: 'food',
+    heal: 0,
+    description: 'ディープカラーの触手に変えられたカード。何の効果もない…', rarity: 0, price: 0
+  },
 };
 
 export function getCardDamage(card: CardDef): number {

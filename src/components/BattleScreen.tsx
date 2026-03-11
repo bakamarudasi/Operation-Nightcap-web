@@ -554,7 +554,7 @@ export function BattleScreen() {
         </div>
 
         {/* 手札エリア */}
-        <div className="hand-area">
+        <div className="hand-area" data-card-count={battle.playerHand.length}>
           {battle.playerHand.map((cardId, i) => {
             const card = CARD_DATA[cardId];
             if (!card) return null;

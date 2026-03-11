@@ -835,6 +835,8 @@
 .hand-card {
   width: 95px;
   height: 128px;
+  min-width: 0;
+  flex-shrink: 1;
   background: rgba(30, 18, 10, 0.8);
   border-radius: 8px;
   cursor: pointer;
@@ -850,6 +852,24 @@
   margin: 0 -3px;
   overflow: visible;
 }
+
+/* 5枚以上: カードを縮小 */
+.hand-area[data-card-count="5"] .hand-card {
+  width: 82px;
+  height: 112px;
+  margin: 0 -5px;
+}
+.hand-area[data-card-count="5"] .hand-icon { font-size: 1.6rem; }
+.hand-area[data-card-count="5"] .hand-name { font-size: 0.6rem; }
+
+.hand-area[data-card-count="6"] .hand-card {
+  width: 72px;
+  height: 100px;
+  margin: 0 -6px;
+}
+.hand-area[data-card-count="6"] .hand-icon { font-size: 1.4rem; }
+.hand-area[data-card-count="6"] .hand-name { font-size: 0.55rem; }
+.hand-area[data-card-count="6"] .hand-val { font-size: 0.6rem; }
 
 .hand-card::before {
   content: '';

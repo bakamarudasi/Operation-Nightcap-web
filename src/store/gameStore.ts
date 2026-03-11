@@ -107,6 +107,11 @@ const initialBattle: BattleState = {
   playerRumorActive: false,
   playerDiscardPile: [],
   opponentDiscardPile: [],
+  swapHandsNextRound: false,
+  playerExtraCards: [],
+  opponentExtraCards: [],
+  playerTransformCard: null,
+  opponentTransformCard: null,
 };
 
 export const useGameStore = create<GameStore>()(
@@ -276,6 +281,45 @@ export const useGameStore = create<GameStore>()(
             pRemaining[newCardIdx] = replacedCard;
           }
 
+          // 手札入れ替え（クロワッサンの手札交換）
+          if (b.swapHandsNextRound) {
+            const tempHand = [...pHand];
+            pHand.length = 0;
+            pHand.push(...oHand);
+            oHand.length = 0;
+            oHand.push(...tempHand);
+          }
+
+          // カード変身（ディープカラーの彩筆）— 最強カードを変身
+          if (b.opponentTransformCard && oHand.length > 0) {
+            let maxDmg = -1;
+            let maxIdx = 0;
+            for (let i = 0; i < oHand.length; i++) {
+              const c = CARD_DATA[oHand[i]];
+              const dmg = c?.damage ?? c?.enemyDamage ?? c?.heal ?? 0;
+              if (dmg > maxDmg) { maxDmg = dmg; maxIdx = i; }
+            }
+            oHand[maxIdx] = b.opponentTransformCard;
+          }
+          if (b.playerTransformCard && pHand.length > 0) {
+            let maxDmg = -1;
+            let maxIdx = 0;
+            for (let i = 0; i < pHand.length; i++) {
+              const c = CARD_DATA[pHand[i]];
+              const dmg = c?.damage ?? c?.enemyDamage ?? c?.heal ?? 0;
+              if (dmg > maxDmg) { maxDmg = dmg; maxIdx = i; }
+            }
+            pHand[maxIdx] = b.playerTransformCard;
+          }
+
+          // トークンカード追加（Mon3tr等）
+          for (const extraId of b.playerExtraCards) {
+            pHand.push(extraId);
+          }
+          for (const extraId of b.opponentExtraCards) {
+            oHand.push(extraId);
+          }
+
           // 汚染スロットを実際の手札サイズに合わせる（デッキ枯渇で手札が少ない場合）
           let adjustedCorrupted = b.corruptedSlots;
           if (adjustedCorrupted.length > pHand.length) {
@@ -307,6 +351,11 @@ export const useGameStore = create<GameStore>()(
               playerRumorActive: false,
               playerDiscardPile: pDiscard,
               opponentDiscardPile: oDiscard,
+              swapHandsNextRound: false,
+              playerExtraCards: [],
+              opponentExtraCards: [],
+              playerTransformCard: null,
+              opponentTransformCard: null,
             },
           };
         });
@@ -575,6 +624,15 @@ export const useGameStore = create<GameStore>()(
               playerRumorActive: extResult.playerRumorActive ?? false,
               playerDiscardPile: pDiscardPile,
               opponentDiscardPile: oDiscardPile,
+              swapHandsNextRound: extResult.swapHandsNextRound ?? state.battle.swapHandsNextRound,
+              playerExtraCards: extResult.playerExtraCard
+                ? [...state.battle.playerExtraCards, extResult.playerExtraCard]
+                : state.battle.playerExtraCards,
+              opponentExtraCards: extResult.opponentExtraCard
+                ? [...state.battle.opponentExtraCards, extResult.opponentExtraCard]
+                : state.battle.opponentExtraCards,
+              playerTransformCard: extResult.transformPlayerCard ?? state.battle.playerTransformCard,
+              opponentTransformCard: extResult.transformEnemyCard ?? state.battle.opponentTransformCard,
             },
           };
         });

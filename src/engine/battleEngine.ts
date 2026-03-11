@@ -43,6 +43,16 @@ export interface ExtendedResult extends RoundResult {
   clearAllOpponentBuffs?: boolean;
   /** プレイヤーのバフを全除去 */
   clearAllPlayerBuffs?: boolean;
+  /** 次ラウンドで手札入れ替え */
+  swapHandsNextRound?: boolean;
+  /** プレイヤーの次ラウンド手札にカード追加 */
+  playerExtraCard?: string;
+  /** 相手の次ラウンド手札にカード追加 */
+  opponentExtraCard?: string;
+  /** 次ラウンドで相手の手札1枚を変身 */
+  transformEnemyCard?: string;
+  /** 次ラウンドでプレイヤーの手札1枚を変身 */
+  transformPlayerCard?: string;
 }
 
 function getDrunkLevel(drunkValue: number): number {
@@ -679,6 +689,34 @@ export const BattleEngine = {
       }
     }
 
+    // 手札交換（クロワッサン）
+    if (card.swapHands) {
+      result.swapHandsNextRound = true;
+      result.messages.push(`🔄 ${card.name}！次ラウンドの手札が入れ替わる！`);
+    }
+
+    // カード変身（ディープカラー）
+    if (card.transformEnemyCard) {
+      if (isPlayer) {
+        result.transformEnemyCard = card.transformEnemyCard;
+        result.messages.push(`🎨 ${card.name}…相手の手札が絵に変わる…！`);
+      } else {
+        result.transformPlayerCard = card.transformEnemyCard;
+        result.messages.push(`🎨 ${card.name}…手札の一枚が絵に変えられた…！`);
+      }
+    }
+
+    // Mon3trトークン追加（ケルシー）
+    if (card.grantExtraCard) {
+      if (isPlayer) {
+        result.playerExtraCard = card.grantExtraCard;
+        result.messages.push(`🐉 ${card.name}…Mon3trが次ラウンドに参戦！`);
+      } else {
+        result.opponentExtraCard = card.grantExtraCard;
+        result.messages.push(`🐉 ${card.name}…相手にMon3trが加勢！`);
+      }
+    }
+
     // 手札公開
     if (card.revealHand) {
       if (isPlayer) {
@@ -838,6 +876,13 @@ export const BattleEngine = {
         result.opponentReducedHand = true;
         result.messages.push('🫗 相手がこぼし！カードが無効化された！（相手の次ラウンド手札3枚）');
       }
+    }
+    // 全体ダメージ（パラスの大宴会）
+    if (chugCard.mutualDamage) {
+      const dmg = chugCard.mutualDamage;
+      result.playerDamage += dmg;
+      result.opponentDamage += dmg;
+      result.messages.push(`🍺 ${chugCard.name}！全員に${dmg}ダメージ！宴は止まらない！`);
     }
     else if (chugCard.effect === 'roulette') {
       // 確率分岐ダメージ（ロドス闇鍋酒 / コンヴィクション神判等）

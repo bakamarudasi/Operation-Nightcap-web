@@ -68,6 +68,14 @@ export interface CardDef {
   rouletteInstantWin?: boolean;
   /** 相手のバフを全除去し、除去数×1ダメージ（leizi_lightning用） */
   cleanseEnemyBuffs?: boolean;
+  /** 手札交換（croissant_trade用） */
+  swapHands?: boolean;
+  /** 手札にトークンカードを追加（kaltsit_mon3tr用） */
+  grantExtraCard?: string;
+  /** 相手の手札1枚を変身させる（deepcolor_paint用） */
+  transformEnemyCard?: string;
+  /** 全体効果: 全員にダメージ（pallas_banquet用） */
+  mutualDamage?: number;
   description: string;
   rarity: number;
   price: number;
@@ -227,6 +235,14 @@ export interface BattleState {
   /** 使用済みカードの捨て札（デッキ枯渇時にリシャッフル） */
   playerDiscardPile: string[];
   opponentDiscardPile: string[];
+  /** 次ラウンドで手札を入れ替える（クロワッサンの手札交換） */
+  swapHandsNextRound: boolean;
+  /** 次ラウンドの手札に追加するカードID（Mon3tr等） */
+  playerExtraCards: string[];
+  opponentExtraCards: string[];
+  /** 次ラウンドで手札の1枚を変身させるカードID（ディープカラー） */
+  playerTransformCard: string | null;
+  opponentTransformCard: string | null;
 }
 
 export interface RoundResult {
