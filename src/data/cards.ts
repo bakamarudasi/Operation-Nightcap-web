@@ -336,6 +336,26 @@ export const CARD_DATA: Record<string, CardDef> = {
     id: 'soju', name: '高麗焼酎', emoji: '🫗', type: 'drink',
     damage: 1, description: '甘くて飲みやすいが油断すると足に来る', rarity: 1, price: 100
   },
+  ursus_kvass: {
+    id: 'ursus_kvass', name: 'ウルサス・クワス', emoji: '🫙', type: 'drink',
+    damage: 1, description: '帝国の発酵飲料。アルコール度数は低いが量で攻める', rarity: 1, price: 80
+  },
+  victoria_cider: {
+    id: 'victoria_cider', name: 'ヴィクトリア林檎酒', emoji: '🍎', type: 'drink',
+    damage: 1, description: '王国の田舎で醸された素朴なサイダー。甘くて軽い', rarity: 1, price: 90
+  },
+  columbia_light: {
+    id: 'columbia_light', name: 'コロンビア・ライト', emoji: '🥤', type: 'drink',
+    damage: 1, description: '度数控えめのビール系飲料。とりあえず喉を潤す', rarity: 1, price: 80
+  },
+  siracusa_table_wine: {
+    id: 'siracusa_table_wine', name: 'シラクーザ卓上ワイン', emoji: '🫗', type: 'drink',
+    damage: 1, description: '食事に合わせる安テーブルワイン。ルーポの食堂には必ずある', rarity: 1, price: 90
+  },
+  sami_berry_wine: {
+    id: 'sami_berry_wine', name: 'サーミ木の実酒', emoji: '🫐', type: 'drink',
+    damage: 1, description: '極北の森で採れた木の実を発酵させた酒。ほんのり甘酸っぱい', rarity: 1, price: 100
+  },
   ale: {
     id: 'ale', name: 'カジミエーシュ麦酒', emoji: '🍺', type: 'drink',
     damage: 2, description: '騎士たちの祝杯用。泡がきめ細かく喉越し抜群', rarity: 2, price: 280
@@ -401,6 +421,26 @@ export const CARD_DATA: Record<string, CardDef> = {
   opera_cake: {
     id: 'opera_cake', name: 'リターニア歌劇菓子', emoji: '🍰', type: 'food',
     heal: 1, description: '歌劇場のロビーで売られる小さな焼き菓子。上品な甘さ', rarity: 1, price: 120
+  },
+  victoria_biscuit: {
+    id: 'victoria_biscuit', name: 'ヴィクトリア紅茶ビスケット', emoji: '🍪', type: 'food',
+    heal: 1, description: '紅茶に浸して食べるのが正解。王国の庶民の味', rarity: 1, price: 80
+  },
+  columbia_popcorn: {
+    id: 'columbia_popcorn', name: 'コロンビア式ポップコーン', emoji: '🍿', type: 'food',
+    heal: 1, description: 'バター塩味。映画館のあの味。つまんでると手が止まらない', rarity: 1, price: 70
+  },
+  kazimierz_pretzel: {
+    id: 'kazimierz_pretzel', name: 'カジミエーシュ・プレッツェル', emoji: '🥨', type: 'food',
+    heal: 1, description: '闘技場の観客席で売られる定番おつまみ。塩味が酒を呼ぶ', rarity: 1, price: 90
+  },
+  lungmen_peanuts: {
+    id: 'lungmen_peanuts', name: '龍門式五香花生', emoji: '🥜', type: 'food',
+    heal: 1, description: '八角とスパイスで煮た落花生。龍門の屋台の定番', rarity: 1, price: 70
+  },
+  sarkaz_hardtack: {
+    id: 'sarkaz_hardtack', name: 'サルカズ乾パン', emoji: '🫓', type: 'food',
+    heal: 1, description: '戦場の携帯食。石のように硬いが長持ちする。歯に注意', rarity: 1, price: 60
   },
   dimsum: {
     id: 'dimsum', name: '龍門式飲茶', emoji: '🥟', type: 'food',
