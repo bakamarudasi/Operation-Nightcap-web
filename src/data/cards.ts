@@ -4,11 +4,13 @@ export const CARD_DATA: Record<string, CardDef> = {
   // === ドリンクカード（攻撃） ===
   beer: {
     id: 'beer', name: '龍門ラガー', emoji: '🍺', type: 'drink',
-    damage: 1, description: '龍門の屋台で必ず出てくる地ビール。とりあえずこれ', rarity: 1, price: 100
+    damage: 1, applySelfBuffs: [{ id: 'next_drink_boost', duration: 1, value: 1 }],
+    description: '龍門の屋台で必ず出てくる地ビール。「とりあえず」の一杯が次の酒を加速する', rarity: 1, price: 100
   },
   wine: {
     id: 'wine', name: 'ヴィクトリア産熟成赤', emoji: '🍷', type: 'drink',
-    damage: 2, description: '王国の晩餐会御用達。品があって、それなりに効く', rarity: 2, price: 300
+    damage: 2, applySelfBuffs: [{ id: 'next_drink_boost', duration: 1, value: 1 }],
+    description: '王国の晩餐会御用達。品のある一杯が次の酒への布石になる', rarity: 2, price: 300
   },
   whiskey: {
     id: 'whiskey', name: 'ウルサス原酒ストレート', emoji: '🥃', type: 'drink',
@@ -330,7 +332,8 @@ export const CARD_DATA: Record<string, CardDef> = {
   // === ガチャ追加ドリンク ===
   shochu: {
     id: 'shochu', name: '東国芋焼酎', emoji: '🍶', type: 'drink',
-    damage: 1, description: '東の島で蒸留された素朴な酒。湯割りが正解', rarity: 1, price: 100
+    damage: 1, selfHeal: 1,
+    description: '東の島で蒸留された素朴な酒。湯割りにすると体に優しい', rarity: 1, price: 100
   },
   soju: {
     id: 'soju', name: '高麗焼酎', emoji: '🫗', type: 'drink',
@@ -350,11 +353,13 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   siracusa_table_wine: {
     id: 'siracusa_table_wine', name: 'シラクーザ卓上ワイン', emoji: '🫗', type: 'drink',
-    damage: 1, description: '食事に合わせる安テーブルワイン。ルーポの食堂には必ずある', rarity: 1, price: 90
+    damage: 1, applySelfBuffs: [{ id: 'next_food_boost', duration: 1, value: 1 }],
+    description: '食事に合わせる安テーブルワイン。料理と一緒だと回復が上がる', rarity: 1, price: 90
   },
   sami_berry_wine: {
     id: 'sami_berry_wine', name: 'サーミ木の実酒', emoji: '🫐', type: 'drink',
-    damage: 1, description: '極北の森で採れた木の実を発酵させた酒。ほんのり甘酸っぱい', rarity: 1, price: 100
+    damage: 1, cleanseSelf: 1,
+    description: '極北の森で採れた木の実を発酵させた酒。不思議と体の不調が和らぐ', rarity: 1, price: 100
   },
   ale: {
     id: 'ale', name: 'カジミエーシュ麦酒', emoji: '🍺', type: 'drink',
@@ -362,11 +367,13 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   liter_beer: {
     id: 'liter_beer', name: 'ジョッキ一気', emoji: '🍻', type: 'drink',
-    damage: 2, description: '巨大ジョッキで一気飲み。周囲が盛り上がる', rarity: 2, price: 350
+    damage: 3, selfDamage: 1,
+    description: '巨大ジョッキで一気飲み。相手に酔い3だが自分も酔い1。周囲が盛り上がる', rarity: 2, price: 350
   },
   sparkling: {
     id: 'sparkling', name: 'コロンビア産泡酒', emoji: '🥂', type: 'drink',
-    damage: 2, description: '新興都市の洗練。細かい泡が喉を撫でる', rarity: 2, price: 320
+    damage: 2, applyBuffs: [{ id: 'tipsy', duration: 1, value: 1.3 }],
+    description: '新興都市の洗練。炭酸が酔いの回りを早める。1T相手の被ダメ×1.3', rarity: 2, price: 320
   },
   rice_wine: {
     id: 'rice_wine', name: '炎国紹興酒', emoji: '🫘', type: 'drink',
@@ -374,7 +381,8 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   mead: {
     id: 'mead', name: 'サーミ蜂蜜酒', emoji: '🍯', type: 'drink',
-    damage: 2, description: '極北の蜂蜜で醸した甘い酒。凍えた体を優しく温める', rarity: 2, price: 310
+    damage: 2, selfHeal: 1,
+    description: '極北の蜂蜜で醸した甘い酒。攻めつつ体を癒す。酔い2 & 自分heal 1', rarity: 2, price: 310
   },
   herb_liqueur: {
     id: 'herb_liqueur', name: 'イベリア薬草酒', emoji: '🌿', type: 'drink',
@@ -412,11 +420,12 @@ export const CARD_DATA: Record<string, CardDef> = {
   // === ガチャ追加フード ===
   black_bread: {
     id: 'black_bread', name: 'ウルサス黒パン', emoji: '🍞', type: 'food',
-    heal: 1, description: '帝国兵の主食。硬いが噛むほど味が出る', rarity: 1, price: 80
+    heal: 2, description: '帝国兵の主食。硬いが腹持ちが良く、酔いの進行を鈍らせる', rarity: 1, price: 80
   },
   candy: {
     id: 'candy', name: 'ペンギン急便キャンディ', emoji: '🍬', type: 'food',
-    heal: 1, description: 'エクシアが配り歩く謎味キャンディ。たまにアタリ', rarity: 1, price: 60
+    heal: 1, cleanseDot: true,
+    description: 'エクシアが配り歩く謎味キャンディ。甘さが毒を中和する…たぶん', rarity: 1, price: 60
   },
   opera_cake: {
     id: 'opera_cake', name: 'リターニア歌劇菓子', emoji: '🍰', type: 'food',
@@ -432,7 +441,8 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   kazimierz_pretzel: {
     id: 'kazimierz_pretzel', name: 'カジミエーシュ・プレッツェル', emoji: '🥨', type: 'food',
-    heal: 1, description: '闘技場の観客席で売られる定番おつまみ。塩味が酒を呼ぶ', rarity: 1, price: 90
+    heal: 1, applySelfBuffs: [{ id: 'next_drink_boost', duration: 1, value: 1 }],
+    description: '闘技場の観客席で売られる定番おつまみ。塩気が次の酒を加速する', rarity: 1, price: 90
   },
   lungmen_peanuts: {
     id: 'lungmen_peanuts', name: '龍門式五香花生', emoji: '🥜', type: 'food',
@@ -440,15 +450,17 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   sarkaz_hardtack: {
     id: 'sarkaz_hardtack', name: 'サルカズ乾パン', emoji: '🫓', type: 'food',
-    heal: 1, description: '戦場の携帯食。石のように硬いが長持ちする。歯に注意', rarity: 1, price: 60
+    heal: 2, description: '戦場の携帯食。石のように硬いが腹に溜まる。歯に注意', rarity: 1, price: 60
   },
   dimsum: {
     id: 'dimsum', name: '龍門式飲茶', emoji: '🥟', type: 'food',
-    heal: 2, description: '小さな蒸籠に詰まった龍門の味。お茶と一緒に', rarity: 2, price: 280
+    heal: 2, cleanseDot: true,
+    description: '小さな蒸籠に詰まった龍門の味。お茶で毒を流す', rarity: 2, price: 280
   },
   highland_tea: {
     id: 'highland_tea', name: 'シルバーアッシュの茶', emoji: '🍵', type: 'food',
-    heal: 2, description: 'カランド貿易が扱う高山茶。一口で目が覚める', rarity: 2, price: 350
+    heal: 2, applySelfBuffs: [{ id: 'drink_dmg_half', duration: 1 }],
+    description: 'カランド貿易が扱う高山茶。1T受けるドリンクdmg半減。頭が冴える', rarity: 2, price: 350
   },
   daily_meal: {
     id: 'daily_meal', name: 'ロドス食堂の日替り', emoji: '🍱', type: 'food',
@@ -456,11 +468,12 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   skewer: {
     id: 'skewer', name: '羊肉串', emoji: '🍢', type: 'food',
-    heal: 2, description: 'クミンと唐辛子が効いた炎国式串焼き。ビールが進む', rarity: 2, price: 270
+    heal: 2, applySelfBuffs: [{ id: 'next_drink_boost', duration: 1, value: 1 }],
+    description: 'クミンと唐辛子が効いた炎国式串焼き。辛さで次の酒が加速する', rarity: 2, price: 270
   },
   grilled_fish: {
     id: 'grilled_fish', name: '龍門烤魚', emoji: '🐟', type: 'food',
-    heal: 2, description: '丸ごと一匹を炭火でじっくり。ピリ辛ダレで食す', rarity: 2, price: 300
+    heal: 3, description: '丸ごと一匹を炭火でじっくり。ピリ辛ダレが胃を守る', rarity: 2, price: 300
   },
   jerky: {
     id: 'jerky', name: 'クルビア式ジャーキー', emoji: '🥩', type: 'food',
