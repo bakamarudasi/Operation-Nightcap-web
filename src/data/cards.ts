@@ -4,11 +4,13 @@ export const CARD_DATA: Record<string, CardDef> = {
   // === ドリンクカード（攻撃） ===
   beer: {
     id: 'beer', name: '龍門ラガー', emoji: '🍺', type: 'drink',
-    damage: 1, description: '龍門の屋台で必ず出てくる地ビール。とりあえずこれ', rarity: 1, price: 100
+    damage: 1, applySelfBuffs: [{ id: 'next_drink_boost', duration: 1, value: 1 }],
+    description: '龍門の屋台で必ず出てくる地ビール。「とりあえず」の一杯が次の酒を加速する', rarity: 1, price: 100
   },
   wine: {
     id: 'wine', name: 'ヴィクトリア産熟成赤', emoji: '🍷', type: 'drink',
-    damage: 2, description: '王国の晩餐会御用達。品があって、それなりに効く', rarity: 2, price: 300
+    damage: 2, applySelfBuffs: [{ id: 'next_drink_boost', duration: 1, value: 1 }],
+    description: '王国の晩餐会御用達。品のある一杯が次の酒への布石になる', rarity: 2, price: 300
   },
   whiskey: {
     id: 'whiskey', name: 'ウルサス原酒ストレート', emoji: '🥃', type: 'drink',
@@ -330,11 +332,34 @@ export const CARD_DATA: Record<string, CardDef> = {
   // === ガチャ追加ドリンク ===
   shochu: {
     id: 'shochu', name: '東国芋焼酎', emoji: '🍶', type: 'drink',
-    damage: 1, description: '東の島で蒸留された素朴な酒。湯割りが正解', rarity: 1, price: 100
+    damage: 1, selfHeal: 1,
+    description: '東の島で蒸留された素朴な酒。湯割りにすると体に優しい', rarity: 1, price: 100
   },
   soju: {
     id: 'soju', name: '高麗焼酎', emoji: '🫗', type: 'drink',
     damage: 1, description: '甘くて飲みやすいが油断すると足に来る', rarity: 1, price: 100
+  },
+  ursus_kvass: {
+    id: 'ursus_kvass', name: 'ウルサス・クワス', emoji: '🫙', type: 'drink',
+    damage: 1, description: '帝国の発酵飲料。アルコール度数は低いが量で攻める', rarity: 1, price: 80
+  },
+  victoria_cider: {
+    id: 'victoria_cider', name: 'ヴィクトリア林檎酒', emoji: '🍎', type: 'drink',
+    damage: 1, description: '王国の田舎で醸された素朴なサイダー。甘くて軽い', rarity: 1, price: 90
+  },
+  columbia_light: {
+    id: 'columbia_light', name: 'コロンビア・ライト', emoji: '🥤', type: 'drink',
+    damage: 1, description: '度数控えめのビール系飲料。とりあえず喉を潤す', rarity: 1, price: 80
+  },
+  siracusa_table_wine: {
+    id: 'siracusa_table_wine', name: 'シラクーザ卓上ワイン', emoji: '🫗', type: 'drink',
+    damage: 1, applySelfBuffs: [{ id: 'next_food_boost', duration: 1, value: 1 }],
+    description: '食事に合わせる安テーブルワイン。料理と一緒だと回復が上がる', rarity: 1, price: 90
+  },
+  sami_berry_wine: {
+    id: 'sami_berry_wine', name: 'サーミ木の実酒', emoji: '🫐', type: 'drink',
+    damage: 1, cleanseSelf: 1,
+    description: '極北の森で採れた木の実を発酵させた酒。不思議と体の不調が和らぐ', rarity: 1, price: 100
   },
   ale: {
     id: 'ale', name: 'カジミエーシュ麦酒', emoji: '🍺', type: 'drink',
@@ -342,11 +367,13 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   liter_beer: {
     id: 'liter_beer', name: 'ジョッキ一気', emoji: '🍻', type: 'drink',
-    damage: 2, description: '巨大ジョッキで一気飲み。周囲が盛り上がる', rarity: 2, price: 350
+    damage: 3, selfDamage: 1,
+    description: '巨大ジョッキで一気飲み。相手に酔い3だが自分も酔い1。周囲が盛り上がる', rarity: 2, price: 350
   },
   sparkling: {
     id: 'sparkling', name: 'コロンビア産泡酒', emoji: '🥂', type: 'drink',
-    damage: 2, description: '新興都市の洗練。細かい泡が喉を撫でる', rarity: 2, price: 320
+    damage: 2, applyBuffs: [{ id: 'tipsy', duration: 1, value: 1.3 }],
+    description: '新興都市の洗練。炭酸が酔いの回りを早める。1T相手の被ダメ×1.3', rarity: 2, price: 320
   },
   rice_wine: {
     id: 'rice_wine', name: '炎国紹興酒', emoji: '🫘', type: 'drink',
@@ -354,7 +381,8 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   mead: {
     id: 'mead', name: 'サーミ蜂蜜酒', emoji: '🍯', type: 'drink',
-    damage: 2, description: '極北の蜂蜜で醸した甘い酒。凍えた体を優しく温める', rarity: 2, price: 310
+    damage: 2, selfHeal: 1,
+    description: '極北の蜂蜜で醸した甘い酒。攻めつつ体を癒す。酔い2 & 自分heal 1', rarity: 2, price: 310
   },
   herb_liqueur: {
     id: 'herb_liqueur', name: 'イベリア薬草酒', emoji: '🌿', type: 'drink',
@@ -392,23 +420,47 @@ export const CARD_DATA: Record<string, CardDef> = {
   // === ガチャ追加フード ===
   black_bread: {
     id: 'black_bread', name: 'ウルサス黒パン', emoji: '🍞', type: 'food',
-    heal: 1, description: '帝国兵の主食。硬いが噛むほど味が出る', rarity: 1, price: 80
+    heal: 2, description: '帝国兵の主食。硬いが腹持ちが良く、酔いの進行を鈍らせる', rarity: 1, price: 80
   },
   candy: {
     id: 'candy', name: 'ペンギン急便キャンディ', emoji: '🍬', type: 'food',
-    heal: 1, description: 'エクシアが配り歩く謎味キャンディ。たまにアタリ', rarity: 1, price: 60
+    heal: 1, cleanseDot: true,
+    description: 'エクシアが配り歩く謎味キャンディ。甘さが毒を中和する…たぶん', rarity: 1, price: 60
   },
   opera_cake: {
     id: 'opera_cake', name: 'リターニア歌劇菓子', emoji: '🍰', type: 'food',
     heal: 1, description: '歌劇場のロビーで売られる小さな焼き菓子。上品な甘さ', rarity: 1, price: 120
   },
+  victoria_biscuit: {
+    id: 'victoria_biscuit', name: 'ヴィクトリア紅茶ビスケット', emoji: '🍪', type: 'food',
+    heal: 1, description: '紅茶に浸して食べるのが正解。王国の庶民の味', rarity: 1, price: 80
+  },
+  columbia_popcorn: {
+    id: 'columbia_popcorn', name: 'コロンビア式ポップコーン', emoji: '🍿', type: 'food',
+    heal: 1, description: 'バター塩味。映画館のあの味。つまんでると手が止まらない', rarity: 1, price: 70
+  },
+  kazimierz_pretzel: {
+    id: 'kazimierz_pretzel', name: 'カジミエーシュ・プレッツェル', emoji: '🥨', type: 'food',
+    heal: 1, applySelfBuffs: [{ id: 'next_drink_boost', duration: 1, value: 1 }],
+    description: '闘技場の観客席で売られる定番おつまみ。塩気が次の酒を加速する', rarity: 1, price: 90
+  },
+  lungmen_peanuts: {
+    id: 'lungmen_peanuts', name: '龍門式五香花生', emoji: '🥜', type: 'food',
+    heal: 1, description: '八角とスパイスで煮た落花生。龍門の屋台の定番', rarity: 1, price: 70
+  },
+  sarkaz_hardtack: {
+    id: 'sarkaz_hardtack', name: 'サルカズ乾パン', emoji: '🫓', type: 'food',
+    heal: 2, description: '戦場の携帯食。石のように硬いが腹に溜まる。歯に注意', rarity: 1, price: 60
+  },
   dimsum: {
     id: 'dimsum', name: '龍門式飲茶', emoji: '🥟', type: 'food',
-    heal: 2, description: '小さな蒸籠に詰まった龍門の味。お茶と一緒に', rarity: 2, price: 280
+    heal: 2, cleanseDot: true,
+    description: '小さな蒸籠に詰まった龍門の味。お茶で毒を流す', rarity: 2, price: 280
   },
   highland_tea: {
     id: 'highland_tea', name: 'シルバーアッシュの茶', emoji: '🍵', type: 'food',
-    heal: 2, description: 'カランド貿易が扱う高山茶。一口で目が覚める', rarity: 2, price: 350
+    heal: 2, applySelfBuffs: [{ id: 'drink_dmg_half', duration: 1 }],
+    description: 'カランド貿易が扱う高山茶。1T受けるドリンクdmg半減。頭が冴える', rarity: 2, price: 350
   },
   daily_meal: {
     id: 'daily_meal', name: 'ロドス食堂の日替り', emoji: '🍱', type: 'food',
@@ -416,11 +468,12 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   skewer: {
     id: 'skewer', name: '羊肉串', emoji: '🍢', type: 'food',
-    heal: 2, description: 'クミンと唐辛子が効いた炎国式串焼き。ビールが進む', rarity: 2, price: 270
+    heal: 2, applySelfBuffs: [{ id: 'next_drink_boost', duration: 1, value: 1 }],
+    description: 'クミンと唐辛子が効いた炎国式串焼き。辛さで次の酒が加速する', rarity: 2, price: 270
   },
   grilled_fish: {
     id: 'grilled_fish', name: '龍門烤魚', emoji: '🐟', type: 'food',
-    heal: 2, description: '丸ごと一匹を炭火でじっくり。ピリ辛ダレで食す', rarity: 2, price: 300
+    heal: 3, description: '丸ごと一匹を炭火でじっくり。ピリ辛ダレが胃を守る', rarity: 2, price: 300
   },
   jerky: {
     id: 'jerky', name: 'クルビア式ジャーキー', emoji: '🥩', type: 'food',
@@ -484,6 +537,244 @@ export const CARD_DATA: Record<string, CardDef> = {
     corruptHand: 2,
     description: '「今夜は最後まで帰さないから…」手札2枚を発情状態に。酔いLv.2以上。理性+2 & 手札汚染 & CG再生',
     rarity: 5, price: 3500
+  },
+
+  // ============================================
+  // === 新規アークナイツカード ===
+  // ============================================
+
+  // === ドリンク：各国・陣営の特色酒 ===
+  columbia_bourbon: {
+    id: 'columbia_bourbon', name: 'コロンビア・バーボン', emoji: '🥃', type: 'drink',
+    damage: 3, applySelfBuffs: [{ id: 'next_drink_boost', duration: 1, value: 1 }],
+    description: '新興都市の自由が詰まった琥珀色。一杯飲めば勢いが付く', rarity: 3, price: 580
+  },
+  siesta_sunset: {
+    id: 'siesta_sunset', name: 'シエスタ・サンセット', emoji: '🌅', type: 'drink',
+    damage: 2, applyBuffs: [{ id: 'blush', duration: 2, value: 1 }],
+    description: 'リゾート地の夕焼けを溶かしたカクテル。甘いのに後から効いてくる', rarity: 3, price: 520
+  },
+  iberia_dark_rum: {
+    id: 'iberia_dark_rum', name: 'イベリア深海ラム', emoji: '🌊', type: 'drink',
+    damage: 4, applyBuffs: [{ id: 'dot', duration: 2, value: 1 }],
+    description: '海底の闇を宿した黒いラム酒。飲んだ者は深淵を覗く', rarity: 4, price: 950
+  },
+  higashi_junmai: {
+    id: 'higashi_junmai', name: '東国・鬼殺し', emoji: '👹', type: 'drink',
+    damage: 5, applySelfBuffs: [{ id: 'stun', duration: 1 }],
+    description: '鬼すら倒す東国最強の清酒。注いだ方も正気を失う', rarity: 5, price: 1400
+  },
+  minos_blood_wine: {
+    id: 'minos_blood_wine', name: 'ミノス闘牛の血潮', emoji: '🐂', type: 'drink',
+    damage: 3, applySelfBuffs: [{ id: 'self_atk_up', duration: 1, value: 1.5 }],
+    description: '闘技場で振る舞われる深紅のワイン。闘志が燃え上がる', rarity: 4, price: 850
+  },
+  leithania_moonwine: {
+    id: 'leithania_moonwine', name: 'リターニア月光酒', emoji: '🌙', type: 'drink',
+    damage: 2, corruptHand: 1,
+    description: 'アーツの力を帯びた蒸留酒。飲むと意識が朧になり手札が汚染される', rarity: 4, price: 800
+  },
+  rim_billiton_grog: {
+    id: 'rim_billiton_grog', name: 'リム・ビリトン坑夫酒', emoji: '⛏️', type: 'drink',
+    damage: 2, applyBuffs: [{ id: 'no_food', duration: 1 }],
+    description: '鉱山労働者の粗野な蒸留酒。胃が焼けてつまみが受け付けなくなる', rarity: 3, price: 500
+  },
+
+  // === フード：各陣営の料理 ===
+  sarkaz_jerky: {
+    id: 'sarkaz_jerky', name: 'サルカズ式干し肉', emoji: '🍖', type: 'food',
+    heal: 2, applySelfBuffs: [{ id: 'self_atk_up', duration: 1, value: 1.5 }],
+    description: '戦場で鍛えた保存食。噛むほどに闘志が湧く', rarity: 3, price: 500
+  },
+  columbia_burger: {
+    id: 'columbia_burger', name: 'コロンビア特大バーガー', emoji: '🍔', type: 'food',
+    heal: 3, description: '自由の味。分厚いパティが胃の壁を守る', rarity: 3, price: 480
+  },
+  kjerag_fondue: {
+    id: 'kjerag_fondue', name: 'クルビア式チーズ鍋', emoji: '🧀', type: 'food',
+    heal: 4, applySelfBuffs: [{ id: 'drink_dmg_half', duration: 1 }],
+    description: '雪山で温まるチーズフォンデュ。胃に幕を張って酒を弾く', rarity: 4, price: 950
+  },
+  siracusa_pasta: {
+    id: 'siracusa_pasta', name: 'シラクーザ風パスタ', emoji: '🍝', type: 'food',
+    heal: 2, applySelfBuffs: [{ id: 'negate_next', duration: 1 }],
+    description: 'ルーポ族のファミリーレシピ。食えば腹が据わる', rarity: 3, price: 600
+  },
+  lungmen_hotpot: {
+    id: 'lungmen_hotpot', name: '龍門麻辣火鍋', emoji: '🫕', type: 'food',
+    heal: 3, applyBuffs: [{ id: 'tipsy', duration: 1, value: 1.5 }],
+    description: '激辛で汗だく。自分は回復するが、相手も火照って酔いやすくなる', rarity: 4, price: 800
+  },
+  ursus_borscht: {
+    id: 'ursus_borscht', name: 'ウルサス式ボルシチ', emoji: '🥣', type: 'food',
+    heal: 3, cleanseDot: true,
+    description: '帝国の家庭料理。ビーツの赤いスープが毒素を洗い流す', rarity: 3, price: 520
+  },
+
+  // === 一気飲み：新ハイリスクカード ===
+  sarkaz_ritual: {
+    id: 'sarkaz_ritual', name: 'サルカズ式血盃の儀', emoji: '🩸', type: 'chug',
+    effect: 'chug', enemyDamage: 5, selfDamage: 3,
+    description: '古の血の契約。互いに限界まで飲み干す死の儀式', rarity: 5, price: 1300
+  },
+  kazimierz_duel: {
+    id: 'kazimierz_duel', name: 'カジミエーシュ式決闘杯', emoji: '⚔️', type: 'chug',
+    effect: 'roulette', rouletteDmg: [0.6, 5, 2],
+    description: '60%→相手5dmg / 40%→自分2dmg。騎士の誇りを賭けた一騎討ち', rarity: 4, price: 1000
+  },
+  penguin_bomb: {
+    id: 'penguin_bomb', name: 'ペンギン急便爆弾酒', emoji: '💣', type: 'chug',
+    effect: 'chug', enemyDamage: 3, selfDamage: 1,
+    applyBuffs: [{ id: 'stun', duration: 1 }],
+    description: 'クロワッサン特製。爆発的な度数で相手を一撃スタン', rarity: 4, price: 1100
+  },
+
+  // === 戦略：キャラ特化の情報・妨害 ===
+  chen_holungday: {
+    id: 'chen_holungday', name: 'チェンの休暇命令', emoji: '🏖️', type: 'strategy',
+    applyBuffs: [{ id: 'no_food', duration: 2 }],
+    description: '「今日は飲むだけだ」チェンの一言で相手のつまみを2T封じる', rarity: 4, price: 900
+  },
+  kal_prescription: {
+    id: 'kal_prescription', name: 'ケルシーの処方箋', emoji: '📋', type: 'strategy',
+    cleanseSelf: 2, cleanseDot: true,
+    applySelfBuffs: [{ id: 'drink_dmg_half', duration: 1 }],
+    description: '「私の言う通りにしろ」全デバフ2つ除去+dot除去+被ダメ半減1T', rarity: 5, price: 1500
+  },
+  amiya_inspiration: {
+    id: 'amiya_inspiration', name: 'アーミヤの鼓舞', emoji: '🐰', type: 'strategy',
+    applySelfBuffs: [{ id: 'self_atk_up', duration: 2, value: 1.5 }, { id: 'next_food_boost', duration: 1, value: 2 }],
+    description: '「ドクター、私を信じて」2T攻撃力1.5倍+次の回復+2', rarity: 4, price: 1000
+  },
+  silverash_deal: {
+    id: 'silverash_deal', name: 'シルバーアッシュの商談', emoji: '🤝', type: 'strategy',
+    revealHand: true, discardHighest: true,
+    description: '「交渉の余地はない」相手の手札公開+最高dmgカード没収', rarity: 5, price: 1400
+  },
+  w_surprise: {
+    id: 'w_surprise', name: 'Wのサプライズ', emoji: '🎁', type: 'strategy',
+    discardEnemyHand: 2,
+    applyBuffs: [{ id: 'dot', duration: 1, value: 2 }],
+    description: '「プレゼントだよ♪」手札2枚破棄+dot 2dmg。爆弾魔の贈り物', rarity: 5, price: 1300
+  },
+  mostima_timestop: {
+    id: 'mostima_timestop', name: 'モスティマの時間停止', emoji: '⏳', type: 'strategy',
+    applyBuffs: [{ id: 'stun', duration: 1 }],
+    applySelfBuffs: [{ id: 'stealth', duration: 1 }],
+    description: '時が止まる。相手1Tスタン+自分1T隠密。堕天使の特権', rarity: 5, price: 1200
+  },
+  dobermann_drill: {
+    id: 'dobermann_drill', name: 'ドーベルマン教官の訓示', emoji: '📢', type: 'strategy',
+    applySelfBuffs: [{ id: 'self_atk_up', duration: 3, value: 1.5 }],
+    selfDamage: 1,
+    description: '「甘えるな！」3T攻撃力1.5倍だが自傷1。厳しさの中の愛', rarity: 3, price: 650
+  },
+
+  // === 環境：場の空気を変える ===
+  chernobog_ruins: {
+    id: 'chernobog_ruins', name: 'チェルノボーグの廃墟', emoji: '🏚️', type: 'environment',
+    applyBothBuffs: [{ id: 'dot', duration: 3, value: 1 }],
+    description: '3T: 荒廃した都市の記憶。双方にdot 1/T。重い空気が酒を沁みさせる', rarity: 3, price: 600
+  },
+  siesta_beach: {
+    id: 'siesta_beach', name: 'シエスタのビーチ', emoji: '🏖️', type: 'environment',
+    applyBothBuffs: [{ id: 'blush', duration: 3, value: 1 }],
+    description: '3T: 水着姿が眩しい。双方blush付与。セクハラが効きやすくなる', rarity: 4, price: 900
+  },
+  sami_blizzard: {
+    id: 'sami_blizzard', name: 'サーミの猛吹雪', emoji: '❄️', type: 'environment',
+    applyBothBuffs: [{ id: 'atk_down', duration: 2, value: 0.5 }],
+    description: '2T: 極寒が場を包む。双方の攻撃力半減。静かな消耗戦', rarity: 3, price: 550
+  },
+  rhodes_medbay: {
+    id: 'rhodes_medbay', name: 'ロドス医療部', emoji: '🏥', type: 'environment',
+    applyBothBuffs: [{ id: 'drink_dmg_half', duration: 2 }],
+    description: '2T: 医療部の保護下。双方のドリンク被ダメ半減。安全地帯', rarity: 3, price: 650
+  },
+  lungmen_downtown: {
+    id: 'lungmen_downtown', name: '龍門繁華街・深夜', emoji: '🌃', type: 'environment',
+    applyBothBuffs: [{ id: 'karaoke', duration: 2, value: 2 }, { id: 'dimlight', duration: 2 }],
+    description: '2T: ネオンの裏路地。ドリンクdmg+2 & セクハラ条件-1。夜の龍門は危険', rarity: 5, price: 1400
+  },
+
+  // === 状態異常：キャラ特化デバフ/バフ ===
+  ifrit_blaze_mix: {
+    id: 'ifrit_blaze_mix', name: 'イフリータの火炎カクテル', emoji: '🔥', type: 'status',
+    applyBuffs: [{ id: 'dot', duration: 3, value: 2 }],
+    description: '「燃えろ燃えろー！」3Tの間、毎ターン2ダメージ。止められない', rarity: 5, price: 1300
+  },
+  ptilopsis_lullaby: {
+    id: 'ptilopsis_lullaby', name: 'プティロプシスの子守唄', emoji: '🎵', type: 'status',
+    applyBuffs: [{ id: 'atk_down', duration: 2, value: 0.5 }],
+    applySelfBuffs: [{ id: 'next_food_boost', duration: 1, value: 2 }],
+    description: '「眠りなさい…演算中」相手2T攻撃半減+自分次回復+2', rarity: 4, price: 850
+  },
+  skadi_pressure: {
+    id: 'skadi_pressure', name: 'スカジの深海圧', emoji: '🐋', type: 'status',
+    applyBuffs: [{ id: 'tipsy', duration: 3, value: 1.5 }],
+    selfDamage: 1,
+    description: '深海の圧力が相手を包む。3Tドリンクダメ1.5倍。代償に自傷1', rarity: 4, price: 900
+  },
+  lappland_madness: {
+    id: 'lappland_madness', name: 'ラップランドの狂気', emoji: '🐺', type: 'status',
+    applySelfBuffs: [{ id: 'self_atk_up', duration: 3, value: 1.5 }],
+    selfDamage: 2,
+    description: '「アハハ！もっとだ！」3T攻撃力1.5倍だが自傷2。狂戦士の宴', rarity: 4, price: 950
+  },
+  nightmare_hex: {
+    id: 'nightmare_hex', name: 'ナイトメアの呪詛', emoji: '😈', type: 'status',
+    applyBuffs: [{ id: 'dot', duration: 2, value: 1 }, { id: 'blush', duration: 2, value: 1 }],
+    description: '二重人格の呪い。2T dot+blush。じわじわ蝕み、隙を作る', rarity: 4, price: 850
+  },
+  suzuran_charm: {
+    id: 'suzuran_charm', name: 'スズランの尻尾もふもふ', emoji: '🦊', type: 'status',
+    applySelfBuffs: [{ id: 'stealth', duration: 2 }, { id: 'next_food_boost', duration: 1, value: 1 }],
+    description: '「えへへ…撫でてもいいですよ？」2T隠密+次回復+1。癒しの力', rarity: 3, price: 600
+  },
+  rosmontis_telekinesis: {
+    id: 'rosmontis_telekinesis', name: 'ロスモンティスの念動力', emoji: '🧠', type: 'status',
+    discardEnemyHand: 1,
+    applyBuffs: [{ id: 'atk_down', duration: 1, value: 0.5 }],
+    description: '「…グラス、飛ばしちゃった」手札1枚破棄+攻撃半減1T', rarity: 3, price: 650
+  },
+
+  // === セクハラ：新シチュエーション ===
+  back_hug: {
+    id: 'back_hug', name: 'バックハグ', emoji: '🫂', type: 'harassment',
+    requiredDrunkLevel: 2, drunkDamage: 2,
+    applyBuffs: [{ id: 'blush', duration: 2, value: 1 }],
+    description: '背後からそっと抱きしめる。「…動かないで」酔いLv.2以上。酔い+2 & 動揺2T', rarity: 4, price: 1800
+  },
+  forehead_kiss: {
+    id: 'forehead_kiss', name: '額にキス', emoji: '😘', type: 'harassment',
+    requiredDrunkLevel: 2, drunkDamage: 2,
+    description: '髪をかき上げて額に唇を落とす。「…おやすみ」酔いLv.2以上。酔い+2 & CG再生', rarity: 4, price: 1600
+  },
+  neck_breath: {
+    id: 'neck_breath', name: '首筋に吐息', emoji: '💨', type: 'harassment',
+    requiredDrunkLevel: 1, drunkDamage: 1,
+    applyBuffs: [{ id: 'tipsy', duration: 2, value: 1.5 }],
+    description: '首筋に温かい息を吹きかける。「…近い、です」酔いLv.1以上。酔い+1 & ほろ酔い2T', rarity: 4, price: 1400
+  },
+  princess_carry: {
+    id: 'princess_carry', name: 'お姫様抱っこ', emoji: '👸', type: 'harassment',
+    requiredDrunkLevel: 3, drunkDamage: 3,
+    instantWin: false,
+    applyBuffs: [{ id: 'blush', duration: 3, value: 1 }],
+    description: '「もう歩けないでしょ」軽々と抱え上げる。酔いLv.3以上。酔い+3 & 動揺3T', rarity: 5, price: 4000
+  },
+
+  // === 逆セクハラ：相手からの理性攻撃 ===
+  drunk_confession: {
+    id: 'drunk_confession', name: '酔った勢いの告白', emoji: '💕', type: 'harassment',
+    requiredDrunkLevel: 3, sanityDamage: 4,
+    description: '「…好き、です。ずっと…」酔った勢いの真剣な告白。酔いLv.3以上。理性+4', rarity: 5, price: 4000
+  },
+  sleeping_on_shoulder: {
+    id: 'sleeping_on_shoulder', name: '肩で寝落ち', emoji: '😴', type: 'harassment',
+    requiredDrunkLevel: 2, sanityDamage: 2,
+    applySelfBuffs: [{ id: 'stealth', duration: 1 }],
+    description: 'ことりと肩にもたれかかって寝息を立てる。酔いLv.2以上。理性+2 & 隠密1T', rarity: 4, price: 2000
   },
 };
 
