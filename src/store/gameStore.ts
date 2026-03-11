@@ -71,6 +71,10 @@ interface GameStore {
   // 設定
   resetData: () => void;
 
+  // デバッグ
+  debugMode: boolean;
+  loadDebugPreset: () => void;
+
   // ユーティリティ
   getDrunkLevel: (drunkValue: number) => number;
 }
@@ -125,6 +129,9 @@ export const useGameStore = create<GameStore>()(
       // バトル
       battle: { ...initialBattle },
 
+      // デバッグ
+      debugMode: false,
+
       // CG
       activeCG: null,
       cgDialogueIndex: 0,
@@ -156,6 +163,8 @@ export const useGameStore = create<GameStore>()(
             ...initialBattle,
             playerDeckRemaining: playerDeckShuffled,
             opponentDeckRemaining: opponentDeckShuffled,
+            // デバッグモード: 相手が最初から酔いLv3（値7）で開始
+            opponentDrunk: state.debugMode ? 7 : 0,
           },
         });
       },
@@ -772,6 +781,31 @@ export const useGameStore = create<GameStore>()(
           currentScreen: 'title',
           currentOpponent: null,
           battle: { ...initialBattle },
+          debugMode: false,
+        });
+      },
+
+      loadDebugPreset: () => {
+        // セクハラカード全種 + サポートカード
+        const harassmentCards = [
+          'shoulder_lean', 'headpat', 'breast_touch', 'hip_touch',
+          'ear_bite', 'kiss', 'hand_hold', 'doctor_coat',
+          'wall_pin', 'piggyback', 'oripathy_check',
+        ];
+        // デッキ: ハラスメント全種(11) + ペンギンVIPルーム(1) = 12枚
+        const debugDeck = [...harassmentCards, 'penguin_vip'];
+        // インベントリ: デッキ分 + 追加サポートカード
+        const debugInventory = [
+          ...debugDeck,
+          'excuse', 'dimlight', 'penguin_vip', 'penguin_vip',
+          'beer', 'beer', 'beer', 'wine', 'wine', 'whiskey',
+        ];
+        set({
+          money: 99999,
+          inventory: debugInventory,
+          playerDeck: debugDeck,
+          wins: 50,
+          debugMode: true,
         });
       },
 
@@ -793,6 +827,7 @@ export const useGameStore = create<GameStore>()(
         unlockedAfterEvents: state.unlockedAfterEvents,
         wins: state.wins,
         losses: state.losses,
+        debugMode: state.debugMode,
       }),
     }
   )
