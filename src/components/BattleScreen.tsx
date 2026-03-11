@@ -4,6 +4,33 @@ import { CARD_DATA } from '../data/cards.ts';
 import { randomPick } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
+import type { Buff } from '../data/types.ts';
+
+// バフ/デバフ表示情報
+const BUFF_DISPLAY: Record<Buff['id'], { icon: string; label: string; positive: boolean }> = {
+  stun:             { icon: '💫', label: 'スタン',       positive: false },
+  atk_down:         { icon: '⬇️', label: '攻撃力低下',   positive: false },
+  dot:              { icon: '🩸', label: '継続ダメージ', positive: false },
+  no_food:          { icon: '🚫', label: '食べ物封印',   positive: false },
+  corrupted_hand:   { icon: '💋', label: '手札汚染',     positive: false },
+  tipsy:            { icon: '🍺', label: 'ほろ酔い',     positive: false },
+  blush:            { icon: '😳', label: '頬染め',       positive: false },
+  alone:            { icon: '🚷', label: '孤立',         positive: false },
+  karaoke:          { icon: '🎤', label: 'カラオケ',     positive: true },
+  lastorder:        { icon: '🔔', label: 'ラストオーダー', positive: false },
+  dimlight:         { icon: '🕯️', label: '薄暗い照明',   positive: false },
+  excuse:           { icon: '🛡️', label: '言い訳',       positive: true },
+  drink_dmg_half:   { icon: '🛡️', label: 'ダメージ半減', positive: true },
+  next_drink_boost: { icon: '⚔️', label: '次攻撃強化',   positive: true },
+  next_food_boost:  { icon: '💚', label: '次回復強化',   positive: true },
+  negate_next:      { icon: '🚫', label: '次ダメ無効',   positive: true },
+  stealth:          { icon: '👻', label: 'ステルス',     positive: true },
+  self_atk_up:      { icon: '💪', label: '攻撃力UP',     positive: true },
+  all_dmg_up:       { icon: '🔥', label: '全ダメUP',     positive: true },
+  sanity_negate:    { icon: '🧠', label: '理性ガード',   positive: true },
+  thorns:           { icon: '🌵', label: '反撃',         positive: true },
+  reflect_all:      { icon: '🪞', label: '全反射',       positive: true },
+};
 
 // 酔い段階
 const DRUNK_STAGES = [
@@ -472,6 +499,23 @@ export function BattleScreen() {
                     <span className="lvl-n">({battle.opponentDrunk}/10)</span>
                   </div>
                 </div>
+                {battle.opponentBuffs.length > 0 && (
+                  <div className="buff-icons">
+                    {battle.opponentBuffs.map((buff, i) => {
+                      const info = BUFF_DISPLAY[buff.id];
+                      return (
+                        <div
+                          key={`ob-${buff.id}-${i}`}
+                          className={`buff-chip ${info.positive ? 'buff-positive' : 'buff-negative'}`}
+                          title={`${info.label}${buff.duration > 0 ? ` (${buff.duration}T)` : ''}`}
+                        >
+                          <span className="buff-chip-icon">{info.icon}</span>
+                          {buff.duration > 0 && <span className="buff-chip-dur">{buff.duration}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -549,6 +593,23 @@ export function BattleScreen() {
                 <span className="lvl-n">({battle.playerDrunk}/10)</span>
               </div>
             </div>
+            {battle.playerBuffs.length > 0 && (
+              <div className="buff-icons player-buff-icons">
+                {battle.playerBuffs.map((buff, i) => {
+                  const info = BUFF_DISPLAY[buff.id];
+                  return (
+                    <div
+                      key={`pb-${buff.id}-${i}`}
+                      className={`buff-chip ${info.positive ? 'buff-positive' : 'buff-negative'}`}
+                      title={`${info.label}${buff.duration > 0 ? ` (${buff.duration}T)` : ''}`}
+                    >
+                      <span className="buff-chip-icon">{info.icon}</span>
+                      {buff.duration > 0 && <span className="buff-chip-dur">{buff.duration}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
         </div>
