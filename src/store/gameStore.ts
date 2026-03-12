@@ -98,7 +98,6 @@ const initialBattle: BattleState = {
   playerDiscardHighest: false,
   playerReducedHand: false,
   opponentReducedHand: false,
-  spillActive: false,
   playerBuffs: [],
   opponentBuffs: [],
   corruptedSlots: [],
@@ -551,6 +550,12 @@ export const useGameStore = create<GameStore>()(
             if (drinkIdx >= 0 && harassIdx >= 0) {
               // Drinkを捨てて、Harassmentをデッキの先頭付近に入れる（次の手札で引きやすく）
               pDeckReturn.splice(drinkIdx, 1);
+              // splice後にインデックスがずれるため再検索
+              const newHarassIdx = pDeckReturn.findIndex(id => CARD_DATA[id]?.type === 'harassment');
+              if (newHarassIdx >= 0) {
+                const [harassCard] = pDeckReturn.splice(newHarassIdx, 1);
+                pDeckReturn.unshift(harassCard);
+              }
             }
           }
 
@@ -607,7 +612,6 @@ export const useGameStore = create<GameStore>()(
               playerDiscardHighest: shouldDiscardPlayerHighest,
               playerReducedHand: result.playerReducedHand ?? state.battle.playerReducedHand,
               opponentReducedHand: result.opponentReducedHand ?? state.battle.opponentReducedHand,
-              spillActive: result.spillNullified,
               playerBuffs: newPlayerBuffs,
               opponentBuffs: newOpponentBuffs,
               corruptedSlots,
@@ -693,6 +697,7 @@ export const useGameStore = create<GameStore>()(
 
         set({
           money: state.money - card.price,
+          inventory: [...state.inventory, cardId],
           playerDeck: [...state.playerDeck, cardId],
         });
         return true;

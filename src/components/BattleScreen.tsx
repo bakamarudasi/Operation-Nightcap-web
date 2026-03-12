@@ -17,7 +17,6 @@ const BUFF_DISPLAY: Record<Buff['id'], { icon: string; label: string; positive: 
   blush:            { icon: '😳', label: '頬染め',       positive: false },
   alone:            { icon: '🚷', label: '孤立',         positive: false },
   karaoke:          { icon: '🎤', label: 'カラオケ',     positive: true },
-  lastorder:        { icon: '🔔', label: 'ラストオーダー', positive: false },
   dimlight:         { icon: '🕯️', label: '薄暗い照明',   positive: false },
   excuse:           { icon: '🛡️', label: '言い訳',       positive: true },
   drink_dmg_half:   { icon: '🛡️', label: 'ダメージ半減', positive: true },

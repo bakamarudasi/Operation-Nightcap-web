@@ -241,7 +241,6 @@ export interface BattleState {
   playerDiscardHighest: boolean;
   playerReducedHand: boolean;
   opponentReducedHand: boolean;
-  spillActive: boolean;
   /** プレイヤー（ドクター）側のバフ/デバフ */
   playerBuffs: Buff[];
   /** 相手側のバフ/デバフ */
