@@ -27,6 +27,7 @@ export const DEBUFF_IDS: readonly Buff['id'][] = [
  * damage > enemyDamage > heal の順で評価。
  */
 export function findHighestValueCardIndex(hand: string[]): number {
+  if (hand.length === 0) return -1;
   let maxVal = -1;
   let maxIdx = 0;
   for (let i = 0; i < hand.length; i++) {

@@ -288,6 +288,7 @@ export function GachaScreen() {
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const fillRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const gachaPulledRef = useRef(false); // pour中にpullGacha済みかを追跡（二重引き防止）
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { burstCenter, rain } = useParticles(canvasRef);
 
@@ -297,7 +298,7 @@ export function GachaScreen() {
 
   const clearAll = () => {
     timers.current.forEach(clearTimeout); timers.current = [];
-    if (fillRef.current) clearInterval(fillRef.current);
+    if (fillRef.current) { clearInterval(fillRef.current); fillRef.current = null; }
   };
 
   const triggerShake = (intensity = 1) => {
@@ -317,7 +318,9 @@ export function GachaScreen() {
     if (animPhase === 'idle' || animPhase === 'result') return;
     clearAll();
     if (animPhase === 'pour') {
-      // pourフェーズ中はまだガチャ結果が無い場合がある → 強制的にpull
+      // pourフェーズ中はまだガチャ結果が無い場合がある → 強制的にpull（二重引き防止）
+      if (gachaPulledRef.current) { setAnimPhase('idle'); return; }
+      gachaPulledRef.current = true;
       const count = pendingCount;
       const res = pullGacha(count);
       if (!res) { setAnimPhase('idle'); return; }
@@ -365,6 +368,7 @@ export function GachaScreen() {
     const cost = count === 1 ? GACHA_SINGLE_COST : GACHA_MULTI_COST;
     if (money < cost || !isIdle) return;
     clearAll();
+    gachaPulledRef.current = false;
     setPendingCount(count);
     setSelected(null); setLiquidFill(0);
     setAnimPhase('pour');
@@ -379,6 +383,8 @@ export function GachaScreen() {
 
     // 注ぎ演出後にストア経由でガチャ実行
     const t1 = setTimeout(() => {
+      if (gachaPulledRef.current) return; // スキップで既にpull済みなら何もしない
+      gachaPulledRef.current = true;
       const res = pullGacha(count);
       if (!res) { setAnimPhase('idle'); return; }
 

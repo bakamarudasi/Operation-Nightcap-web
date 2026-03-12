@@ -543,25 +543,25 @@ export const useGameStore = create<GameStore>()(
           shuffleArray(pDeckReturn);
           shuffleArray(oDeckReturn);
 
-          // breast_touch: 手札のDrink1枚→デッキからHarassment1枚交換
-          if (extResult.swapDrinkForHarassment) {
-            const drinkIdx = pDeckReturn.findIndex(id => CARD_DATA[id]?.type === 'drink');
-            const harassIdx = pDeckReturn.findIndex(id => CARD_DATA[id]?.type === 'harassment');
-            if (drinkIdx >= 0 && harassIdx >= 0) {
-              // Drinkを捨てて、Harassmentをデッキの先頭付近に入れる（次の手札で引きやすく）
-              pDeckReturn.splice(drinkIdx, 1);
-              // splice後にインデックスがずれるため再検索
-              const newHarassIdx = pDeckReturn.findIndex(id => CARD_DATA[id]?.type === 'harassment');
-              if (newHarassIdx >= 0) {
-                const [harassCard] = pDeckReturn.splice(newHarassIdx, 1);
-                pDeckReturn.unshift(harassCard);
-              }
-            }
-          }
-
           // 使用したカードを捨て札に追加
           const pDiscardPile = [...state.battle.playerDiscardPile, b.selectedCard!];
           const oDiscardPile = [...state.battle.opponentDiscardPile, opponentCardId];
+
+          // breast_touch: デッキ内のDrink1枚を捨て札へ送り、Harassment1枚を先頭に移動（枚数維持）
+          if (extResult.swapDrinkForHarassment) {
+            const harassIdx = pDeckReturn.findIndex(id => CARD_DATA[id]?.type === 'harassment');
+            if (harassIdx >= 0) {
+              // Harassmentをデッキの先頭に移動（次の手札で引きやすく）
+              const [harassCard] = pDeckReturn.splice(harassIdx, 1);
+              pDeckReturn.unshift(harassCard);
+              // Drinkを1枚捨て札へ移動（デッキ総枚数を維持）
+              const drinkIdx = pDeckReturn.findIndex(id => CARD_DATA[id]?.type === 'drink');
+              if (drinkIdx >= 0) {
+                const [drinkCard] = pDeckReturn.splice(drinkIdx, 1);
+                pDiscardPile.push(drinkCard);
+              }
+            }
+          }
 
           // 酔いLv計算
           let newPlayerDrunk = state.battle.playerDrunk + result.playerDamage - result.playerHeal;
