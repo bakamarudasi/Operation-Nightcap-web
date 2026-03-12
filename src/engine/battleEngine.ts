@@ -730,6 +730,10 @@ export const BattleEngine = {
 
   /** thorns / reflect_all のダメージ後処理 */
   applyPostEffects(result: ExtendedResult, battle: BattleState): ExtendedResult {
+    // reflect前のダメージを記録（thorns判定に使用）
+    const playerDamageBefore = result.playerDamage;
+    const opponentDamageBefore = result.opponentDamage;
+
     // reflect_all: 受けたダメージを全て相手に跳ね返す（DoT除外）
     const playerDoT = calcDoTDamage(battle.playerBuffs);
     const opponentDoT = calcDoTDamage(battle.opponentBuffs);
@@ -751,15 +755,15 @@ export const BattleEngine = {
       }
     }
 
-    // thorns: ダメージを受けたら固定値を反射
-    if (result.playerDamage > 0 && hasBuff(battle.playerBuffs, 'thorns')) {
+    // thorns: ダメージを受けたら固定値を反射（reflect前のダメージで判定）
+    if (playerDamageBefore > 0 && hasBuff(battle.playerBuffs, 'thorns')) {
       const thornsVal = getBuffValue(battle.playerBuffs, 'thorns', 0);
       if (thornsVal > 0) {
         result.opponentDamage += thornsVal;
         result.messages.push(`⚖️ 裁きの反射！相手に${thornsVal}ダメージ！`);
       }
     }
-    if (result.opponentDamage > 0 && hasBuff(battle.opponentBuffs, 'thorns')) {
+    if (opponentDamageBefore > 0 && hasBuff(battle.opponentBuffs, 'thorns')) {
       const thornsVal = getBuffValue(battle.opponentBuffs, 'thorns', 0);
       if (thornsVal > 0) {
         result.playerDamage += thornsVal;
@@ -840,31 +844,14 @@ export const BattleEngine = {
 
     if (playerStunned) {
       result.messages.push('😵 スタン状態！行動できない…！');
-      if (oCard.type === 'drink') {
-        const dmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
-        result.playerDamage += dmg;
-        result.messages.push(`${oCard.emoji} 無防備なところに${oCard.name}！酔い+${dmg}！`);
-        applyCardExtras(oCard, result, 'opponent');
-      } else if (oCard.type === 'harassment') {
-        return this.resolveHarassmentCard(oCard, pCard, result, 'opponent', battle);
-      }
-      return result;
+      // スタン中でも相手のカードは通常通り処理（food/utilityも有効）
+      return this.resolveSingleCard(oCard, pCard, result, 'opponent', battle);
     }
 
     if (opponentStunned) {
       result.messages.push('😵 相手がスタン状態！');
-      if (pCard.type === 'drink') {
-        const dmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
-        result.opponentDamage += dmg;
-        result.messages.push(`${pCard.emoji} ${pCard.name}が直撃！酔い+${dmg}！`);
-        applyCardExtras(pCard, result, 'player');
-        if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
-          trackBuffConsumption(result, 'player', 'next_drink_boost');
-        }
-      } else if (pCard.type === 'harassment') {
-        return this.resolveHarassmentCard(pCard, oCard, result, 'player', battle);
-      }
-      return result;
+      // スタン中でも自分のカードは通常通り処理（food/utilityも有効）
+      return this.resolveSingleCard(pCard, oCard, result, 'player', battle);
     }
 
     // === フェーズ1: 戦略・環境・状態異常カードを先に処理 ===
@@ -1119,7 +1106,9 @@ export const BattleEngine = {
     if (card.effects && card.effects.length > 0) {
       result.messages.push(`${card.emoji} ${card.name}！`);
       processEffects(card.effects, card.name, card.emoji, isPlayer, result, battle);
-      applyLegacyBuffs(card, isPlayer, result);
+      // effects[]内にapply_buffがある場合はlegacyバフ適用をスキップ（二重付与防止）
+      const hasApplyBuff = card.effects.some(e => e.type === 'apply_buff');
+      if (!hasApplyBuff) applyLegacyBuffs(card, isPlayer, result);
       return;
     }
 
@@ -1137,7 +1126,8 @@ export const BattleEngine = {
     if (chugCard.effects && chugCard.effects.length > 0) {
       const isPlayer = chugUser === 'player';
       processEffects(chugCard.effects, chugCard.name, chugCard.emoji, isPlayer, result, battle);
-      applyLegacyBuffs(chugCard, isPlayer, result);
+      const hasApplyBuff = chugCard.effects.some(e => e.type === 'apply_buff');
+      if (!hasApplyBuff) applyLegacyBuffs(chugCard, isPlayer, result);
       return result;
     }
 
@@ -1271,6 +1261,10 @@ export const BattleEngine = {
         }
         // 余韻付与: 次のセクハラが入りやすくなる
         result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { id: 'afterglow', duration: 1 }];
+        // ハラスメント成功時はフラストレーション（連続不発カウント）をリセット
+        if (targetBuffs.some(b => b.id === 'frustration')) {
+          result.consumeOpponentBuffs = [...(result.consumeOpponentBuffs ?? []), 'frustration'];
+        }
       } else {
         // === 相手の逆セクハラ → プレイヤーに理性ダメージ ===
         if (hCard.sanityDamage) {
@@ -1311,6 +1305,10 @@ export const BattleEngine = {
         }
         // 余韻付与: 次の逆セクハラが入りやすくなる
         result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { id: 'afterglow', duration: 1 }];
+        // 逆セクハラ成功時もフラストレーション（連続不発カウント）をリセット
+        if (targetBuffs.some(b => b.id === 'frustration')) {
+          result.consumePlayerBuffs = [...(result.consumePlayerBuffs ?? []), 'frustration'];
+        }
       }
     } else {
       // === 不発 → 焦らし（Frustration）変換 ===

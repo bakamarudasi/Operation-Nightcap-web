@@ -212,43 +212,43 @@ export const useGameStore = create<GameStore>()(
             oHand.push(oRemaining.shift()!);
           }
 
-          // --- 相手の手札破棄処理 ---
+          // --- 相手の手札破棄処理（破棄カードは捨て札へ） ---
           // 最高dmgカード破棄（スワイヤーの命令等）
           if (b.opponentDiscardHighest && oHand.length > 1) {
             const [discardedCard] = oHand.splice(findHighestValueCardIndex(oHand), 1);
-            oRemaining.push(discardedCard);
+            oDiscard.push(discardedCard);
           }
           // ランダムN枚破棄（サーミ・オーロラ等）
           if (b.opponentDiscardCount > 0) {
             for (let n = 0; n < b.opponentDiscardCount && oHand.length > 1; n++) {
               const discardIdx = Math.floor(Math.random() * oHand.length);
               const [discardedCard] = oHand.splice(discardIdx, 1);
-              oRemaining.push(discardedCard);
+              oDiscard.push(discardedCard);
             }
           }
           // 乾杯強制（ランダム1枚）
           if (b.opponentDiscardNext && oHand.length > 1) {
             const discardIdx = Math.floor(Math.random() * oHand.length);
             const [discardedCard] = oHand.splice(discardIdx, 1);
-            oRemaining.push(discardedCard);
+            oDiscard.push(discardedCard);
           }
 
-          // --- プレイヤーの手札破棄処理 ---
+          // --- プレイヤーの手札破棄処理（破棄カードは捨て札へ） ---
           if (b.playerDiscardHighest && pHand.length > 1) {
             const [discardedCard] = pHand.splice(findHighestValueCardIndex(pHand), 1);
-            pRemaining.push(discardedCard);
+            pDiscard.push(discardedCard);
           }
           if (b.playerDiscardCount > 0) {
             for (let n = 0; n < b.playerDiscardCount && pHand.length > 1; n++) {
               const discardIdx = Math.floor(Math.random() * pHand.length);
               const [discardedCard] = pHand.splice(discardIdx, 1);
-              pRemaining.push(discardedCard);
+              pDiscard.push(discardedCard);
             }
           }
           if (b.playerDiscardNext && pHand.length > 1) {
             const discardIdx = Math.floor(Math.random() * pHand.length);
             const [discardedCard] = pHand.splice(discardIdx, 1);
-            pRemaining.push(discardedCard);
+            pDiscard.push(discardedCard);
           }
 
           // rumor: 相手の手札1枚をデッキからランダムに差し替え
