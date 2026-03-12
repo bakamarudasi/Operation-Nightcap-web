@@ -104,13 +104,13 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
     deck_ai: {
       personality: 'aggressive',
       defaultDeck: [
-        'beer', 'beer', 'beer',
-        'wine', 'wine',
-        'whiskey', 'whiskey',
-        'baijiu',
-        'nuts', 'nuts',
-        'yakitori',
-        'chug'
+        'whiskey', 'whiskey', 'whiskey',
+        'baijiu', 'baijiu',
+        'wine',
+        'yakitori', 'yakitori',
+        'chug', 'chug',
+        'foot_tease',
+        'dirty_talk'
       ]
     },
     cgEvents: [

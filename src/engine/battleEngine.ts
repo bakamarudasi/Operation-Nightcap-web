@@ -1,6 +1,6 @@
 import { CARD_DATA, getCardDamage } from '../data/cards.ts';
-import type { BattleState, RoundResult, CGEvent, CharacterDef, Buff, CardDef } from '../data/types.ts';
-import { randomPick } from './utils.ts';
+import type { BattleState, RoundResult, CGEvent, CharacterDef, Buff, CardDef, EffectDef } from '../data/types.ts';
+import { randomPick, POSITIVE_BUFF_IDS, getDrunkLevel, hasBuff, getBuffMessage } from './utils.ts';
 
 export interface ExtendedResult extends RoundResult {
   opponentDiscardNext?: boolean;
@@ -39,20 +39,29 @@ export interface ExtendedResult extends RoundResult {
   consumePlayerBuffs?: string[];
   /** 消費する相手バフID（使い切り系） */
   consumeOpponentBuffs?: string[];
+  /** 相手のバフを全除去（レイジの落雷） */
+  clearAllOpponentBuffs?: boolean;
+  /** プレイヤーのバフを全除去 */
+  clearAllPlayerBuffs?: boolean;
+  /** 次ラウンドで手札入れ替え */
+  swapHandsNextRound?: boolean;
+  /** プレイヤーの次ラウンド手札にカード追加 */
+  playerExtraCard?: string;
+  /** 相手の次ラウンド手札にカード追加 */
+  opponentExtraCard?: string;
+  /** 次ラウンドで相手の手札1枚を変身 */
+  transformEnemyCard?: string;
+  /** 次ラウンドでプレイヤーの手札1枚を変身 */
+  transformPlayerCard?: string;
+  /** breast_touch: プレイヤーの手札Drink→Harassment交換 */
+  swapDrinkForHarassment?: boolean;
 }
 
-function getDrunkLevel(drunkValue: number): number {
-  if (drunkValue >= 10) return 4;
-  if (drunkValue >= 7) return 3;
-  if (drunkValue >= 4) return 2;
-  if (drunkValue >= 2) return 1;
-  return 0;
+/** strategy / environment / status を「ユーティリティ」として判定 */
+function isUtilityType(type: string): boolean {
+  return type === 'strategy' || type === 'environment' || type === 'status';
 }
 
-/** バフがアクティブかチェック */
-function hasBuff(buffs: Buff[], id: string): boolean {
-  return buffs.some(b => b.id === id);
-}
 
 /** 特定バフの値を取得（なければデフォルト） */
 function getBuffValue(buffs: Buff[], id: string, defaultVal: number): number {
@@ -121,10 +130,16 @@ function applyDrinkBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBuffs: 
 }
 
 /** ハラスメントの必要酔いLvを環境バフで補正（即勝利カードは最低Lv2） */
-function getAdjustedRequiredLevel(requiredLevel: number, userBuffs: Buff[], isInstantWin?: boolean): number {
+export function getAdjustedRequiredLevel(requiredLevel: number, userBuffs: Buff[], targetBuffs: Buff[], isInstantWin?: boolean): number {
   let lv = requiredLevel;
   if (hasBuff(userBuffs, 'dimlight')) lv = Math.max(0, lv - 1);
   if (hasBuff(userBuffs, 'excuse')) lv = Math.max(0, lv - 1);
+  // alone + 即勝利カード（Kiss等）: Lv2で発動可能
+  if (isInstantWin && (hasBuff(userBuffs, 'alone') || hasBuff(targetBuffs, 'alone'))) {
+    lv = Math.max(0, lv - 1);
+  }
+  // 余韻（afterglow）: 前ターンのセクハラ成功で条件緩和
+  if (hasBuff(targetBuffs, 'afterglow')) lv = Math.max(0, lv - 1);
   // 即勝利カード（Kiss等）はバフで下げても最低Lv2を要求
   if (isInstantWin) lv = Math.max(2, lv);
   return lv;
@@ -145,11 +160,19 @@ function applyHarassmentBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBu
   if (hasBuff(attackerBuffs, 'all_dmg_up')) {
     dmg += getBuffValue(attackerBuffs, 'all_dmg_up', 0);
   }
+  // finger_technique: セクハラダメージ1.5倍
+  if (hasBuff(attackerBuffs, 'finger_technique')) {
+    dmg = Math.ceil(dmg * 1.5);
+  }
   return dmg;
 }
 
-/** ドリンクカードの追加効果（バフ付与・手札汚染・手札破棄・ドレイン等）を処理 */
-function applyDrinkExtras(card: CardDef, result: ExtendedResult, user: 'player' | 'opponent'): void {
+/**
+ * ドリンク・フード共通の追加効果処理（統合版）
+ * applyBuffs, applySelfBuffs, selfHeal, selfDamage, cleanseSelf, cleanseDot,
+ * corruptHand, discardEnemyHand を全カードタイプで処理する。
+ */
+function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' | 'opponent'): void {
   const isPlayer = user === 'player';
 
   // applyBuffs → 相手にバフ付与
@@ -157,7 +180,7 @@ function applyDrinkExtras(card: CardDef, result: ExtendedResult, user: 'player' 
     const target = isPlayer ? result.newOpponentBuffs! : result.newPlayerBuffs!;
     target.push(...card.applyBuffs);
     for (const buff of card.applyBuffs) {
-      const label = buffLabel(buff);
+      const label = getBuffMessage(buff);
       if (label) result.messages.push(label);
     }
   }
@@ -166,6 +189,10 @@ function applyDrinkExtras(card: CardDef, result: ExtendedResult, user: 'player' 
   if (card.applySelfBuffs) {
     const self = isPlayer ? result.newPlayerBuffs! : result.newOpponentBuffs!;
     self.push(...card.applySelfBuffs);
+    for (const buff of card.applySelfBuffs) {
+      const label = getBuffMessage(buff);
+      if (label) result.messages.push(label);
+    }
   }
 
   // selfHeal → ドレイン効果（自分回復）
@@ -178,34 +205,15 @@ function applyDrinkExtras(card: CardDef, result: ExtendedResult, user: 'player' 
     }
   }
 
-  // corruptHand → 敵の手札汚染
-  if (card.corruptHand) {
+  // selfDamage → 自傷ダメージ
+  if (card.selfDamage) {
     if (isPlayer) {
-      // プレイヤーが使う → 相手の手札を汚染
-      result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand;
-      result.messages.push(`🔥 ${card.name}の効果！相手の手札${card.corruptHand}枚が発情状態に！`);
+      result.playerDamage += card.selfDamage;
+      result.messages.push(`💉 ${card.name}の副作用…自分に${card.selfDamage}ダメージ！`);
     } else {
-      // 相手が使う → プレイヤーの手札を汚染
-      result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
-      result.messages.push(`🔥 ${card.name}の効果！手札${card.corruptHand}枚が発情状態に…！`);
+      result.opponentDamage += card.selfDamage;
     }
   }
-
-  // discardEnemyHand → 敵の手札破棄（次のドロー時処理）
-  if (card.discardEnemyHand) {
-    if (isPlayer) {
-      result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
-      result.messages.push(`🌌 ${card.name}の効果！相手の手札${card.discardEnemyHand}枚が記憶から消える…`);
-    } else {
-      result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand;
-      result.messages.push(`🌌 ${card.name}の効果！手札${card.discardEnemyHand}枚が記憶から消える…`);
-    }
-  }
-}
-
-/** フードカードの追加効果（デバフ除去・dot除去・バフ付与）を処理 */
-function applyFoodExtras(card: CardDef, result: ExtendedResult, user: 'player' | 'opponent'): void {
-  const isPlayer = user === 'player';
 
   // cleanseSelf → デバフ除去
   if (card.cleanseSelf) {
@@ -229,13 +237,25 @@ function applyFoodExtras(card: CardDef, result: ExtendedResult, user: 'player' |
     }
   }
 
-  // applySelfBuffs → 自分にバフ付与
-  if (card.applySelfBuffs) {
-    const self = isPlayer ? result.newPlayerBuffs! : result.newOpponentBuffs!;
-    self.push(...card.applySelfBuffs);
-    for (const buff of card.applySelfBuffs) {
-      const label = buffLabel(buff);
-      if (label) result.messages.push(label);
+  // corruptHand → 敵の手札汚染
+  if (card.corruptHand) {
+    if (isPlayer) {
+      result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand;
+      result.messages.push(`🔥 ${card.name}の効果！相手の手札${card.corruptHand}枚が発情状態に！`);
+    } else {
+      result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
+      result.messages.push(`🔥 ${card.name}の効果！手札${card.corruptHand}枚が発情状態に…！`);
+    }
+  }
+
+  // discardEnemyHand → 敵の手札破棄（次のドロー時処理）
+  if (card.discardEnemyHand) {
+    if (isPlayer) {
+      result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
+      result.messages.push(`🌌 ${card.name}の効果！相手の手札${card.discardEnemyHand}枚が記憶から消える…`);
+    } else {
+      result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand;
+      result.messages.push(`🌌 ${card.name}の効果！手札${card.discardEnemyHand}枚が記憶から消える…`);
     }
   }
 }
@@ -260,8 +280,489 @@ function applyFoodBuffs(baseHeal: number, userBuffs: Buff[]): number {
   return heal;
 }
 
+/**
+ * effects[]使用カードの後方互換: applySelfBuffs / applyBuffs をresultに反映。
+ * effects[] 内で apply_buff を使っているカードでは呼ばない（二重付与防止）。
+ */
+function applyLegacyBuffs(card: CardDef, isPlayer: boolean, result: ExtendedResult): void {
+  if (card.applySelfBuffs) {
+    for (const buff of card.applySelfBuffs) {
+      if (isPlayer) {
+        result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { ...buff }];
+      } else {
+        result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { ...buff }];
+      }
+    }
+  }
+  if (card.applyBuffs) {
+    for (const buff of card.applyBuffs) {
+      if (isPlayer) {
+        result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { ...buff }];
+      } else {
+        result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { ...buff }];
+      }
+    }
+  }
+}
+
+// ============================================
+// === 宣言的効果処理システム ===
+// ============================================
+
+/**
+ * EffectDef 配列を順番に処理する。
+ * カードの effects フィールドに定義を並べるだけで、
+ * エンジンのコードを変更せずに新カード効果が動く。
+ */
+function processEffects(
+  effects: EffectDef[],
+  cardName: string,
+  cardEmoji: string,
+  isPlayer: boolean,
+  result: ExtendedResult,
+  battle: BattleState,
+): void {
+  for (const fx of effects) {
+    processEffect(fx, cardName, cardEmoji, isPlayer, result, battle);
+  }
+}
+
+function processEffect(
+  fx: EffectDef,
+  cardName: string,
+  cardEmoji: string,
+  isPlayer: boolean,
+  result: ExtendedResult,
+  battle: BattleState,
+): void {
+  switch (fx.type) {
+    // --- ダメージ ---
+    case 'damage': {
+      const v = fx.value;
+      if (fx.target === 'enemy' || fx.target === 'both') {
+        if (isPlayer) result.opponentDamage += v;
+        else result.playerDamage += v;
+      }
+      if (fx.target === 'self' || fx.target === 'both') {
+        if (isPlayer) result.playerDamage += v;
+        else result.opponentDamage += v;
+      }
+      if (fx.target === 'both') {
+        result.messages.push(`${cardEmoji} ${cardName}！全員に${v}ダメージ！`);
+      } else if (fx.target === 'enemy') {
+        result.messages.push(`${cardEmoji} ${cardName}！${isPlayer ? '相手' : 'こちら'}に${v}ダメージ！`);
+      } else {
+        result.messages.push(`${cardEmoji} ${cardName}！自分に${v}ダメージ！`);
+      }
+      break;
+    }
+
+    // --- 回復 ---
+    case 'heal': {
+      const v = fx.value;
+      if (fx.target === 'self') {
+        if (isPlayer) result.playerHeal += v;
+        else result.opponentHeal += v;
+      } else {
+        if (isPlayer) result.opponentHeal += v;
+        else result.playerHeal += v;
+      }
+      result.messages.push(`${cardEmoji} ${cardName}！${v}回復！`);
+      break;
+    }
+
+    // --- バフ付与 ---
+    case 'apply_buff': {
+      const buff = { ...fx.buff };
+      if (fx.target === 'self') {
+        if (isPlayer) {
+          result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), buff];
+        } else {
+          result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), buff];
+        }
+      } else {
+        if (isPlayer) {
+          result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), buff];
+        } else {
+          result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), buff];
+        }
+      }
+      break;
+    }
+
+    // --- 敵バフ全除去 ---
+    case 'cleanse_enemy_buffs': {
+      const enemyBuffs = isPlayer ? battle.opponentBuffs : battle.playerBuffs;
+      const count = enemyBuffs.filter(b => (POSITIVE_BUFF_IDS as readonly string[]).includes(b.id)).length;
+      if (count > 0) {
+        if (isPlayer) {
+          result.clearAllOpponentBuffs = true;
+          result.opponentDamage += count;
+        } else {
+          result.clearAllPlayerBuffs = true;
+          result.playerDamage += count;
+        }
+        result.messages.push(`${cardEmoji} ${count}個のバフを剥がし、${count}ダメージ！`);
+      } else {
+        result.messages.push(`${cardEmoji} …しかし相手にバフがなかった！`);
+      }
+      break;
+    }
+
+    // --- 自己デバフ除去 ---
+    case 'cleanse_self': {
+      if (isPlayer) {
+        result.playerCleanseSelf = (result.playerCleanseSelf ?? 0) + fx.count;
+      } else {
+        result.opponentCleanseSelf = (result.opponentCleanseSelf ?? 0) + fx.count;
+      }
+      result.messages.push(`${cardEmoji} デバフを${fx.count}個除去！`);
+      break;
+    }
+
+    // --- DoT除去 ---
+    case 'cleanse_dot': {
+      if (isPlayer) result.playerCleanseDot = true;
+      else result.opponentCleanseDot = true;
+      result.messages.push(`${cardEmoji} 継続ダメージを除去！`);
+      break;
+    }
+
+    // --- 手札入れ替え ---
+    case 'swap_hands': {
+      result.swapHandsNextRound = true;
+      result.messages.push(`${cardEmoji} ${cardName}！次ラウンドの手札が入れ替わる！`);
+      break;
+    }
+
+    // --- 酔いLv入れ替え ---
+    case 'swap_drunk': {
+      result.swapDrunk = true;
+      result.messages.push(`${cardEmoji} ${cardName}！酔いレベルが入れ替わった！`);
+      break;
+    }
+
+    // --- カード変身 ---
+    case 'transform_card': {
+      if (isPlayer) {
+        result.transformEnemyCard = fx.cardId;
+        result.messages.push(`${cardEmoji} ${cardName}…相手の手札が変えられる…！`);
+      } else {
+        result.transformPlayerCard = fx.cardId;
+        result.messages.push(`${cardEmoji} ${cardName}…手札の一枚が変えられた…！`);
+      }
+      break;
+    }
+
+    // --- トークンカード追加 ---
+    case 'grant_card': {
+      const cardTarget = fx.target === 'self' ? isPlayer : !isPlayer;
+      if (cardTarget) {
+        result.playerExtraCard = fx.cardId;
+      } else {
+        result.opponentExtraCard = fx.cardId;
+      }
+      const tokenCard = CARD_DATA[fx.cardId];
+      const tokenName = tokenCard?.name ?? fx.cardId;
+      result.messages.push(`${cardEmoji} ${cardName}…${tokenName}が次ラウンドに参戦！`);
+      break;
+    }
+
+    // --- 手札破棄 ---
+    case 'discard_hand': {
+      if (isPlayer) {
+        result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + fx.count;
+      } else {
+        result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + fx.count;
+      }
+      result.messages.push(`${cardEmoji} 相手の手札を${fx.count}枚破棄！`);
+      break;
+    }
+
+    // --- 最強カード破棄 ---
+    case 'discard_highest': {
+      if (isPlayer) result.discardHighest = true;
+      else result.discardPlayerHighest = true;
+      result.messages.push(`${cardEmoji} 相手の最強カードを破棄！`);
+      break;
+    }
+
+    // --- 手札公開 ---
+    case 'reveal_hand': {
+      if (isPlayer) {
+        result.revealedHand = [...battle.opponentHand];
+        result.messages.push(`${cardEmoji} 相手の手札が見えた！`);
+      } else {
+        result.messages.push(`${cardEmoji} 手の内が見られている…！`);
+      }
+      break;
+    }
+
+    // --- 噂話 ---
+    case 'rumor': {
+      if (isPlayer) {
+        result.rumorActive = true;
+        result.messages.push(`${cardEmoji} 相手の次の手札が乱される！`);
+      } else {
+        result.playerRumorActive = true;
+        result.messages.push(`${cardEmoji} 次の手札が乱された！`);
+      }
+      break;
+    }
+
+    // --- maxRounds減少 ---
+    case 'reduce_max_rounds': {
+      result.reduceMaxRounds = (result.reduceMaxRounds ?? 0) + fx.value;
+      result.messages.push(`${cardEmoji} 残りラウンドが${fx.value}減少！`);
+      break;
+    }
+
+    // --- 手札汚染 ---
+    case 'corrupt_hand': {
+      if (isPlayer) {
+        result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + fx.count;
+      } else {
+        result.corruptCount = (result.corruptCount ?? 0) + fx.count;
+      }
+      result.messages.push(`${cardEmoji} 相手の手札を${fx.count}枚汚染！`);
+      break;
+    }
+
+    // --- 手札枚数削減 ---
+    case 'reduce_hand': {
+      if (fx.target === 'self') {
+        if (isPlayer) result.playerReducedHand = true;
+        else result.opponentReducedHand = true;
+      } else {
+        if (isPlayer) result.opponentReducedHand = true;
+        else result.playerReducedHand = true;
+      }
+      result.messages.push(`${cardEmoji} 次ラウンドの手札が減る！`);
+      break;
+    }
+
+    // --- 即勝利 ---
+    case 'instant_win': {
+      if (isPlayer) {
+        result.instantWin = true;
+        result.messages.push(`${cardEmoji} ${cardName}…奇跡！即勝利！！`);
+      } else {
+        result.playerDamage += 99;
+        result.messages.push(`${cardEmoji} ${cardName}…一撃で沈められた…！`);
+      }
+      break;
+    }
+
+    // --- ルーレット（再帰的に子効果を処理） ---
+    case 'roulette': {
+      const roll = Math.random();
+      if (roll < fx.chance) {
+        result.messages.push(`🎲 ${cardName}…当たり！`);
+        processEffects(fx.success, cardName, cardEmoji, isPlayer, result, battle);
+      } else {
+        result.messages.push(`🎲 ${cardName}…ハズレ！`);
+        processEffects(fx.failure, cardName, cardEmoji, isPlayer, result, battle);
+      }
+      break;
+    }
+  }
+}
+
+/** resolveUtilityCard のハンドラーに渡すコンテキスト */
+interface UtilityContext {
+  card: CardDef;
+  isPlayer: boolean;
+  result: ExtendedResult;
+  battle: BattleState;
+  selfBuffs: Buff[];
+  targetBuffs: Buff[];
+}
+
+/** フラグ駆動カード効果のハンドラーマップ（実行順序 = 配列順序） */
+const UTILITY_FLAG_HANDLERS: Array<{
+  key: keyof CardDef;
+  handle: (ctx: UtilityContext) => void;
+}> = [
+  {
+    key: 'revealHand',
+    handle: ({ isPlayer, result, battle }) => {
+      if (isPlayer) {
+        result.revealedHand = [...battle.opponentHand];
+        result.messages.push(`相手の手札が見えた！`);
+      } else {
+        result.messages.push(`手の内が見られている…！`);
+      }
+    },
+  },
+  {
+    key: 'triggerRumor',
+    handle: ({ isPlayer, result }) => {
+      if (isPlayer) {
+        result.rumorActive = true;
+        result.messages.push(`相手の次の手札が乱される！`);
+      } else {
+        result.playerRumorActive = true;
+        result.messages.push(`次の手札が乱された！`);
+      }
+    },
+  },
+  {
+    key: 'swapDrunk',
+    handle: ({ result }) => {
+      result.swapDrunk = true;
+      result.messages.push(`酔いレベルが入れ替わった！`);
+    },
+  },
+  {
+    key: 'discardHighest',
+    handle: ({ isPlayer, result }) => {
+      if (isPlayer) {
+        result.discardHighest = true;
+        result.messages.push(`相手の最強カードが没収された！`);
+      } else {
+        result.discardPlayerHighest = true;
+        result.messages.push(`最強のカードが奪われた！`);
+      }
+    },
+  },
+  {
+    key: 'discardEnemyHand',
+    handle: ({ card, isPlayer, result }) => {
+      if (isPlayer) {
+        result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand!;
+      } else {
+        result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand!;
+      }
+      result.messages.push(isPlayer ? `相手の手札${card.discardEnemyHand}枚が消える…` : `手札${card.discardEnemyHand}枚が消された…`);
+    },
+  },
+  {
+    key: 'reduceMaxRounds',
+    handle: ({ card, result }) => {
+      result.reduceMaxRounds = card.reduceMaxRounds;
+      result.messages.push(`残りラウンドが${card.reduceMaxRounds}減少！決着を急げ！`);
+    },
+  },
+  {
+    key: 'applyBuffs',
+    handle: ({ card, targetBuffs, result }) => {
+      targetBuffs.push(...card.applyBuffs!);
+      for (const buff of card.applyBuffs!) {
+        const label = getBuffMessage(buff);
+        if (label) result.messages.push(label);
+      }
+    },
+  },
+  {
+    key: 'applySelfBuffs',
+    handle: ({ card, selfBuffs, result }) => {
+      selfBuffs.push(...card.applySelfBuffs!);
+      for (const buff of card.applySelfBuffs!) {
+        const label = getBuffMessage(buff);
+        if (label) result.messages.push(label);
+      }
+    },
+  },
+  {
+    key: 'applyBothBuffs',
+    handle: ({ card, result }) => {
+      for (const buff of card.applyBothBuffs!) {
+        result.newPlayerBuffs!.push({ ...buff, source: card.id });
+        result.newOpponentBuffs!.push({ ...buff, source: card.id });
+        const label = getBuffMessage(buff);
+        if (label) result.messages.push(label);
+      }
+    },
+  },
+  {
+    key: 'selfHeal',
+    handle: ({ card, isPlayer, result }) => {
+      if (isPlayer) {
+        result.playerHeal += card.selfHeal!;
+      } else {
+        result.opponentHeal += card.selfHeal!;
+      }
+      result.messages.push(`💚 ドレイン効果！${card.selfHeal}回復！`);
+    },
+  },
+  {
+    key: 'selfDamage',
+    handle: ({ card, isPlayer, result }) => {
+      if (isPlayer) {
+        result.playerDamage += card.selfDamage!;
+      } else {
+        result.opponentDamage += card.selfDamage!;
+      }
+      result.messages.push(`💉 副作用…${card.selfDamage}ダメージ！`);
+    },
+  },
+  {
+    key: 'corruptHand',
+    handle: ({ card, isPlayer, result }) => {
+      if (isPlayer) {
+        result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand!;
+        result.messages.push(`🔥 相手の手札${card.corruptHand}枚が発情状態に！`);
+      } else {
+        result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand!;
+        result.messages.push(`🔥 手札${card.corruptHand}枚が発情状態に…！`);
+      }
+    },
+  },
+];
+
 export const BattleEngine = {
   resolveRound(playerCardId: string, opponentCardId: string, battle: BattleState, currentOpponent?: CharacterDef | null): ExtendedResult {
+    const result = this._resolveRoundCore(playerCardId, opponentCardId, battle, currentOpponent);
+    return this.applyPostEffects(result, battle);
+  },
+
+  /** thorns / reflect_all のダメージ後処理 */
+  applyPostEffects(result: ExtendedResult, battle: BattleState): ExtendedResult {
+    // reflect前のダメージを記録（thorns判定に使用）
+    const playerDamageBefore = result.playerDamage;
+    const opponentDamageBefore = result.opponentDamage;
+
+    // reflect_all: 受けたダメージを全て相手に跳ね返す（DoT除外）
+    const playerDoT = calcDoTDamage(battle.playerBuffs);
+    const opponentDoT = calcDoTDamage(battle.opponentBuffs);
+
+    if (hasBuff(battle.playerBuffs, 'reflect_all')) {
+      const reflectable = result.playerDamage - playerDoT;
+      if (reflectable > 0) {
+        result.opponentDamage += reflectable;
+        result.playerDamage -= reflectable;
+        result.messages.push(`🛡️ 般若の酒壁！${reflectable}ダメージが全て跳ね返った！`);
+      }
+    }
+    if (hasBuff(battle.opponentBuffs, 'reflect_all')) {
+      const reflectable = result.opponentDamage - opponentDoT;
+      if (reflectable > 0) {
+        result.playerDamage += reflectable;
+        result.opponentDamage -= reflectable;
+        result.messages.push(`🛡️ 相手の酒壁！${reflectable}ダメージが跳ね返された！`);
+      }
+    }
+
+    // thorns: ダメージを受けたら固定値を反射（reflect前のダメージで判定）
+    if (playerDamageBefore > 0 && hasBuff(battle.playerBuffs, 'thorns')) {
+      const thornsVal = getBuffValue(battle.playerBuffs, 'thorns', 0);
+      if (thornsVal > 0) {
+        result.opponentDamage += thornsVal;
+        result.messages.push(`⚖️ 裁きの反射！相手に${thornsVal}ダメージ！`);
+      }
+    }
+    if (opponentDamageBefore > 0 && hasBuff(battle.opponentBuffs, 'thorns')) {
+      const thornsVal = getBuffValue(battle.opponentBuffs, 'thorns', 0);
+      if (thornsVal > 0) {
+        result.playerDamage += thornsVal;
+        result.messages.push(`⚖️ 相手の裁き反射！${thornsVal}ダメージ！`);
+      }
+    }
+
+    return result;
+  },
+
+  _resolveRoundCore(playerCardId: string, opponentCardId: string, battle: BattleState, currentOpponent?: CharacterDef | null): ExtendedResult {
     const pCard = CARD_DATA[playerCardId];
     const oCard = CARD_DATA[opponentCardId];
     const result: ExtendedResult = {
@@ -278,13 +779,17 @@ export const BattleEngine = {
       newPlayerBuffs: [],
       newOpponentBuffs: [],
       corruptCount: 0,
+      playerSanityDamage: 0,
+      opponentSanityDamage: 0,
+      playerSanityHeal: 0,
+      opponentSanityHeal: 0,
     };
 
     // === フェーズ0: DoTバフのtick処理 ===
     const playerDoT = calcDoTDamage(battle.playerBuffs);
     if (playerDoT > 0) {
       result.playerDamage += playerDoT;
-      result.messages.push(`💔 持続ダメージ…理性が${playerDoT}削られる！`);
+      result.messages.push(`💔 持続ダメージ…酔いが${playerDoT}回る！`);
     }
     const opponentDoT = calcDoTDamage(battle.opponentBuffs);
     if (opponentDoT > 0) {
@@ -327,57 +832,39 @@ export const BattleEngine = {
 
     if (playerStunned) {
       result.messages.push('😵 スタン状態！行動できない…！');
-      if (oCard.type === 'drink') {
-        const dmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
-        result.playerDamage += dmg;
-        result.messages.push(`${oCard.emoji} 無防備なところに${oCard.name}！酔い+${dmg}！`);
-        applyDrinkExtras(oCard, result, 'opponent');
-      } else if (oCard.type === 'harassment') {
-        return this.resolveHarassmentCard(oCard, pCard, result, 'opponent', battle);
-      }
-      return result;
+      // スタン中でも相手のカードは通常通り処理（food/utilityも有効）
+      return this.resolveSingleCard(oCard, pCard, result, 'opponent', battle);
     }
 
     if (opponentStunned) {
       result.messages.push('😵 相手がスタン状態！');
-      if (pCard.type === 'drink') {
-        const dmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
-        result.opponentDamage += dmg;
-        result.messages.push(`${pCard.emoji} ${pCard.name}が直撃！酔い+${dmg}！`);
-        applyDrinkExtras(pCard, result, 'player');
-        if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
-          trackBuffConsumption(result, 'player', 'next_drink_boost');
-        }
-      } else if (pCard.type === 'harassment') {
-        return this.resolveHarassmentCard(pCard, oCard, result, 'player', battle);
-      }
-      return result;
+      // スタン中でも自分のカードは通常通り処理（food/utilityも有効）
+      return this.resolveSingleCard(pCard, oCard, result, 'player', battle);
     }
 
     // === フェーズ1: 戦略・環境・状態異常カードを先に処理 ===
     // プレイヤー側
-    if (pCard.type === 'strategy' || pCard.type === 'environment' || pCard.type === 'status') {
+    if (isUtilityType(pCard.type)) {
       this.resolveUtilityCard(pCard, result, 'player', battle);
     }
     // 相手側
-    if (oCard.type === 'strategy' || oCard.type === 'environment' || oCard.type === 'status') {
+    if (isUtilityType(oCard.type)) {
       this.resolveUtilityCard(oCard, result, 'opponent', battle);
     }
 
     // 両方ユーティリティなら処理完了
-    if ((pCard.type === 'strategy' || pCard.type === 'environment' || pCard.type === 'status') &&
-        (oCard.type === 'strategy' || oCard.type === 'environment' || oCard.type === 'status')) {
+    if (isUtilityType(pCard.type) && isUtilityType(oCard.type)) {
       return result;
     }
 
     // 片方がユーティリティ、もう片方が戦闘カードの場合 → 戦闘カード側だけ効果適用
-    if (pCard.type === 'strategy' || pCard.type === 'environment' || pCard.type === 'status') {
+    if (isUtilityType(pCard.type)) {
       // プレイヤーがユーティリティ → 相手の攻撃だけ通る
       if (oCard.type === 'drink') {
         const dmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
         result.playerDamage += dmg;
         result.messages.push(`${oCard.emoji} ${oCard.name}で酔い${dmg}ダメージ！`);
-        applyDrinkExtras(oCard, result, 'opponent');
+        applyCardExtras(oCard, result, 'opponent');
         if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
           trackBuffConsumption(result, 'opponent', 'next_drink_boost');
         }
@@ -388,12 +875,12 @@ export const BattleEngine = {
       }
       return result;
     }
-    if (oCard.type === 'strategy' || oCard.type === 'environment' || oCard.type === 'status') {
+    if (isUtilityType(oCard.type)) {
       if (pCard.type === 'drink') {
         const dmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
         result.opponentDamage += dmg;
         result.messages.push(`${pCard.emoji} ${pCard.name}で酔い${dmg}ダメージ！`);
-        applyDrinkExtras(pCard, result, 'player');
+        applyCardExtras(pCard, result, 'player');
         if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
           trackBuffConsumption(result, 'player', 'next_drink_boost');
         }
@@ -454,8 +941,8 @@ export const BattleEngine = {
       }
 
       // ドリンク追加効果
-      applyDrinkExtras(pCard, result, 'player');
-      applyDrinkExtras(oCard, result, 'opponent');
+      applyCardExtras(pCard, result, 'player');
+      applyCardExtras(oCard, result, 'opponent');
       if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
         trackBuffConsumption(result, 'player', 'next_drink_boost');
       }
@@ -476,12 +963,12 @@ export const BattleEngine = {
         result.opponentHeal = heal;
         result.messages.push(`${pCard.emoji} ${pCard.name}で酔い${pDmg}ダメージ！`);
         result.messages.push(`${oCard.emoji} ${oCard.name}で${result.opponentHeal}回復！`);
-        applyFoodExtras(oCard, result, 'opponent');
+        applyCardExtras(oCard, result, 'opponent');
         if (hasBuff(battle.opponentBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'opponent', 'next_food_boost');
         }
       }
-      applyDrinkExtras(pCard, result, 'player');
+      applyCardExtras(pCard, result, 'player');
       if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
         trackBuffConsumption(result, 'player', 'next_drink_boost');
       }
@@ -500,12 +987,12 @@ export const BattleEngine = {
         result.playerHeal = heal;
         result.messages.push(`${oCard.emoji} ${oCard.name}で酔い${oDmg}ダメージ！`);
         result.messages.push(`${pCard.emoji} ${pCard.name}で${result.playerHeal}回復！`);
-        applyFoodExtras(pCard, result, 'player');
+        applyCardExtras(pCard, result, 'player');
         if (hasBuff(battle.playerBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'player', 'next_food_boost');
         }
       }
-      applyDrinkExtras(oCard, result, 'opponent');
+      applyCardExtras(oCard, result, 'opponent');
       if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
         trackBuffConsumption(result, 'opponent', 'next_drink_boost');
       }
@@ -519,7 +1006,7 @@ export const BattleEngine = {
         heal = applyFoodBuffs(heal, battle.playerBuffs);
         result.playerHeal = heal;
         result.messages.push(`${pCard.emoji} ${pCard.name}で${result.playerHeal}回復！`);
-        applyFoodExtras(pCard, result, 'player');
+        applyCardExtras(pCard, result, 'player');
         if (hasBuff(battle.playerBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'player', 'next_food_boost');
         }
@@ -531,7 +1018,7 @@ export const BattleEngine = {
         heal = applyFoodBuffs(heal, battle.opponentBuffs);
         result.opponentHeal = heal;
         result.messages.push(`${oCard.emoji} ${oCard.name}で相手も${result.opponentHeal}回復！`);
-        applyFoodExtras(oCard, result, 'opponent');
+        applyCardExtras(oCard, result, 'opponent');
         if (hasBuff(battle.opponentBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'opponent', 'next_food_boost');
         }
@@ -548,7 +1035,7 @@ export const BattleEngine = {
   resolveSingleCard(activeCard: CardDef, _nullifiedCard: CardDef, result: ExtendedResult, user: 'player' | 'opponent', battle: BattleState): ExtendedResult {
     const isPlayer = user === 'player';
 
-    if (activeCard.type === 'strategy' || activeCard.type === 'environment' || activeCard.type === 'status') {
+    if (isUtilityType(activeCard.type)) {
       this.resolveUtilityCard(activeCard, result, user, battle);
     } else if (activeCard.type === 'drink') {
       const attackerBuffs = isPlayer ? battle.playerBuffs : battle.opponentBuffs;
@@ -561,7 +1048,7 @@ export const BattleEngine = {
         result.playerDamage += dmg;
         result.messages.push(`${activeCard.emoji} ${activeCard.name}で酔い${dmg}ダメージ！`);
       }
-      applyDrinkExtras(activeCard, result, user);
+      applyCardExtras(activeCard, result, user);
       if (hasBuff(attackerBuffs, 'next_drink_boost')) {
         trackBuffConsumption(result, user, 'next_drink_boost');
       }
@@ -579,7 +1066,7 @@ export const BattleEngine = {
           result.opponentHeal = heal;
         }
         result.messages.push(`${activeCard.emoji} ${activeCard.name}で${heal}回復！`);
-        applyFoodExtras(activeCard, result, user);
+        applyCardExtras(activeCard, result, user);
         if (hasBuff(userBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, user, 'next_food_boost');
         }
@@ -603,127 +1090,35 @@ export const BattleEngine = {
     const selfBuffs = isPlayer ? result.newPlayerBuffs! : result.newOpponentBuffs!;
     const targetBuffs = isPlayer ? result.newOpponentBuffs! : result.newPlayerBuffs!;
 
+    // === 宣言的効果システム（effects配列があればそちらを優先） ===
+    if (card.effects && card.effects.length > 0) {
+      result.messages.push(`${card.emoji} ${card.name}！`);
+      processEffects(card.effects, card.name, card.emoji, isPlayer, result, battle);
+      // effects[]内にapply_buffがある場合はlegacyバフ適用をスキップ（二重付与防止）
+      const hasApplyBuff = card.effects.some(e => e.type === 'apply_buff');
+      if (!hasApplyBuff) applyLegacyBuffs(card, isPlayer, result);
+      return;
+    }
+
     result.messages.push(`${card.emoji} ${card.name}！`);
 
-    // --- フラグ駆動の効果処理 ---
-
-    // 手札公開
-    if (card.revealHand) {
-      if (isPlayer) {
-        result.revealedHand = [...battle.opponentHand];
-        result.messages.push(`相手の手札が見えた！`);
-      } else {
-        result.messages.push(`手の内が見られている…！`);
-      }
-    }
-
-    // 噂話（次ラウンド手札差替）
-    if (card.triggerRumor) {
-      if (isPlayer) {
-        result.rumorActive = true;
-        result.messages.push(`相手の次の手札が乱される！`);
-      } else {
-        result.playerRumorActive = true;
-        result.messages.push(`次の手札が乱された！`);
-      }
-    }
-
-    // 酔いLv入れ替え
-    if (card.swapDrunk) {
-      result.swapDrunk = true;
-      result.messages.push(`酔いレベルが入れ替わった！`);
-    }
-
-    // 最高dmgカード破棄
-    if (card.discardHighest) {
-      if (isPlayer) {
-        result.discardHighest = true;
-        result.messages.push(`相手の最強カードが没収された！`);
-      } else {
-        result.discardPlayerHighest = true;
-        result.messages.push(`最強のカードが奪われた！`);
-      }
-    }
-
-    // 手札破棄（ランダム）
-    if (card.discardEnemyHand) {
-      if (isPlayer) {
-        result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
-      } else {
-        result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand;
-      }
-      result.messages.push(isPlayer ? `相手の手札${card.discardEnemyHand}枚が消える…` : `手札${card.discardEnemyHand}枚が消された…`);
-    }
-
-    // maxRounds減少
-    if (card.reduceMaxRounds) {
-      result.reduceMaxRounds = card.reduceMaxRounds;
-      result.messages.push(`残りラウンドが${card.reduceMaxRounds}減少！決着を急げ！`);
-    }
-
-    // 相手にバフ/デバフ付与
-    if (card.applyBuffs) {
-      targetBuffs.push(...card.applyBuffs);
-      for (const buff of card.applyBuffs) {
-        const label = buffLabel(buff);
-        if (label) result.messages.push(label);
-      }
-    }
-
-    // 自分にバフ付与
-    if (card.applySelfBuffs) {
-      selfBuffs.push(...card.applySelfBuffs);
-      for (const buff of card.applySelfBuffs) {
-        const label = buffLabel(buff);
-        if (label) result.messages.push(label);
-      }
-    }
-
-    // 双方にバフ付与（環境効果）
-    if (card.applyBothBuffs) {
-      for (const buff of card.applyBothBuffs) {
-        result.newPlayerBuffs!.push({ ...buff, source: card.id });
-        result.newOpponentBuffs!.push({ ...buff, source: card.id });
-        const label = buffLabel(buff);
-        if (label) result.messages.push(label);
-      }
-    }
-
-    // ドレイン（自分回復）
-    if (card.selfHeal) {
-      if (isPlayer) {
-        result.playerHeal += card.selfHeal;
-      } else {
-        result.opponentHeal += card.selfHeal;
-      }
-      result.messages.push(`💚 ドレイン効果！${card.selfHeal}回復！`);
-    }
-
-    // 自傷ダメージ
-    if (card.selfDamage) {
-      if (isPlayer) {
-        result.playerDamage += card.selfDamage;
-      } else {
-        result.opponentDamage += card.selfDamage;
-      }
-      result.messages.push(`💉 副作用…${card.selfDamage}ダメージ！`);
-    }
-
-    // 手札汚染（使用者の「敵」の手札を汚染）
-    if (card.corruptHand) {
-      if (isPlayer) {
-        // プレイヤーが使う → 相手の手札を汚染
-        result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand;
-        result.messages.push(`🔥 相手の手札${card.corruptHand}枚が発情状態に！`);
-      } else {
-        // 相手が使う → プレイヤーの手札を汚染
-        result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
-        result.messages.push(`🔥 手札${card.corruptHand}枚が発情状態に…！`);
-      }
+    // --- フラグ駆動の効果処理（ハンドラーマップ） ---
+    const ctx: UtilityContext = { card, isPlayer, result, battle, selfBuffs, targetBuffs };
+    for (const { key, handle } of UTILITY_FLAG_HANDLERS) {
+      if (card[key]) handle(ctx);
     }
   },
 
   resolveChugCard(chugCard: CardDef, otherCard: CardDef, result: ExtendedResult, chugUser: 'player' | 'opponent', battle: BattleState): ExtendedResult {
+    // === 宣言的効果システム ===
+    if (chugCard.effects && chugCard.effects.length > 0) {
+      const isPlayer = chugUser === 'player';
+      processEffects(chugCard.effects, chugCard.name, chugCard.emoji, isPlayer, result, battle);
+      const hasApplyBuff = chugCard.effects.some(e => e.type === 'apply_buff');
+      if (!hasApplyBuff) applyLegacyBuffs(chugCard, isPlayer, result);
+      return result;
+    }
+
     if (chugCard.effect === 'chug') {
       if (chugUser === 'player') {
         result.opponentDamage += chugCard.enemyDamage ?? 0;
@@ -768,11 +1163,10 @@ export const BattleEngine = {
       }
     }
     else if (chugCard.effect === 'roulette') {
-      // ロドス深夜の闇鍋酒: 確率分岐ダメージ
+      // 確率分岐ダメージ（ロドス闇鍋酒等）
       const [chance, successDmg, failDmg] = chugCard.rouletteDmg ?? [0.5, 4, 3];
       const roll = Math.random();
       if (roll < chance) {
-        // 成功: 相手にダメージ
         if (chugUser === 'player') {
           result.opponentDamage += successDmg;
           result.messages.push(`🎰 ${chugCard.name}…大当たり！相手に${successDmg}ダメージ！`);
@@ -803,13 +1197,15 @@ export const BattleEngine = {
     // バフによる必要Lv補正
     const userBuffs = user === 'player' ? battle.playerBuffs : battle.opponentBuffs;
     const targetBuffs = user === 'player' ? battle.opponentBuffs : battle.playerBuffs;
-    const adjustedRequired = getAdjustedRequiredLevel(hCard.requiredDrunkLevel ?? 0, userBuffs, !!hCard.instantWin);
+    const adjustedRequired = getAdjustedRequiredLevel(hCard.requiredDrunkLevel ?? 0, userBuffs, targetBuffs, !!hCard.instantWin);
 
     // stealth: 相手にstealthバフがある場合、ハラスメント不発
     if (hasBuff(targetBuffs, 'stealth')) {
       result.messages.push(`👻 隠密状態！${hCard.name}は届かない…！`);
     } else if (triggerLevel >= adjustedRequired) {
       // === 成功 ===
+      // afterglow ダメージボーナス
+      const hasAfterglow = hasBuff(targetBuffs, 'afterglow');
       if (user === 'player') {
         if (hCard.instantWin) {
           result.instantWin = true;
@@ -817,6 +1213,26 @@ export const BattleEngine = {
         } else {
           let dmg = hCard.drunkDamage ?? 0;
           dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
+          if (hasAfterglow) { dmg += 2; result.messages.push(`✨ 余韻が残る体に追い打ち…！+2！`); }
+          // カード個別特殊効果
+          if (hCard.id === 'wall_pin') {
+            result.clearAllOpponentBuffs = true;
+            result.messages.push(`🧱 壁ドン…！相手のバフが全て吹き飛んだ！`);
+          }
+          if (hCard.id === 'ear_bite') {
+            // 相手の next_drink_boost を奪う
+            const stealBuff = targetBuffs.find(b => b.id === 'next_drink_boost');
+            if (stealBuff) {
+              result.consumeOpponentBuffs = [...(result.consumeOpponentBuffs ?? []), 'next_drink_boost'];
+              result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { id: 'next_drink_boost', duration: stealBuff.duration, value: stealBuff.value }];
+              result.messages.push(`👅 相手のドリンクブーストを奪った！`);
+            }
+          }
+          if (hCard.id === 'breast_touch') {
+            // 手札のDrink1枚→デッキからHarassment1枚交換
+            result.swapDrinkForHarassment = true;
+            result.messages.push(`🫦 酒を捨てて本番に移行…！手札交換！`);
+          }
           result.opponentDamage += dmg;
           result.messages.push(`${hCard.emoji} ${hCard.name}…成功！酔い+${dmg}！`);
         }
@@ -824,23 +1240,36 @@ export const BattleEngine = {
         if (hCard.applyBuffs) {
           result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), ...hCard.applyBuffs];
           for (const buff of hCard.applyBuffs) {
-            const label = buffLabel(buff);
+            const label = getBuffMessage(buff);
             if (label) result.messages.push(label);
           }
         }
         if (hCard.applySelfBuffs) {
           result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), ...hCard.applySelfBuffs];
         }
+        // 余韻付与: 次のセクハラが入りやすくなる
+        result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { id: 'afterglow', duration: 1 }];
+        // ハラスメント成功時はフラストレーション（連続不発カウント）をリセット
+        if (targetBuffs.some(b => b.id === 'frustration')) {
+          result.consumeOpponentBuffs = [...(result.consumeOpponentBuffs ?? []), 'frustration'];
+        }
       } else {
         // === 相手の逆セクハラ → プレイヤーに理性ダメージ ===
         if (hCard.sanityDamage) {
-          let dmg = hCard.sanityDamage;
-          dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
-          result.playerDamage += dmg;
-          result.messages.push(`${hCard.emoji} ${hCard.name}…！理性が${dmg}削られた！`);
+          // sanity_negate: 理性ダメージ無効化
+          if (hasBuff(targetBuffs, 'sanity_negate')) {
+            result.messages.push(`✨ シャイニングの加護！${hCard.name}の理性ダメージを無効化！`);
+          } else {
+            let dmg = hCard.sanityDamage;
+            dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
+            if (hasAfterglow) { dmg += 2; result.messages.push(`✨ 余韻が残る体で更に…！理性+2追加！`); }
+            result.playerSanityDamage += dmg;
+            result.messages.push(`${hCard.emoji} ${hCard.name}…！理性が${dmg}削られた！`);
+          }
         } else if (hCard.drunkDamage) {
           let dmg = hCard.drunkDamage;
           dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
+          if (hasAfterglow) { dmg += 2; result.messages.push(`✨ 余韻が残る体に追い打ち…！+2！`); }
           result.playerDamage += dmg;
           result.messages.push(`${hCard.emoji} ${hCard.name}…！酔い+${dmg}！`);
         }
@@ -849,7 +1278,7 @@ export const BattleEngine = {
         if (hCard.applyBuffs) {
           result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), ...hCard.applyBuffs];
           for (const buff of hCard.applyBuffs) {
-            const label = buffLabel(buff);
+            const label = getBuffMessage(buff);
             if (label) result.messages.push(label);
           }
         }
@@ -862,33 +1291,68 @@ export const BattleEngine = {
           result.corruptCount = (result.corruptCount ?? 0) + hCard.corruptHand;
           result.messages.push(`🔥 手札${hCard.corruptHand}枚が発情状態に…！使うと自分にダメージ！`);
         }
+        // 余韻付与: 次の逆セクハラが入りやすくなる
+        result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { id: 'afterglow', duration: 1 }];
+        // 逆セクハラ成功時もフラストレーション（連続不発カウント）をリセット
+        if (targetBuffs.some(b => b.id === 'frustration')) {
+          result.consumePlayerBuffs = [...(result.consumePlayerBuffs ?? []), 'frustration'];
+        }
       }
     } else {
+      // === 不発 → 焦らし（Frustration）変換 ===
       if (user === 'player') {
         result.messages.push(`${hCard.emoji} ${hCard.name}…不発！条件を満たしていない！`);
+        // 焦らし: 不発でも相手にフラストレーション蓄積
+        const existing = targetBuffs.find(b => b.id === 'frustration');
+        const stacks = (existing?.value ?? 0) + 1;
+        if (stacks >= 2) {
+          // 2スタックで酔い+1 & リセット
+          result.opponentDamage += 1;
+          result.consumeOpponentBuffs = [...(result.consumeOpponentBuffs ?? []), 'frustration'];
+          result.messages.push(`😤 焦らしが溜まった…！相手の酔い+1！`);
+        } else {
+          result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { id: 'frustration', duration: -1, value: stacks }];
+          result.messages.push(`😤 焦らし${stacks}/2…相手がムラムラしてきた`);
+        }
       } else {
         result.messages.push(`${hCard.emoji} ${hCard.name}…不発！まだそこまで酔ってない！`);
+        // 逆セクハラ不発でもプレイヤーにフラストレーション蓄積
+        const existing = targetBuffs.find(b => b.id === 'frustration');
+        const stacks = (existing?.value ?? 0) + 1;
+        if (stacks >= 2) {
+          result.playerDamage += 1;
+          result.consumePlayerBuffs = [...(result.consumePlayerBuffs ?? []), 'frustration'];
+          result.messages.push(`😤 焦らしが溜まった…！酔い+1！`);
+        } else {
+          result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { id: 'frustration', duration: -1, value: stacks }];
+          result.messages.push(`😤 焦らし${stacks}/2…ドクターもソワソワしてきた`);
+        }
       }
     }
 
     // 相手のカードも処理
     if (!result.spillNullified) {
+      const otherUser: 'player' | 'opponent' = user === 'player' ? 'opponent' : 'player';
       if (otherCard.type === 'drink') {
         const baseDmg = getCardDamage(otherCard);
         if (user === 'player') {
           const dmg = applyDrinkBuffs(baseDmg, battle.opponentBuffs, battle.playerBuffs);
           result.playerDamage += dmg;
           result.messages.push(`相手の${otherCard.emoji}${otherCard.name}で酔い${dmg}ダメージ！`);
-          applyDrinkExtras(otherCard, result, 'opponent');
+          applyCardExtras(otherCard, result, 'opponent');
+          if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
+            trackBuffConsumption(result, 'opponent', 'next_drink_boost');
+          }
         } else {
           const dmg = applyDrinkBuffs(baseDmg, battle.playerBuffs, battle.opponentBuffs);
           result.opponentDamage += dmg;
           result.messages.push(`${otherCard.emoji}${otherCard.name}で相手に酔い${dmg}ダメージ！`);
-          applyDrinkExtras(otherCard, result, 'player');
+          applyCardExtras(otherCard, result, 'player');
+          if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
+            trackBuffConsumption(result, 'player', 'next_drink_boost');
+          }
         }
       } else if (otherCard.type === 'food') {
-        // フードカードの回復も処理
-        const otherUser = user === 'player' ? 'opponent' : 'player';
         const foodUserBuffs = user === 'player' ? battle.opponentBuffs : battle.playerBuffs;
         if (hasBuff(foodUserBuffs, 'no_food')) {
           result.messages.push(`🚫 つまみ封じ中！${otherCard.emoji}${otherCard.name}が使えない！`);
@@ -902,11 +1366,15 @@ export const BattleEngine = {
             result.opponentHeal += heal;
           }
           result.messages.push(`${otherCard.emoji} ${otherCard.name}で${heal}回復！`);
-          applyFoodExtras(otherCard, result, otherUser);
+          applyCardExtras(otherCard, result, otherUser);
           if (hasBuff(foodUserBuffs, 'next_food_boost')) {
             trackBuffConsumption(result, otherUser, 'next_food_boost');
           }
         }
+      } else if (otherCard.type === 'chug') {
+        this.resolveChugCard(otherCard, hCard, result, otherUser, battle);
+      } else if (isUtilityType(otherCard.type)) {
+        this.resolveUtilityCard(otherCard, result, otherUser, battle);
       }
     }
 
@@ -914,25 +1382,3 @@ export const BattleEngine = {
   },
 };
 
-function buffLabel(buff: Buff): string | null {
-  switch (buff.id) {
-    case 'atk_down': return `⬇️ 攻撃力低下！次のターン、酒のダメージが半減…`;
-    case 'stun': return `😵 スタン付与！次のターン行動不能…！`;
-    case 'dot': return `💔 持続ダメージ付与！毎ターン理性が${buff.value ?? 0}ずつ削られる…`;
-    case 'no_food': return `🚫 つまみ封じ！防御カードが使用不可に…！`;
-    case 'tipsy': return `😳 ほろ酔い状態！ドリンクダメージが1.5倍に…`;
-    case 'blush': return `😶‍🌫️ 動揺状態！セクハラが効きやすくなった…`;
-    case 'alone': return `🌙 二人きり…セクハラのダメージが2倍に…`;
-    case 'karaoke': return `🎤 カラオケ突入！ドリンクダメージ+1！`;
-    case 'dimlight': return `🕯️ 照明が暗い…セクハラの条件が緩和…`;
-    case 'excuse': return `🙈 「酔ってるから」…次のセクハラの条件緩和！`;
-    case 'drink_dmg_half': return `🫖 冷静…被ドリンクダメージ半減！`;
-    case 'next_drink_boost': return `🏆 勢いが止まらない！次のドリンクダメージ+${buff.value ?? 0}！`;
-    case 'next_food_boost': return `🍰 じんわり…次のフード回復+${buff.value ?? 0}！`;
-    case 'negate_next': return `🃏 ポーカーフェイス…相手の次のカード効果を無効化！`;
-    case 'stealth': return `👻 隠密状態…セクハラを回避！`;
-    case 'self_atk_up': return `💉 攻撃バフ！ドリンクダメージ${buff.value ?? 1}倍！`;
-    case 'all_dmg_up': return `💮 全ダメージ+${buff.value ?? 0}！場の空気が重い…`;
-    default: return null;
-  }
-}
