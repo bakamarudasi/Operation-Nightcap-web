@@ -3,11 +3,39 @@ export interface Buff {
   id: 'stun' | 'atk_down' | 'dot' | 'no_food' | 'corrupted_hand'
     | 'tipsy' | 'blush' | 'alone' | 'karaoke' | 'dimlight' | 'excuse'
     | 'drink_dmg_half' | 'next_drink_boost' | 'next_food_boost'
-    | 'negate_next' | 'stealth' | 'self_atk_up' | 'all_dmg_up';
+    | 'negate_next' | 'stealth' | 'self_atk_up' | 'all_dmg_up'
+    | 'sanity_negate' | 'thorns' | 'reflect_all'
+    | 'afterglow' | 'frustration' | 'finger_technique';
   duration: number;   // -1 = 永続, 1~ = 残りターン数
   value?: number;     // ダメージ量・倍率など
   source?: string;    // 付与元カードID
 }
+
+/**
+ * 宣言的カード効果システム
+ * カードの effects フィールドに配列で指定することで、
+ * エンジンのコードを触らずにデータだけで新カードを定義できる。
+ */
+export type EffectDef =
+  | { type: 'damage'; target: 'self' | 'enemy' | 'both'; value: number }
+  | { type: 'heal'; target: 'self' | 'enemy'; value: number }
+  | { type: 'apply_buff'; target: 'self' | 'enemy'; buff: Buff }
+  | { type: 'cleanse_enemy_buffs' }
+  | { type: 'cleanse_self'; count: number }
+  | { type: 'cleanse_dot' }
+  | { type: 'swap_hands' }
+  | { type: 'swap_drunk' }
+  | { type: 'transform_card'; target: 'enemy'; cardId: string }
+  | { type: 'grant_card'; target: 'self' | 'enemy'; cardId: string }
+  | { type: 'discard_hand'; target: 'enemy'; count: number }
+  | { type: 'discard_highest'; target: 'enemy' }
+  | { type: 'reveal_hand' }
+  | { type: 'rumor' }
+  | { type: 'reduce_max_rounds'; value: number }
+  | { type: 'corrupt_hand'; target: 'enemy'; count: number }
+  | { type: 'reduce_hand'; target: 'self' | 'enemy' }
+  | { type: 'instant_win' }
+  | { type: 'roulette'; chance: number; success: EffectDef[]; failure: EffectDef[] };
 
 export type CardType = 'drink' | 'food' | 'chug' | 'harassment' | 'strategy' | 'environment' | 'status';
 export type CardEffect = 'chug' | 'toast' | 'spill'
@@ -63,6 +91,11 @@ export interface CardDef {
   discardHighest?: boolean;
   /** 相手の次ラウンド手札をランダム差替 */
   triggerRumor?: boolean;
+  /**
+   * 宣言的効果配列。ここに EffectDef を並べるだけで効果が発動する。
+   * 既存フィールド (damage, heal, applySelfBuffs 等) より優先される。
+   */
+  effects?: EffectDef[];
   description: string;
   rarity: number;
   price: number;
@@ -162,6 +195,8 @@ export interface CharacterDef {
   theme: CharacterTheme;
   drunkType: string;
   drunkMax: number;
+  /** 理性ゲージ上限。省略時デフォルト10 */
+  sanityMax?: number;
   drunkLevels: DrunkLevel[];
   costumeStates: CostumeState[];
   battleLines: BattleLines;
@@ -206,7 +241,6 @@ export interface BattleState {
   playerDiscardHighest: boolean;
   playerReducedHand: boolean;
   opponentReducedHand: boolean;
-  spillActive: boolean;
   /** プレイヤー（ドクター）側のバフ/デバフ */
   playerBuffs: Buff[];
   /** 相手側のバフ/デバフ */
@@ -222,6 +256,18 @@ export interface BattleState {
   /** 使用済みカードの捨て札（デッキ枯渇時にリシャッフル） */
   playerDiscardPile: string[];
   opponentDiscardPile: string[];
+  /** 次ラウンドで手札を入れ替える（クロワッサンの手札交換） */
+  swapHandsNextRound: boolean;
+  /** 次ラウンドの手札に追加するカードID（Mon3tr等） */
+  playerExtraCards: string[];
+  opponentExtraCards: string[];
+  /** 次ラウンドで手札の1枚を変身させるカードID（ディープカラー） */
+  playerTransformCard: string | null;
+  opponentTransformCard: string | null;
+  /** プレイヤーの理性値（0で敗北） */
+  playerSanity: number;
+  /** 相手の理性値（0で敗北） */
+  opponentSanity: number;
 }
 
 export interface RoundResult {
@@ -243,4 +289,12 @@ export interface RoundResult {
   newOpponentBuffs?: Buff[];
   /** 手札汚染数 */
   corruptCount?: number;
+  /** プレイヤーへの理性ダメージ（酔いとは独立） */
+  playerSanityDamage: number;
+  /** 相手への理性ダメージ */
+  opponentSanityDamage: number;
+  /** プレイヤーの理性回復 */
+  playerSanityHeal: number;
+  /** 相手の理性回復 */
+  opponentSanityHeal: number;
 }

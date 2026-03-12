@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
-import { randomPick } from '../engine/utils.ts';
+import { randomPick, getDrunkLevel, BUFF_META } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
+
+// バフ表示は BUFF_META (utils.ts) から参照
 
 // 酔い段階
 const DRUNK_STAGES = [
@@ -22,21 +24,26 @@ function getDrunkStage(value: number) {
   return DRUNK_STAGES[DRUNK_STAGES.length - 1];
 }
 
-// 効果音（AudioContextを再利用）
-let _audioCtx: AudioContext | null = null;
-function getAudioContext(): AudioContext {
-  if (!_audioCtx || _audioCtx.state === 'closed') {
-    _audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+// 理性段階
+const SANITY_STAGES = [
+  { min: 8, text: '冷静',       cls: 'sanity-calm' },
+  { min: 5, text: '動揺',       cls: 'sanity-shaken' },
+  { min: 2, text: '理性崩壊寸前', cls: 'sanity-breaking' },
+  { min: 0, text: '理性ゼロ',    cls: 'sanity-gone' },
+];
+
+function getSanityStage(value: number) {
+  for (const s of SANITY_STAGES) {
+    if (value >= s.min) return s;
   }
-  if (_audioCtx.state === 'suspended') {
-    _audioCtx.resume();
-  }
-  return _audioCtx;
+  return SANITY_STAGES[SANITY_STAGES.length - 1];
 }
+
+import { getSharedAudioContext } from '../engine/audioContext.ts';
 
 function playSound(type: 'slam' | 'flip') {
   try {
-    const x = getAudioContext();
+    const x = getSharedAudioContext();
     if (type === 'slam') {
       const o = x.createOscillator();
       o.type = 'sine';
@@ -82,7 +89,6 @@ export function BattleScreen() {
   const endBattle = useGameStore((s) => s.endBattle);
   const setScreen = useGameStore((s) => s.setScreen);
   const showCG = useGameStore((s) => s.showCG);
-  const getDrunkLevel = useGameStore((s) => s.getDrunkLevel);
   const checkAfterEvent = useGameStore((s) => s.checkAfterEvent);
   const showAfterEvent = useGameStore((s) => s.showAfterEvent);
   const activeAfterEvent = useGameStore((s) => s.activeAfterEvent);
@@ -159,6 +165,8 @@ export function BattleScreen() {
 
   const oppDrunkStage = getDrunkStage(battle.opponentDrunk);
   const plDrunkStage = getDrunkStage(battle.playerDrunk);
+  const oppSanityStage = getSanityStage(battle.opponentSanity);
+  const plSanityStage = getSanityStage(battle.playerSanity);
 
   const drunkClassName = (level: number) => level > 0 ? `drunk-${level}` : '';
 
@@ -373,7 +381,7 @@ export function BattleScreen() {
         }, 400);
       }, 400);
     }, 800);
-  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, getDrunkLevel, playRound, checkAfterEvent]);
+  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, playRound, checkAfterEvent]);
 
   // カード選択後に自動で出す
   useEffect(() => {
@@ -472,6 +480,36 @@ export function BattleScreen() {
                     <span className="lvl-n">({battle.opponentDrunk}/10)</span>
                   </div>
                 </div>
+                <div className="gauge-row">
+                  <div className="gauge-label-sm">理性</div>
+                  <div className="gauge-track">
+                    <div
+                      className="gauge-fill sanity-fill"
+                      style={{ width: `${Math.min(battle.opponentSanity / (currentOpponent.sanityMax ?? 10), 1) * 100}%` }}
+                    />
+                  </div>
+                  <div className={`gauge-lvl ${oppSanityStage.cls}`}>
+                    <span className="lvl-t">{oppSanityStage.text}</span>
+                    <span className="lvl-n">({battle.opponentSanity}/{currentOpponent.sanityMax ?? 10})</span>
+                  </div>
+                </div>
+                {battle.opponentBuffs.length > 0 && (
+                  <div className="buff-icons">
+                    {battle.opponentBuffs.map((buff, i) => {
+                      const info = BUFF_META[buff.id];
+                      return (
+                        <div
+                          key={`ob-${buff.id}-${i}`}
+                          className={`buff-chip ${info.positive ? 'buff-positive' : 'buff-negative'}`}
+                          title={`${info.label}${buff.duration > 0 ? ` (${buff.duration}T)` : ''}`}
+                        >
+                          <span className="buff-chip-icon">{info.icon}</span>
+                          {buff.duration > 0 && <span className="buff-chip-dur">{buff.duration}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -549,12 +587,42 @@ export function BattleScreen() {
                 <span className="lvl-n">({battle.playerDrunk}/10)</span>
               </div>
             </div>
+            <div className="player-gauge-row gauge-row">
+              <div className="gauge-label-sm">ドクターの理性</div>
+              <div className="gauge-track">
+                <div
+                  className="gauge-fill sanity-fill"
+                  style={{ width: `${Math.min(battle.playerSanity / 10, 1) * 100}%` }}
+                />
+              </div>
+              <div className={`gauge-lvl ${plSanityStage.cls}`}>
+                <span className="lvl-t">{plSanityStage.text}</span>
+                <span className="lvl-n">({battle.playerSanity}/10)</span>
+              </div>
+            </div>
+            {battle.playerBuffs.length > 0 && (
+              <div className="buff-icons player-buff-icons">
+                {battle.playerBuffs.map((buff, i) => {
+                  const info = BUFF_META[buff.id];
+                  return (
+                    <div
+                      key={`pb-${buff.id}-${i}`}
+                      className={`buff-chip ${info.positive ? 'buff-positive' : 'buff-negative'}`}
+                      title={`${info.label}${buff.duration > 0 ? ` (${buff.duration}T)` : ''}`}
+                    >
+                      <span className="buff-chip-icon">{info.icon}</span>
+                      {buff.duration > 0 && <span className="buff-chip-dur">{buff.duration}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
         </div>
 
         {/* 手札エリア */}
-        <div className="hand-area">
+        <div className="hand-area" data-card-count={battle.playerHand.length}>
           {battle.playerHand.map((cardId, i) => {
             const card = CARD_DATA[cardId];
             if (!card) return null;
@@ -647,8 +715,11 @@ export function BattleScreen() {
         <div className="battle-result">
           <div className="result-content">
             <h2>
-              {gameResult === 'player_win' ? '勝利！' :
-               gameResult === 'opponent_win' ? '敗北…' : '引き分け'}
+              {gameResult === 'player_win'
+                ? (battle.opponentSanity <= 0 ? '理性崩壊…勝利！' : '勝利！')
+                : gameResult === 'opponent_win'
+                ? (battle.playerSanity <= 0 ? '理性が持たなかった…' : '敗北…')
+                : '引き分け'}
             </h2>
             <p>
               {gameResult === 'player_win'

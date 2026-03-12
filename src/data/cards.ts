@@ -128,7 +128,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   breast_touch: {
     id: 'breast_touch', name: '胸に触れる', emoji: '🫦', type: 'harassment',
     requiredDrunkLevel: 2, drunkDamage: 3,
-    description: '「酔ってるから」を口実にそっと手を伸ばす。「…これは、任務外です」酔いLv.2以上で発動。酔い+3 & CG再生', rarity: 5, price: 4000
+    description: '「酔ってるから」を口実にそっと手を伸ばす。成功時: 手札のDrink1枚→Harassment交換。酔いLv.2以上。酔い+3 & CG再生', rarity: 5, price: 4000
   },
   hip_touch: {
     id: 'hip_touch', name: 'お尻をなでる', emoji: '🍑', type: 'harassment',
@@ -138,12 +138,12 @@ export const CARD_DATA: Record<string, CardDef> = {
   ear_bite: {
     id: 'ear_bite', name: '耳を甘噛み', emoji: '👅', type: 'harassment',
     requiredDrunkLevel: 3, drunkDamage: 3,
-    description: '耳たぶをそっと唇で挟む。「…もう、やめて、ください」酔いLv.3以上で発動。酔い+3 & CG再生', rarity: 5, price: 4500
+    description: '耳たぶをそっと唇で挟む。成功時: 相手のドリンクブースト奪取。酔いLv.3以上。酔い+3 & CG再生', rarity: 5, price: 4500
   },
   kiss: {
     id: 'kiss', name: 'ディープキス', emoji: '💋', type: 'harassment',
     requiredDrunkLevel: 3, instantWin: true,
-    description: '腰を引き寄せて深く口づけ。「…もう、いいです。いいですから…」酔いLv.3以上で発動。即KO & CG再生', rarity: 6, price: 5000
+    description: '腰を引き寄せて深く口づけ。酔いLv.3以上で即KO（alone時Lv.2で発動） & CG再生', rarity: 6, price: 5000
   },
 
   // === アークナイツ特化ドリンク（攻撃） ===
@@ -314,7 +314,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   wall_pin: {
     id: 'wall_pin', name: '壁ドン', emoji: '🧱', type: 'harassment',
     requiredDrunkLevel: 2, drunkDamage: 2,
-    description: '「…逃がさない」廊下の壁際、腕で退路を塞ぐ', rarity: 4, price: 1500
+    description: '「…逃がさない」廊下の壁際、腕で退路を塞ぐ。成功時: 相手の全バフ解除', rarity: 4, price: 1500
   },
   piggyback: {
     id: 'piggyback', name: 'おんぶして帰る', emoji: '🌙', type: 'harassment',
@@ -775,6 +775,111 @@ export const CARD_DATA: Record<string, CardDef> = {
     requiredDrunkLevel: 2, sanityDamage: 2,
     applySelfBuffs: [{ id: 'stealth', duration: 1 }],
     description: 'ことりと肩にもたれかかって寝息を立てる。酔いLv.2以上。理性+2 & 隠密1T', rarity: 4, price: 2000
+  },
+
+  // ============================================
+  // === オペレーター特殊能力カード ===
+  // ============================================
+
+  // ============================================
+  // === effects 駆動カード（データだけで効果が決まる） ===
+  // ============================================
+
+  shining_blessing: {
+    id: 'shining_blessing', name: 'シャイニングの加護', emoji: '✨', type: 'status',
+    effects: [
+      { type: 'apply_buff', target: 'self', buff: { id: 'sanity_negate', duration: 2 } },
+    ],
+    description: '「私の盾は…あなたのために」2T: 逆セクハラの理性ダメージを完全無効化。光の守護術', rarity: 4, price: 850
+  },
+  penance_judgment: {
+    id: 'penance_judgment', name: 'ペナンスの裁き', emoji: '⚖️', type: 'status',
+    effects: [
+      { type: 'apply_buff', target: 'self', buff: { id: 'thorns', duration: 3, value: 1 } },
+    ],
+    description: '「裁きを受けよ」3T: ダメージを受ける度、相手に1反射ダメージ。因果応報の法', rarity: 4, price: 900
+  },
+  hoshiguma_shield: {
+    id: 'hoshiguma_shield', name: '般若の酒壁', emoji: '🛡️', type: 'strategy',
+    effects: [
+      { type: 'apply_buff', target: 'self', buff: { id: 'reflect_all', duration: 1 } },
+    ],
+    description: '「鬼の盾、甘く見るなよ」1T: 受けるダメージを全て相手に跳ね返す。般若面が光る', rarity: 5, price: 1200
+  },
+  conviction_luck: {
+    id: 'conviction_luck', name: 'コンヴィクションの神判', emoji: '🎲', type: 'chug',
+    effects: [
+      { type: 'roulette', chance: 0.1,
+        success: [{ type: 'instant_win' }],
+        failure: [{ type: 'damage', target: 'self', value: 4 }],
+      },
+    ],
+    description: '「神よ、審判を！」10%で即勝利！…90%で自分に4ダメージ。信仰か蛮勇か', rarity: 6, price: 5000
+  },
+  leizi_lightning: {
+    id: 'leizi_lightning', name: 'レイジの落雷', emoji: '⚡', type: 'strategy',
+    effects: [
+      { type: 'cleanse_enemy_buffs' },
+    ],
+    description: '「雷よ、裁け」相手のバフを全て剥がし、剥がした数×1ダメージ。対バフメタの切り札', rarity: 4, price: 1000
+  },
+  croissant_trade: {
+    id: 'croissant_trade', name: 'クロワッサンの手札交換', emoji: '🔄', type: 'strategy',
+    effects: [
+      { type: 'swap_hands' },
+    ],
+    description: '「あんたのカード、ちょっと貸しな」次ラウンドの手札を相手と入れ替える。運命の交差', rarity: 5, price: 1500
+  },
+  deepcolor_paint: {
+    id: 'deepcolor_paint', name: 'ディープカラーの彩筆', emoji: '🎨', type: 'strategy',
+    effects: [
+      { type: 'transform_card', target: 'enemy', cardId: 'paint_dummy' },
+    ],
+    description: '「絵筆が…動いて…」相手の次の手札の最強カードを無力な絵に変える。芸術は爆発', rarity: 5, price: 1300
+  },
+  pallas_banquet: {
+    id: 'pallas_banquet', name: 'パラスの大宴会', emoji: '🍺', type: 'chug',
+    effects: [
+      { type: 'damage', target: 'both', value: 2 },
+    ],
+    description: '「さぁ、皆で飲もう！」全員の酔いLv+2。祭りの熱気に逃げ場なし', rarity: 3, price: 600
+  },
+  kaltsit_mon3tr: {
+    id: 'kaltsit_mon3tr', name: 'ケルシーのMon3tr', emoji: '🐉', type: 'strategy',
+    effects: [
+      { type: 'grant_card', target: 'self', cardId: 'mon3tr_strike' },
+    ],
+    description: '「Mon3tr、行きなさい」次ラウンドの手札にMon3trカードを追加。5枚目の切り札', rarity: 5, price: 1800
+  },
+
+  // ============================================
+  // === トークンカード（購入不可・効果で生成） ===
+  // ============================================
+
+  mon3tr_strike: {
+    id: 'mon3tr_strike', name: 'Mon3trの一撃', emoji: '🐲', type: 'drink',
+    damage: 4,
+    description: 'Mon3trの凶暴な一撃。酔いダメージ4。このカードは1回限り', rarity: 0, price: 0
+  },
+  paint_dummy: {
+    id: 'paint_dummy', name: '動く絵画', emoji: '🖼️', type: 'food',
+    heal: 0,
+    description: 'ディープカラーの触手に変えられたカード。何の効果もない…', rarity: 0, price: 0
+  },
+
+  // === 新カード: セクハラ強化系 ===
+  finger_technique: {
+    id: 'finger_technique', name: '指先のテクニック', emoji: '🤌', type: 'status',
+    applySelfBuffs: [{ id: 'finger_technique', duration: 3 }],
+    description: '3T: セクハラダメージ1.5倍。「指先の感覚が研ぎ澄まされる…」', rarity: 4, price: 1200
+  },
+  aphrodisiac: {
+    id: 'aphrodisiac', name: '媚薬混入', emoji: '💜', type: 'environment',
+    applyBothBuffs: [
+      { id: 'drink_dmg_half', duration: 3 },
+      { id: 'dot', duration: 3, value: 1 },
+    ],
+    description: '3T: Drinkダメージ半減 & 毎ターン双方酔い+1。セクハラ合戦に持ち込む', rarity: 5, price: 1800
   },
 };
 

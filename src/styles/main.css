@@ -44,6 +44,54 @@
   /* サイズ */
   --screen-max-w: 1200px;
   --screen-max-h: 800px;
+
+  /* レイアウト — バトル */
+  --battle-left-w: 360px;
+  --card-slot-w: 140px;
+  --card-slot-h: 196px;
+  --hand-card-w: 95px;
+  --hand-card-h: 128px;
+
+  /* レイアウト — デッキ */
+  --deck-right-w: 380px;
+  --deck-grid-cols: 6;
+}
+
+/* --- カードタイプ色 (共通) --- */
+.type-drink {
+  --type-bg: linear-gradient(160deg, rgba(60, 25, 15, 0.9), rgba(40, 18, 10, 0.95));
+  --type-border: #884444;
+  --type-flat: rgba(60, 25, 15, 0.4);
+}
+.type-food {
+  --type-bg: linear-gradient(160deg, rgba(20, 40, 20, 0.9), rgba(15, 30, 15, 0.95));
+  --type-border: #448844;
+  --type-flat: rgba(20, 40, 20, 0.4);
+}
+.type-chug {
+  --type-bg: linear-gradient(160deg, rgba(35, 20, 50, 0.9), rgba(25, 15, 35, 0.95));
+  --type-border: #665588;
+  --type-flat: rgba(35, 20, 50, 0.4);
+}
+.type-harassment {
+  --type-bg: linear-gradient(160deg, rgba(50, 18, 35, 0.9), rgba(35, 12, 25, 0.95));
+  --type-border: #884466;
+  --type-flat: rgba(50, 18, 35, 0.4);
+}
+.type-strategy {
+  --type-bg: linear-gradient(160deg, rgba(30, 35, 50, 0.9), rgba(20, 25, 35, 0.95));
+  --type-border: #556688;
+  --type-flat: rgba(30, 35, 50, 0.4);
+}
+.type-environment {
+  --type-bg: linear-gradient(160deg, rgba(35, 40, 25, 0.9), rgba(25, 30, 15, 0.95));
+  --type-border: #668855;
+  --type-flat: rgba(35, 40, 25, 0.4);
+}
+.type-status {
+  --type-bg: linear-gradient(160deg, rgba(45, 30, 15, 0.9), rgba(35, 20, 10, 0.95));
+  --type-border: #886644;
+  --type-flat: rgba(45, 30, 15, 0.4);
 }
 
 /* --- Reset & Base --- */
@@ -79,6 +127,21 @@ body {
   height: 100%;
   max-height: var(--screen-max-h);
   position: relative;
+}
+
+/* ワイドスクリーン: 1440px以上でレイアウト拡大 */
+@media (min-width: 1440px) {
+  :root {
+    --screen-max-w: 1400px;
+    --screen-max-h: 900px;
+    --battle-left-w: 420px;
+    --card-slot-w: 156px;
+    --card-slot-h: 218px;
+    --hand-card-w: 105px;
+    --hand-card-h: 140px;
+    --deck-right-w: 440px;
+    --deck-grid-cols: 7;
+  }
 }
 
 /* --- Screen System --- */
