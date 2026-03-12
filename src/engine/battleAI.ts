@@ -36,16 +36,29 @@ export const BattleAI = {
     const statuses = hand.filter(id => CARD_DATA[id]?.type === 'status');
 
     // === 逆セクハラ条件行動 ===
+    // セクハラが成功するためにはプレイヤーの酔いLvが必要条件を満たす必要がある
+    // 使用可能なセクハラカード = プレイヤーの酔いLvで発動条件を満たすもの
+    const viableHarassments = harassments.filter(id => {
+      const card = CARD_DATA[id];
+      const required = card.requiredDrunkLevel ?? 0;
+      // excuse/dimlight によるLv軽減を考慮
+      let adjusted = required;
+      if (hasBuff(battle.opponentBuffs, 'dimlight')) adjusted = Math.max(0, adjusted - 1);
+      if (hasBuff(battle.opponentBuffs, 'excuse')) adjusted = Math.max(0, adjusted - 1);
+      if (card.instantWin) adjusted = Math.max(2, adjusted);
+      return playerDrunkLevel >= adjusted;
+    });
+
     // 自分の酔いLvが高い（大胆になっている）→ 確定で逆セクハラを仕掛ける
-    if (myDrunkLevel >= 3 && harassments.length > 0) {
-      const pick = this.pickStrongestHarassment(harassments);
+    if (myDrunkLevel >= 3 && viableHarassments.length > 0) {
+      const pick = this.pickStrongestHarassment(viableHarassments);
       if (pick) return pick;
     }
 
     // プレイヤーが守りに徹している → しびれを切らして逆セクハラ
-    if (isPlayerStalling(battle) && harassments.length > 0 && myDrunkLevel >= 2) {
+    if (isPlayerStalling(battle) && viableHarassments.length > 0 && myDrunkLevel >= 2) {
       if (Math.random() < 0.6) {
-        return randomPick(harassments);
+        return randomPick(viableHarassments);
       }
     }
 
@@ -57,7 +70,7 @@ export const BattleAI = {
     }
 
     // === 状態異常カード: ハラスメント前の布石 ===
-    if (statuses.length > 0 && harassments.length > 0 && myDrunkLevel >= 1) {
+    if (statuses.length > 0 && (harassments.length > 0 || viableHarassments.length > 0) && myDrunkLevel >= 1) {
       // alone は特に強力 → 積極的に使用
       const aloneCard = statuses.find(id => CARD_DATA[id]?.applyBothBuffs?.some(b => b.id === 'alone'));
       if (aloneCard && !hasBuff(battle.opponentBuffs, 'alone') && Math.random() < 0.7) {
@@ -107,10 +120,10 @@ export const BattleAI = {
       }
     }
 
-    // 逆セクハラ: 条件を満たしていれば低確率で使用
-    if (harassments.length > 0 && myDrunkLevel >= 2) {
+    // 逆セクハラ: 成功見込みがあれば低確率で使用
+    if (viableHarassments.length > 0 && myDrunkLevel >= 2) {
       if (Math.random() < 0.3) {
-        return randomPick(harassments);
+        return randomPick(viableHarassments);
       }
     }
 

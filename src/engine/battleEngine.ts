@@ -55,6 +55,11 @@ export interface ExtendedResult extends RoundResult {
   transformPlayerCard?: string;
 }
 
+/** strategy / environment / status を「ユーティリティ」として判定 */
+function isUtilityType(type: string): boolean {
+  return type === 'strategy' || type === 'environment' || type === 'status';
+}
+
 function getDrunkLevel(drunkValue: number): number {
   if (drunkValue >= 10) return 4;
   if (drunkValue >= 7) return 3;
@@ -162,8 +167,12 @@ function applyHarassmentBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBu
   return dmg;
 }
 
-/** ドリンクカードの追加効果（バフ付与・手札汚染・手札破棄・ドレイン等）を処理 */
-function applyDrinkExtras(card: CardDef, result: ExtendedResult, user: 'player' | 'opponent'): void {
+/**
+ * ドリンク・フード共通の追加効果処理（統合版）
+ * applyBuffs, applySelfBuffs, selfHeal, selfDamage, cleanseSelf, cleanseDot,
+ * corruptHand, discardEnemyHand を全カードタイプで処理する。
+ */
+function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' | 'opponent'): void {
   const isPlayer = user === 'player';
 
   // applyBuffs → 相手にバフ付与
@@ -180,6 +189,10 @@ function applyDrinkExtras(card: CardDef, result: ExtendedResult, user: 'player' 
   if (card.applySelfBuffs) {
     const self = isPlayer ? result.newPlayerBuffs! : result.newOpponentBuffs!;
     self.push(...card.applySelfBuffs);
+    for (const buff of card.applySelfBuffs) {
+      const label = buffLabel(buff);
+      if (label) result.messages.push(label);
+    }
   }
 
   // selfHeal → ドレイン効果（自分回復）
@@ -192,34 +205,15 @@ function applyDrinkExtras(card: CardDef, result: ExtendedResult, user: 'player' 
     }
   }
 
-  // corruptHand → 敵の手札汚染
-  if (card.corruptHand) {
+  // selfDamage → 自傷ダメージ
+  if (card.selfDamage) {
     if (isPlayer) {
-      // プレイヤーが使う → 相手の手札を汚染
-      result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand;
-      result.messages.push(`🔥 ${card.name}の効果！相手の手札${card.corruptHand}枚が発情状態に！`);
+      result.playerDamage += card.selfDamage;
+      result.messages.push(`💉 ${card.name}の副作用…自分に${card.selfDamage}ダメージ！`);
     } else {
-      // 相手が使う → プレイヤーの手札を汚染
-      result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
-      result.messages.push(`🔥 ${card.name}の効果！手札${card.corruptHand}枚が発情状態に…！`);
+      result.opponentDamage += card.selfDamage;
     }
   }
-
-  // discardEnemyHand → 敵の手札破棄（次のドロー時処理）
-  if (card.discardEnemyHand) {
-    if (isPlayer) {
-      result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
-      result.messages.push(`🌌 ${card.name}の効果！相手の手札${card.discardEnemyHand}枚が記憶から消える…`);
-    } else {
-      result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand;
-      result.messages.push(`🌌 ${card.name}の効果！手札${card.discardEnemyHand}枚が記憶から消える…`);
-    }
-  }
-}
-
-/** フードカードの追加効果（デバフ除去・dot除去・バフ付与）を処理 */
-function applyFoodExtras(card: CardDef, result: ExtendedResult, user: 'player' | 'opponent'): void {
-  const isPlayer = user === 'player';
 
   // cleanseSelf → デバフ除去
   if (card.cleanseSelf) {
@@ -243,13 +237,25 @@ function applyFoodExtras(card: CardDef, result: ExtendedResult, user: 'player' |
     }
   }
 
-  // applySelfBuffs → 自分にバフ付与
-  if (card.applySelfBuffs) {
-    const self = isPlayer ? result.newPlayerBuffs! : result.newOpponentBuffs!;
-    self.push(...card.applySelfBuffs);
-    for (const buff of card.applySelfBuffs) {
-      const label = buffLabel(buff);
-      if (label) result.messages.push(label);
+  // corruptHand → 敵の手札汚染
+  if (card.corruptHand) {
+    if (isPlayer) {
+      result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand;
+      result.messages.push(`🔥 ${card.name}の効果！相手の手札${card.corruptHand}枚が発情状態に！`);
+    } else {
+      result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
+      result.messages.push(`🔥 ${card.name}の効果！手札${card.corruptHand}枚が発情状態に…！`);
+    }
+  }
+
+  // discardEnemyHand → 敵の手札破棄（次のドロー時処理）
+  if (card.discardEnemyHand) {
+    if (isPlayer) {
+      result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
+      result.messages.push(`🌌 ${card.name}の効果！相手の手札${card.discardEnemyHand}枚が記憶から消える…`);
+    } else {
+      result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand;
+      result.messages.push(`🌌 ${card.name}の効果！手札${card.discardEnemyHand}枚が記憶から消える…`);
     }
   }
 }
@@ -680,7 +686,7 @@ export const BattleEngine = {
         const dmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
         result.playerDamage += dmg;
         result.messages.push(`${oCard.emoji} 無防備なところに${oCard.name}！酔い+${dmg}！`);
-        applyDrinkExtras(oCard, result, 'opponent');
+        applyCardExtras(oCard, result, 'opponent');
       } else if (oCard.type === 'harassment') {
         return this.resolveHarassmentCard(oCard, pCard, result, 'opponent', battle);
       }
@@ -693,7 +699,7 @@ export const BattleEngine = {
         const dmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
         result.opponentDamage += dmg;
         result.messages.push(`${pCard.emoji} ${pCard.name}が直撃！酔い+${dmg}！`);
-        applyDrinkExtras(pCard, result, 'player');
+        applyCardExtras(pCard, result, 'player');
         if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
           trackBuffConsumption(result, 'player', 'next_drink_boost');
         }
@@ -705,28 +711,27 @@ export const BattleEngine = {
 
     // === フェーズ1: 戦略・環境・状態異常カードを先に処理 ===
     // プレイヤー側
-    if (pCard.type === 'strategy' || pCard.type === 'environment' || pCard.type === 'status') {
+    if (isUtilityType(pCard.type)) {
       this.resolveUtilityCard(pCard, result, 'player', battle);
     }
     // 相手側
-    if (oCard.type === 'strategy' || oCard.type === 'environment' || oCard.type === 'status') {
+    if (isUtilityType(oCard.type)) {
       this.resolveUtilityCard(oCard, result, 'opponent', battle);
     }
 
     // 両方ユーティリティなら処理完了
-    if ((pCard.type === 'strategy' || pCard.type === 'environment' || pCard.type === 'status') &&
-        (oCard.type === 'strategy' || oCard.type === 'environment' || oCard.type === 'status')) {
+    if (isUtilityType(pCard.type) && isUtilityType(oCard.type)) {
       return result;
     }
 
     // 片方がユーティリティ、もう片方が戦闘カードの場合 → 戦闘カード側だけ効果適用
-    if (pCard.type === 'strategy' || pCard.type === 'environment' || pCard.type === 'status') {
+    if (isUtilityType(pCard.type)) {
       // プレイヤーがユーティリティ → 相手の攻撃だけ通る
       if (oCard.type === 'drink') {
         const dmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
         result.playerDamage += dmg;
         result.messages.push(`${oCard.emoji} ${oCard.name}で酔い${dmg}ダメージ！`);
-        applyDrinkExtras(oCard, result, 'opponent');
+        applyCardExtras(oCard, result, 'opponent');
         if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
           trackBuffConsumption(result, 'opponent', 'next_drink_boost');
         }
@@ -737,12 +742,12 @@ export const BattleEngine = {
       }
       return result;
     }
-    if (oCard.type === 'strategy' || oCard.type === 'environment' || oCard.type === 'status') {
+    if (isUtilityType(oCard.type)) {
       if (pCard.type === 'drink') {
         const dmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
         result.opponentDamage += dmg;
         result.messages.push(`${pCard.emoji} ${pCard.name}で酔い${dmg}ダメージ！`);
-        applyDrinkExtras(pCard, result, 'player');
+        applyCardExtras(pCard, result, 'player');
         if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
           trackBuffConsumption(result, 'player', 'next_drink_boost');
         }
@@ -803,8 +808,8 @@ export const BattleEngine = {
       }
 
       // ドリンク追加効果
-      applyDrinkExtras(pCard, result, 'player');
-      applyDrinkExtras(oCard, result, 'opponent');
+      applyCardExtras(pCard, result, 'player');
+      applyCardExtras(oCard, result, 'opponent');
       if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
         trackBuffConsumption(result, 'player', 'next_drink_boost');
       }
@@ -825,12 +830,12 @@ export const BattleEngine = {
         result.opponentHeal = heal;
         result.messages.push(`${pCard.emoji} ${pCard.name}で酔い${pDmg}ダメージ！`);
         result.messages.push(`${oCard.emoji} ${oCard.name}で${result.opponentHeal}回復！`);
-        applyFoodExtras(oCard, result, 'opponent');
+        applyCardExtras(oCard, result, 'opponent');
         if (hasBuff(battle.opponentBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'opponent', 'next_food_boost');
         }
       }
-      applyDrinkExtras(pCard, result, 'player');
+      applyCardExtras(pCard, result, 'player');
       if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
         trackBuffConsumption(result, 'player', 'next_drink_boost');
       }
@@ -849,12 +854,12 @@ export const BattleEngine = {
         result.playerHeal = heal;
         result.messages.push(`${oCard.emoji} ${oCard.name}で酔い${oDmg}ダメージ！`);
         result.messages.push(`${pCard.emoji} ${pCard.name}で${result.playerHeal}回復！`);
-        applyFoodExtras(pCard, result, 'player');
+        applyCardExtras(pCard, result, 'player');
         if (hasBuff(battle.playerBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'player', 'next_food_boost');
         }
       }
-      applyDrinkExtras(oCard, result, 'opponent');
+      applyCardExtras(oCard, result, 'opponent');
       if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
         trackBuffConsumption(result, 'opponent', 'next_drink_boost');
       }
@@ -868,7 +873,7 @@ export const BattleEngine = {
         heal = applyFoodBuffs(heal, battle.playerBuffs);
         result.playerHeal = heal;
         result.messages.push(`${pCard.emoji} ${pCard.name}で${result.playerHeal}回復！`);
-        applyFoodExtras(pCard, result, 'player');
+        applyCardExtras(pCard, result, 'player');
         if (hasBuff(battle.playerBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'player', 'next_food_boost');
         }
@@ -880,7 +885,7 @@ export const BattleEngine = {
         heal = applyFoodBuffs(heal, battle.opponentBuffs);
         result.opponentHeal = heal;
         result.messages.push(`${oCard.emoji} ${oCard.name}で相手も${result.opponentHeal}回復！`);
-        applyFoodExtras(oCard, result, 'opponent');
+        applyCardExtras(oCard, result, 'opponent');
         if (hasBuff(battle.opponentBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'opponent', 'next_food_boost');
         }
@@ -897,7 +902,7 @@ export const BattleEngine = {
   resolveSingleCard(activeCard: CardDef, _nullifiedCard: CardDef, result: ExtendedResult, user: 'player' | 'opponent', battle: BattleState): ExtendedResult {
     const isPlayer = user === 'player';
 
-    if (activeCard.type === 'strategy' || activeCard.type === 'environment' || activeCard.type === 'status') {
+    if (isUtilityType(activeCard.type)) {
       this.resolveUtilityCard(activeCard, result, user, battle);
     } else if (activeCard.type === 'drink') {
       const attackerBuffs = isPlayer ? battle.playerBuffs : battle.opponentBuffs;
@@ -910,7 +915,7 @@ export const BattleEngine = {
         result.playerDamage += dmg;
         result.messages.push(`${activeCard.emoji} ${activeCard.name}で酔い${dmg}ダメージ！`);
       }
-      applyDrinkExtras(activeCard, result, user);
+      applyCardExtras(activeCard, result, user);
       if (hasBuff(attackerBuffs, 'next_drink_boost')) {
         trackBuffConsumption(result, user, 'next_drink_boost');
       }
@@ -928,7 +933,7 @@ export const BattleEngine = {
           result.opponentHeal = heal;
         }
         result.messages.push(`${activeCard.emoji} ${activeCard.name}で${heal}回復！`);
-        applyFoodExtras(activeCard, result, user);
+        applyCardExtras(activeCard, result, user);
         if (hasBuff(userBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, user, 'next_food_boost');
         }
@@ -1243,22 +1248,27 @@ export const BattleEngine = {
 
     // 相手のカードも処理
     if (!result.spillNullified) {
+      const otherUser: 'player' | 'opponent' = user === 'player' ? 'opponent' : 'player';
       if (otherCard.type === 'drink') {
         const baseDmg = getCardDamage(otherCard);
         if (user === 'player') {
           const dmg = applyDrinkBuffs(baseDmg, battle.opponentBuffs, battle.playerBuffs);
           result.playerDamage += dmg;
           result.messages.push(`相手の${otherCard.emoji}${otherCard.name}で酔い${dmg}ダメージ！`);
-          applyDrinkExtras(otherCard, result, 'opponent');
+          applyCardExtras(otherCard, result, 'opponent');
+          if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
+            trackBuffConsumption(result, 'opponent', 'next_drink_boost');
+          }
         } else {
           const dmg = applyDrinkBuffs(baseDmg, battle.playerBuffs, battle.opponentBuffs);
           result.opponentDamage += dmg;
           result.messages.push(`${otherCard.emoji}${otherCard.name}で相手に酔い${dmg}ダメージ！`);
-          applyDrinkExtras(otherCard, result, 'player');
+          applyCardExtras(otherCard, result, 'player');
+          if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
+            trackBuffConsumption(result, 'player', 'next_drink_boost');
+          }
         }
       } else if (otherCard.type === 'food') {
-        // フードカードの回復も処理
-        const otherUser = user === 'player' ? 'opponent' : 'player';
         const foodUserBuffs = user === 'player' ? battle.opponentBuffs : battle.playerBuffs;
         if (hasBuff(foodUserBuffs, 'no_food')) {
           result.messages.push(`🚫 つまみ封じ中！${otherCard.emoji}${otherCard.name}が使えない！`);
@@ -1272,11 +1282,15 @@ export const BattleEngine = {
             result.opponentHeal += heal;
           }
           result.messages.push(`${otherCard.emoji} ${otherCard.name}で${heal}回復！`);
-          applyFoodExtras(otherCard, result, otherUser);
+          applyCardExtras(otherCard, result, otherUser);
           if (hasBuff(foodUserBuffs, 'next_food_boost')) {
             trackBuffConsumption(result, otherUser, 'next_food_boost');
           }
         }
+      } else if (otherCard.type === 'chug') {
+        this.resolveChugCard(otherCard, hCard, result, otherUser, battle);
+      } else if (isUtilityType(otherCard.type)) {
+        this.resolveUtilityCard(otherCard, result, otherUser, battle);
       }
     }
 
