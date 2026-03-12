@@ -44,7 +44,17 @@
   /* サイズ */
   --screen-max-w: 1200px;
   --screen-max-h: 800px;
-  --screen-max-h-xl: 900px;
+
+  /* レイアウト — バトル */
+  --battle-left-w: 360px;
+  --card-slot-w: 140px;
+  --card-slot-h: 196px;
+  --hand-card-w: 95px;
+  --hand-card-h: 128px;
+
+  /* レイアウト — デッキ */
+  --deck-right-w: 380px;
+  --deck-grid-cols: 6;
 }
 
 /* --- Reset & Base --- */
@@ -82,11 +92,18 @@ body {
   position: relative;
 }
 
-/* ワイドスクリーン: ゲーム領域を拡大 */
+/* ワイドスクリーン: 1440px以上でレイアウト拡大 */
 @media (min-width: 1440px) {
-  #root {
-    max-width: 1400px;
-    max-height: var(--screen-max-h-xl);
+  :root {
+    --screen-max-w: 1400px;
+    --screen-max-h: 900px;
+    --battle-left-w: 420px;
+    --card-slot-w: 156px;
+    --card-slot-h: 218px;
+    --hand-card-w: 105px;
+    --hand-card-h: 140px;
+    --deck-right-w: 440px;
+    --deck-grid-cols: 7;
   }
 }
 

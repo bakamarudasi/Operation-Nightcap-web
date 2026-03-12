@@ -79,7 +79,7 @@
 }
 
 .deck-right {
-  width: 380px;
+  width: var(--deck-right-w);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -124,7 +124,7 @@
    ============================================ */
 .deck-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(var(--deck-grid-cols), 1fr);
   gap: 8px;
 }
 
@@ -704,12 +704,3 @@
   line-height: 1.5;
 }
 
-/* ワイドスクリーン: 右パネル拡大 & グリッド7列化 */
-@media (min-width: 1440px) {
-  .deck-right {
-    width: 440px;
-  }
-  .deck-grid {
-    grid-template-columns: repeat(7, 1fr);
-  }
-}

@@ -152,7 +152,7 @@
 
 /* ===== 左カラム: キャラクター立ち絵 ===== */
 .battle-left {
-  width: 360px;
+  width: var(--battle-left-w);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -554,8 +554,8 @@
 }
 
 .card-slot {
-  width: 140px;
-  height: 196px;
+  width: var(--card-slot-w);
+  height: var(--card-slot-h);
   perspective: 800px;
   position: relative;
 }
@@ -888,8 +888,8 @@
 }
 
 .hand-card {
-  width: 95px;
-  height: 128px;
+  width: var(--hand-card-w);
+  height: var(--hand-card-h);
   min-width: 0;
   flex-shrink: 1;
   background: rgba(30, 18, 10, 0.8);
@@ -1546,36 +1546,6 @@
 /* ============================================
    レスポンシブ対応
    ============================================ */
-
-/* ワイドスクリーン: 左パネル拡大 & カード・立ち絵サイズUP */
-@media (min-width: 1440px) {
-  .battle-left {
-    width: 420px;
-  }
-  .char-portrait-icon .char-emoji {
-    font-size: 12rem;
-  }
-  .card-slot {
-    width: 156px;
-    height: 218px;
-  }
-  .card-slots {
-    gap: 64px;
-  }
-  .card-front-icon {
-    font-size: 4rem;
-  }
-  .card-front-name {
-    font-size: 1.15rem;
-  }
-  .hand-card {
-    width: 105px;
-    height: 140px;
-  }
-  .hand-icon {
-    font-size: 2.4rem;
-  }
-}
 
 /* デスクトップ: 左パネル表示時は中央の相手名前を隠す */
 @media (min-width: 769px) {
