@@ -703,3 +703,13 @@
   color: var(--text-dim);
   line-height: 1.5;
 }
+
+/* ワイドスクリーン: 右パネル拡大 & グリッド7列化 */
+@media (min-width: 1440px) {
+  .deck-right {
+    width: 440px;
+  }
+  .deck-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}

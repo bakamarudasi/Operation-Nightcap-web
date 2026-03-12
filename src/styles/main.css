@@ -44,6 +44,7 @@
   /* サイズ */
   --screen-max-w: 1200px;
   --screen-max-h: 800px;
+  --screen-max-h-xl: 900px;
 }
 
 /* --- Reset & Base --- */
@@ -79,6 +80,14 @@ body {
   height: 100%;
   max-height: var(--screen-max-h);
   position: relative;
+}
+
+/* ワイドスクリーン: ゲーム領域を拡大 */
+@media (min-width: 1440px) {
+  #root {
+    max-width: 1400px;
+    max-height: var(--screen-max-h-xl);
+  }
 }
 
 /* --- Screen System --- */

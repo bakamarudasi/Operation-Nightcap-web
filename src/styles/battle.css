@@ -1547,6 +1547,36 @@
    レスポンシブ対応
    ============================================ */
 
+/* ワイドスクリーン: 左パネル拡大 & カード・立ち絵サイズUP */
+@media (min-width: 1440px) {
+  .battle-left {
+    width: 420px;
+  }
+  .char-portrait-icon .char-emoji {
+    font-size: 12rem;
+  }
+  .card-slot {
+    width: 156px;
+    height: 218px;
+  }
+  .card-slots {
+    gap: 64px;
+  }
+  .card-front-icon {
+    font-size: 4rem;
+  }
+  .card-front-name {
+    font-size: 1.15rem;
+  }
+  .hand-card {
+    width: 105px;
+    height: 140px;
+  }
+  .hand-icon {
+    font-size: 2.4rem;
+  }
+}
+
 /* デスクトップ: 左パネル表示時は中央の相手名前を隠す */
 @media (min-width: 769px) {
   .opp-name-row { display: none; }
