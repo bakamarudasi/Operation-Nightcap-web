@@ -568,6 +568,148 @@ function processEffect(
   }
 }
 
+/** resolveUtilityCard のハンドラーに渡すコンテキスト */
+interface UtilityContext {
+  card: CardDef;
+  isPlayer: boolean;
+  result: ExtendedResult;
+  battle: BattleState;
+  selfBuffs: Buff[];
+  targetBuffs: Buff[];
+}
+
+/** フラグ駆動カード効果のハンドラーマップ（実行順序 = 配列順序） */
+const UTILITY_FLAG_HANDLERS: Array<{
+  key: keyof CardDef;
+  handle: (ctx: UtilityContext) => void;
+}> = [
+  {
+    key: 'revealHand',
+    handle: ({ isPlayer, result, battle }) => {
+      if (isPlayer) {
+        result.revealedHand = [...battle.opponentHand];
+        result.messages.push(`相手の手札が見えた！`);
+      } else {
+        result.messages.push(`手の内が見られている…！`);
+      }
+    },
+  },
+  {
+    key: 'triggerRumor',
+    handle: ({ isPlayer, result }) => {
+      if (isPlayer) {
+        result.rumorActive = true;
+        result.messages.push(`相手の次の手札が乱される！`);
+      } else {
+        result.playerRumorActive = true;
+        result.messages.push(`次の手札が乱された！`);
+      }
+    },
+  },
+  {
+    key: 'swapDrunk',
+    handle: ({ result }) => {
+      result.swapDrunk = true;
+      result.messages.push(`酔いレベルが入れ替わった！`);
+    },
+  },
+  {
+    key: 'discardHighest',
+    handle: ({ isPlayer, result }) => {
+      if (isPlayer) {
+        result.discardHighest = true;
+        result.messages.push(`相手の最強カードが没収された！`);
+      } else {
+        result.discardPlayerHighest = true;
+        result.messages.push(`最強のカードが奪われた！`);
+      }
+    },
+  },
+  {
+    key: 'discardEnemyHand',
+    handle: ({ card, isPlayer, result }) => {
+      if (isPlayer) {
+        result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand!;
+      } else {
+        result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand!;
+      }
+      result.messages.push(isPlayer ? `相手の手札${card.discardEnemyHand}枚が消える…` : `手札${card.discardEnemyHand}枚が消された…`);
+    },
+  },
+  {
+    key: 'reduceMaxRounds',
+    handle: ({ card, result }) => {
+      result.reduceMaxRounds = card.reduceMaxRounds;
+      result.messages.push(`残りラウンドが${card.reduceMaxRounds}減少！決着を急げ！`);
+    },
+  },
+  {
+    key: 'applyBuffs',
+    handle: ({ card, targetBuffs, result }) => {
+      targetBuffs.push(...card.applyBuffs!);
+      for (const buff of card.applyBuffs!) {
+        const label = buffLabel(buff);
+        if (label) result.messages.push(label);
+      }
+    },
+  },
+  {
+    key: 'applySelfBuffs',
+    handle: ({ card, selfBuffs, result }) => {
+      selfBuffs.push(...card.applySelfBuffs!);
+      for (const buff of card.applySelfBuffs!) {
+        const label = buffLabel(buff);
+        if (label) result.messages.push(label);
+      }
+    },
+  },
+  {
+    key: 'applyBothBuffs',
+    handle: ({ card, result }) => {
+      for (const buff of card.applyBothBuffs!) {
+        result.newPlayerBuffs!.push({ ...buff, source: card.id });
+        result.newOpponentBuffs!.push({ ...buff, source: card.id });
+        const label = buffLabel(buff);
+        if (label) result.messages.push(label);
+      }
+    },
+  },
+  {
+    key: 'selfHeal',
+    handle: ({ card, isPlayer, result }) => {
+      if (isPlayer) {
+        result.playerHeal += card.selfHeal!;
+      } else {
+        result.opponentHeal += card.selfHeal!;
+      }
+      result.messages.push(`💚 ドレイン効果！${card.selfHeal}回復！`);
+    },
+  },
+  {
+    key: 'selfDamage',
+    handle: ({ card, isPlayer, result }) => {
+      if (isPlayer) {
+        result.playerDamage += card.selfDamage!;
+      } else {
+        result.opponentDamage += card.selfDamage!;
+      }
+      result.messages.push(`💉 副作用…${card.selfDamage}ダメージ！`);
+    },
+  },
+  {
+    key: 'corruptHand',
+    handle: ({ card, isPlayer, result }) => {
+      if (isPlayer) {
+        result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand!;
+        result.messages.push(`🔥 相手の手札${card.corruptHand}枚が発情状態に！`);
+      } else {
+        result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand!;
+        result.messages.push(`🔥 手札${card.corruptHand}枚が発情状態に…！`);
+      }
+    },
+  },
+];
+
 export const BattleEngine = {
   resolveRound(playerCardId: string, opponentCardId: string, battle: BattleState, currentOpponent?: CharacterDef | null): ExtendedResult {
     const result = this._resolveRoundCore(playerCardId, opponentCardId, battle, currentOpponent);
@@ -967,122 +1109,10 @@ export const BattleEngine = {
 
     result.messages.push(`${card.emoji} ${card.name}！`);
 
-    // --- フラグ駆動の効果処理（レガシー） ---
-
-    // 相手のバフ全除去 + 除去数×1ダメージ（レイジの落雷）
-    // 手札公開
-    if (card.revealHand) {
-      if (isPlayer) {
-        result.revealedHand = [...battle.opponentHand];
-        result.messages.push(`相手の手札が見えた！`);
-      } else {
-        result.messages.push(`手の内が見られている…！`);
-      }
-    }
-
-    // 噂話（次ラウンド手札差替）
-    if (card.triggerRumor) {
-      if (isPlayer) {
-        result.rumorActive = true;
-        result.messages.push(`相手の次の手札が乱される！`);
-      } else {
-        result.playerRumorActive = true;
-        result.messages.push(`次の手札が乱された！`);
-      }
-    }
-
-    // 酔いLv入れ替え
-    if (card.swapDrunk) {
-      result.swapDrunk = true;
-      result.messages.push(`酔いレベルが入れ替わった！`);
-    }
-
-    // 最高dmgカード破棄
-    if (card.discardHighest) {
-      if (isPlayer) {
-        result.discardHighest = true;
-        result.messages.push(`相手の最強カードが没収された！`);
-      } else {
-        result.discardPlayerHighest = true;
-        result.messages.push(`最強のカードが奪われた！`);
-      }
-    }
-
-    // 手札破棄（ランダム）
-    if (card.discardEnemyHand) {
-      if (isPlayer) {
-        result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
-      } else {
-        result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand;
-      }
-      result.messages.push(isPlayer ? `相手の手札${card.discardEnemyHand}枚が消える…` : `手札${card.discardEnemyHand}枚が消された…`);
-    }
-
-    // maxRounds減少
-    if (card.reduceMaxRounds) {
-      result.reduceMaxRounds = card.reduceMaxRounds;
-      result.messages.push(`残りラウンドが${card.reduceMaxRounds}減少！決着を急げ！`);
-    }
-
-    // 相手にバフ/デバフ付与
-    if (card.applyBuffs) {
-      targetBuffs.push(...card.applyBuffs);
-      for (const buff of card.applyBuffs) {
-        const label = buffLabel(buff);
-        if (label) result.messages.push(label);
-      }
-    }
-
-    // 自分にバフ付与
-    if (card.applySelfBuffs) {
-      selfBuffs.push(...card.applySelfBuffs);
-      for (const buff of card.applySelfBuffs) {
-        const label = buffLabel(buff);
-        if (label) result.messages.push(label);
-      }
-    }
-
-    // 双方にバフ付与（環境効果）
-    if (card.applyBothBuffs) {
-      for (const buff of card.applyBothBuffs) {
-        result.newPlayerBuffs!.push({ ...buff, source: card.id });
-        result.newOpponentBuffs!.push({ ...buff, source: card.id });
-        const label = buffLabel(buff);
-        if (label) result.messages.push(label);
-      }
-    }
-
-    // ドレイン（自分回復）
-    if (card.selfHeal) {
-      if (isPlayer) {
-        result.playerHeal += card.selfHeal;
-      } else {
-        result.opponentHeal += card.selfHeal;
-      }
-      result.messages.push(`💚 ドレイン効果！${card.selfHeal}回復！`);
-    }
-
-    // 自傷ダメージ
-    if (card.selfDamage) {
-      if (isPlayer) {
-        result.playerDamage += card.selfDamage;
-      } else {
-        result.opponentDamage += card.selfDamage;
-      }
-      result.messages.push(`💉 副作用…${card.selfDamage}ダメージ！`);
-    }
-
-    // 手札汚染（使用者の「敵」の手札を汚染）
-    if (card.corruptHand) {
-      if (isPlayer) {
-        // プレイヤーが使う → 相手の手札を汚染
-        result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand;
-        result.messages.push(`🔥 相手の手札${card.corruptHand}枚が発情状態に！`);
-      } else {
-        // 相手が使う → プレイヤーの手札を汚染
-        result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
-        result.messages.push(`🔥 手札${card.corruptHand}枚が発情状態に…！`);
-      }
+    // --- フラグ駆動の効果処理（ハンドラーマップ） ---
+    const ctx: UtilityContext = { card, isPlayer, result, battle, selfBuffs, targetBuffs };
+    for (const { key, handle } of UTILITY_FLAG_HANDLERS) {
+      if (card[key]) handle(ctx);
     }
   },
 
