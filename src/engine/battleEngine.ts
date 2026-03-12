@@ -1,6 +1,6 @@
 import { CARD_DATA, getCardDamage } from '../data/cards.ts';
 import type { BattleState, RoundResult, CGEvent, CharacterDef, Buff, CardDef, EffectDef } from '../data/types.ts';
-import { randomPick, POSITIVE_BUFF_IDS } from './utils.ts';
+import { randomPick, POSITIVE_BUFF_IDS, getDrunkLevel, hasBuff, getBuffMessage } from './utils.ts';
 
 export interface ExtendedResult extends RoundResult {
   opponentDiscardNext?: boolean;
@@ -62,18 +62,6 @@ function isUtilityType(type: string): boolean {
   return type === 'strategy' || type === 'environment' || type === 'status';
 }
 
-function getDrunkLevel(drunkValue: number): number {
-  if (drunkValue >= 10) return 4;
-  if (drunkValue >= 7) return 3;
-  if (drunkValue >= 4) return 2;
-  if (drunkValue >= 2) return 1;
-  return 0;
-}
-
-/** バフがアクティブかチェック */
-function hasBuff(buffs: Buff[], id: string): boolean {
-  return buffs.some(b => b.id === id);
-}
 
 /** 特定バフの値を取得（なければデフォルト） */
 function getBuffValue(buffs: Buff[], id: string, defaultVal: number): number {
@@ -142,7 +130,7 @@ function applyDrinkBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBuffs: 
 }
 
 /** ハラスメントの必要酔いLvを環境バフで補正（即勝利カードは最低Lv2） */
-function getAdjustedRequiredLevel(requiredLevel: number, userBuffs: Buff[], targetBuffs: Buff[], isInstantWin?: boolean): number {
+export function getAdjustedRequiredLevel(requiredLevel: number, userBuffs: Buff[], targetBuffs: Buff[], isInstantWin?: boolean): number {
   let lv = requiredLevel;
   if (hasBuff(userBuffs, 'dimlight')) lv = Math.max(0, lv - 1);
   if (hasBuff(userBuffs, 'excuse')) lv = Math.max(0, lv - 1);
@@ -192,7 +180,7 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
     const target = isPlayer ? result.newOpponentBuffs! : result.newPlayerBuffs!;
     target.push(...card.applyBuffs);
     for (const buff of card.applyBuffs) {
-      const label = buffLabel(buff);
+      const label = getBuffMessage(buff);
       if (label) result.messages.push(label);
     }
   }
@@ -202,7 +190,7 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
     const self = isPlayer ? result.newPlayerBuffs! : result.newOpponentBuffs!;
     self.push(...card.applySelfBuffs);
     for (const buff of card.applySelfBuffs) {
-      const label = buffLabel(buff);
+      const label = getBuffMessage(buff);
       if (label) result.messages.push(label);
     }
   }
@@ -660,7 +648,7 @@ const UTILITY_FLAG_HANDLERS: Array<{
     handle: ({ card, targetBuffs, result }) => {
       targetBuffs.push(...card.applyBuffs!);
       for (const buff of card.applyBuffs!) {
-        const label = buffLabel(buff);
+        const label = getBuffMessage(buff);
         if (label) result.messages.push(label);
       }
     },
@@ -670,7 +658,7 @@ const UTILITY_FLAG_HANDLERS: Array<{
     handle: ({ card, selfBuffs, result }) => {
       selfBuffs.push(...card.applySelfBuffs!);
       for (const buff of card.applySelfBuffs!) {
-        const label = buffLabel(buff);
+        const label = getBuffMessage(buff);
         if (label) result.messages.push(label);
       }
     },
@@ -681,7 +669,7 @@ const UTILITY_FLAG_HANDLERS: Array<{
       for (const buff of card.applyBothBuffs!) {
         result.newPlayerBuffs!.push({ ...buff, source: card.id });
         result.newOpponentBuffs!.push({ ...buff, source: card.id });
-        const label = buffLabel(buff);
+        const label = getBuffMessage(buff);
         if (label) result.messages.push(label);
       }
     },
@@ -1252,7 +1240,7 @@ export const BattleEngine = {
         if (hCard.applyBuffs) {
           result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), ...hCard.applyBuffs];
           for (const buff of hCard.applyBuffs) {
-            const label = buffLabel(buff);
+            const label = getBuffMessage(buff);
             if (label) result.messages.push(label);
           }
         }
@@ -1290,7 +1278,7 @@ export const BattleEngine = {
         if (hCard.applyBuffs) {
           result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), ...hCard.applyBuffs];
           for (const buff of hCard.applyBuffs) {
-            const label = buffLabel(buff);
+            const label = getBuffMessage(buff);
             if (label) result.messages.push(label);
           }
         }
@@ -1394,31 +1382,3 @@ export const BattleEngine = {
   },
 };
 
-function buffLabel(buff: Buff): string | null {
-  switch (buff.id) {
-    case 'atk_down': return `⬇️ 攻撃力低下！次のターン、酒のダメージが半減…`;
-    case 'stun': return `😵 スタン付与！次のターン行動不能…！`;
-    case 'dot': return `💔 持続ダメージ付与！毎ターン理性が${buff.value ?? 0}ずつ削られる…`;
-    case 'no_food': return `🚫 つまみ封じ！防御カードが使用不可に…！`;
-    case 'tipsy': return `😳 ほろ酔い状態！ドリンクダメージが1.5倍に…`;
-    case 'blush': return `😶‍🌫️ 動揺状態！セクハラが効きやすくなった…`;
-    case 'alone': return `🌙 二人きり…セクハラのダメージが2倍に…`;
-    case 'karaoke': return `🎤 カラオケ突入！ドリンクダメージ+1！`;
-    case 'dimlight': return `🕯️ 照明が暗い…セクハラの条件が緩和…`;
-    case 'excuse': return `🙈 「酔ってるから」…次のセクハラの条件緩和！`;
-    case 'drink_dmg_half': return `🫖 冷静…被ドリンクダメージ半減！`;
-    case 'next_drink_boost': return `🏆 勢いが止まらない！次のドリンクダメージ+${buff.value ?? 0}！`;
-    case 'next_food_boost': return `🍰 じんわり…次のフード回復+${buff.value ?? 0}！`;
-    case 'negate_next': return `🃏 ポーカーフェイス…相手の次のカード効果を無効化！`;
-    case 'stealth': return `👻 隠密状態…セクハラを回避！`;
-    case 'self_atk_up': return `💉 攻撃バフ！ドリンクダメージ${buff.value ?? 1}倍！`;
-    case 'all_dmg_up': return `💮 全ダメージ+${buff.value ?? 0}！場の空気が重い…`;
-    case 'sanity_negate': return `✨ 加護展開！理性ダメージを無効化！`;
-    case 'thorns': return `⚖️ 裁きの棘！ダメージを受けると${buff.value ?? 0}反射！`;
-    case 'reflect_all': return `🛡️ 酒壁展開！全ダメージを跳ね返す！`;
-    case 'afterglow': return `✨ 余韻…次のセクハラが効きやすい`;
-    case 'frustration': return null; // メッセージは付与時に直接出力
-    case 'finger_technique': return `🤌 指先のテクニック！セクハラダメージ1.5倍！`;
-    default: return null;
-  }
-}

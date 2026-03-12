@@ -1,18 +1,6 @@
 import { CARD_DATA } from '../data/cards.ts';
 import type { BattleState, CharacterDef } from '../data/types.ts';
-import { randomPick } from './utils.ts';
-
-function getDrunkLevel(drunkValue: number): number {
-  if (drunkValue >= 10) return 4;
-  if (drunkValue >= 7) return 3;
-  if (drunkValue >= 4) return 2;
-  if (drunkValue >= 2) return 1;
-  return 0;
-}
-
-function hasBuff(buffs: { id: string }[], id: string): boolean {
-  return buffs.some(b => b.id === id);
-}
+import { randomPick, getDrunkLevel, hasBuff } from './utils.ts';
 
 /** プレイヤーがつまみばかり使っているか判定 */
 function isPlayerStalling(battle: BattleState): boolean {
@@ -27,13 +15,24 @@ export const BattleAI = {
     const myDrunkLevel = getDrunkLevel(battle.opponentDrunk);
     const playerDrunkLevel = getDrunkLevel(battle.playerDrunk);
 
-    const drinks = hand.filter(id => CARD_DATA[id]?.type === 'drink');
-    const foods = hand.filter(id => CARD_DATA[id]?.type === 'food');
-    const chugs = hand.filter(id => CARD_DATA[id]?.type === 'chug');
-    const harassments = hand.filter(id => CARD_DATA[id]?.type === 'harassment');
-    const strategies = hand.filter(id => CARD_DATA[id]?.type === 'strategy');
-    const environments = hand.filter(id => CARD_DATA[id]?.type === 'environment');
-    const statuses = hand.filter(id => CARD_DATA[id]?.type === 'status');
+    const drinks: string[] = [];
+    const foods: string[] = [];
+    const chugs: string[] = [];
+    const harassments: string[] = [];
+    const strategies: string[] = [];
+    const environments: string[] = [];
+    const statuses: string[] = [];
+    for (const id of hand) {
+      switch (CARD_DATA[id]?.type) {
+        case 'drink': drinks.push(id); break;
+        case 'food': foods.push(id); break;
+        case 'chug': chugs.push(id); break;
+        case 'harassment': harassments.push(id); break;
+        case 'strategy': strategies.push(id); break;
+        case 'environment': environments.push(id); break;
+        case 'status': statuses.push(id); break;
+      }
+    }
 
     // === 逆セクハラ条件行動 ===
     // セクハラが成功するためにはプレイヤーの酔いLvが必要条件を満たす必要がある

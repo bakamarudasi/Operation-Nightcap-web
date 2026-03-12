@@ -1,38 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
-import { randomPick } from '../engine/utils.ts';
+import { randomPick, getDrunkLevel, BUFF_META } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
-import type { Buff } from '../data/types.ts';
 
-// バフ/デバフ表示情報
-const BUFF_DISPLAY: Record<Buff['id'], { icon: string; label: string; positive: boolean }> = {
-  stun:             { icon: '💫', label: 'スタン',       positive: false },
-  atk_down:         { icon: '⬇️', label: '攻撃力低下',   positive: false },
-  dot:              { icon: '🩸', label: '継続ダメージ', positive: false },
-  no_food:          { icon: '🚫', label: '食べ物封印',   positive: false },
-  corrupted_hand:   { icon: '💋', label: '手札汚染',     positive: false },
-  tipsy:            { icon: '🍺', label: 'ほろ酔い',     positive: false },
-  blush:            { icon: '😳', label: '頬染め',       positive: false },
-  alone:            { icon: '🚷', label: '孤立',         positive: false },
-  karaoke:          { icon: '🎤', label: 'カラオケ',     positive: true },
-  dimlight:         { icon: '🕯️', label: '薄暗い照明',   positive: false },
-  excuse:           { icon: '🛡️', label: '言い訳',       positive: true },
-  drink_dmg_half:   { icon: '🛡️', label: 'ダメージ半減', positive: true },
-  next_drink_boost: { icon: '⚔️', label: '次攻撃強化',   positive: true },
-  next_food_boost:  { icon: '💚', label: '次回復強化',   positive: true },
-  negate_next:      { icon: '🚫', label: '次ダメ無効',   positive: true },
-  stealth:          { icon: '👻', label: 'ステルス',     positive: true },
-  self_atk_up:      { icon: '💪', label: '攻撃力UP',     positive: true },
-  all_dmg_up:       { icon: '🔥', label: '全ダメUP',     positive: true },
-  sanity_negate:    { icon: '🧠', label: '理性ガード',   positive: true },
-  thorns:           { icon: '🌵', label: '反撃',         positive: true },
-  reflect_all:      { icon: '🪞', label: '全反射',       positive: true },
-  afterglow:        { icon: '✨', label: '余韻',         positive: false },
-  frustration:      { icon: '😤', label: '焦らし',       positive: false },
-  finger_technique: { icon: '🤌', label: '指先テク',     positive: true },
-};
+// バフ表示は BUFF_META (utils.ts) から参照
 
 // 酔い段階
 const DRUNK_STAGES = [
@@ -66,21 +39,11 @@ function getSanityStage(value: number) {
   return SANITY_STAGES[SANITY_STAGES.length - 1];
 }
 
-// 効果音（AudioContextを再利用）
-let _audioCtx: AudioContext | null = null;
-function getAudioContext(): AudioContext {
-  if (!_audioCtx || _audioCtx.state === 'closed') {
-    _audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  }
-  if (_audioCtx.state === 'suspended') {
-    _audioCtx.resume();
-  }
-  return _audioCtx;
-}
+import { getSharedAudioContext } from '../engine/audioContext.ts';
 
 function playSound(type: 'slam' | 'flip') {
   try {
-    const x = getAudioContext();
+    const x = getSharedAudioContext();
     if (type === 'slam') {
       const o = x.createOscillator();
       o.type = 'sine';
@@ -126,7 +89,6 @@ export function BattleScreen() {
   const endBattle = useGameStore((s) => s.endBattle);
   const setScreen = useGameStore((s) => s.setScreen);
   const showCG = useGameStore((s) => s.showCG);
-  const getDrunkLevel = useGameStore((s) => s.getDrunkLevel);
   const checkAfterEvent = useGameStore((s) => s.checkAfterEvent);
   const showAfterEvent = useGameStore((s) => s.showAfterEvent);
   const activeAfterEvent = useGameStore((s) => s.activeAfterEvent);
@@ -419,7 +381,7 @@ export function BattleScreen() {
         }, 400);
       }, 400);
     }, 800);
-  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, getDrunkLevel, playRound, checkAfterEvent]);
+  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, playRound, checkAfterEvent]);
 
   // カード選択後に自動で出す
   useEffect(() => {
@@ -534,7 +496,7 @@ export function BattleScreen() {
                 {battle.opponentBuffs.length > 0 && (
                   <div className="buff-icons">
                     {battle.opponentBuffs.map((buff, i) => {
-                      const info = BUFF_DISPLAY[buff.id];
+                      const info = BUFF_META[buff.id];
                       return (
                         <div
                           key={`ob-${buff.id}-${i}`}
@@ -641,7 +603,7 @@ export function BattleScreen() {
             {battle.playerBuffs.length > 0 && (
               <div className="buff-icons player-buff-icons">
                 {battle.playerBuffs.map((buff, i) => {
-                  const info = BUFF_DISPLAY[buff.id];
+                  const info = BUFF_META[buff.id];
                   return (
                     <div
                       key={`pb-${buff.id}-${i}`}

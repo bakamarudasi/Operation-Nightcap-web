@@ -3,8 +3,8 @@ import { persist } from 'zustand/middleware';
 import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, GachaResult } from '../data/types.ts';
 import { DEFAULT_DECK, CARD_DATA } from '../data/cards.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
-import { shuffleArray, randomPick, POSITIVE_BUFF_IDS, DEBUFF_IDS, findHighestValueCardIndex } from '../engine/utils.ts';
-import { BattleEngine, tickBuffs, type ExtendedResult } from '../engine/battleEngine.ts';
+import { shuffleArray, randomPick, POSITIVE_BUFF_IDS, DEBUFF_IDS, findHighestValueCardIndex, getDrunkLevel, hasBuff, buildCorruptedSlots } from '../engine/utils.ts';
+import { BattleEngine, tickBuffs, getAdjustedRequiredLevel, type ExtendedResult } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
 import { pullMulti } from '../engine/gachaEngine.ts';
 import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
@@ -75,8 +75,6 @@ interface GameStore {
   debugMode: boolean;
   loadDebugPreset: () => void;
 
-  // ユーティリティ
-  getDrunkLevel: (drunkValue: number) => number;
 }
 
 const initialBattle: BattleState = {
@@ -212,44 +210,27 @@ export const useGameStore = create<GameStore>()(
             oHand.push(oRemaining.shift()!);
           }
 
-          // --- 相手の手札破棄処理（破棄カードは捨て札へ） ---
-          // 最高dmgカード破棄（スワイヤーの命令等）
-          if (b.opponentDiscardHighest && oHand.length > 1) {
-            const [discardedCard] = oHand.splice(findHighestValueCardIndex(oHand), 1);
-            oDiscard.push(discardedCard);
-          }
-          // ランダムN枚破棄（サーミ・オーロラ等）
-          if (b.opponentDiscardCount > 0) {
-            for (let n = 0; n < b.opponentDiscardCount && oHand.length > 1; n++) {
-              const discardIdx = Math.floor(Math.random() * oHand.length);
-              const [discardedCard] = oHand.splice(discardIdx, 1);
-              oDiscard.push(discardedCard);
+          // 手札からランダムN枚を破棄して捨て札へ移す
+          const discardRandom = (hand: string[], discard: string[], count: number) => {
+            for (let n = 0; n < count && hand.length > 1; n++) {
+              const idx = Math.floor(Math.random() * hand.length);
+              discard.push(...hand.splice(idx, 1));
             }
+          };
+
+          // --- 相手の手札破棄処理（破棄カードは捨て札へ） ---
+          if (b.opponentDiscardHighest && oHand.length > 1) {
+            oDiscard.push(...oHand.splice(findHighestValueCardIndex(oHand), 1));
           }
-          // 乾杯強制（ランダム1枚）
-          if (b.opponentDiscardNext && oHand.length > 1) {
-            const discardIdx = Math.floor(Math.random() * oHand.length);
-            const [discardedCard] = oHand.splice(discardIdx, 1);
-            oDiscard.push(discardedCard);
-          }
+          if (b.opponentDiscardCount > 0) discardRandom(oHand, oDiscard, b.opponentDiscardCount);
+          if (b.opponentDiscardNext) discardRandom(oHand, oDiscard, 1);
 
           // --- プレイヤーの手札破棄処理（破棄カードは捨て札へ） ---
           if (b.playerDiscardHighest && pHand.length > 1) {
-            const [discardedCard] = pHand.splice(findHighestValueCardIndex(pHand), 1);
-            pDiscard.push(discardedCard);
+            pDiscard.push(...pHand.splice(findHighestValueCardIndex(pHand), 1));
           }
-          if (b.playerDiscardCount > 0) {
-            for (let n = 0; n < b.playerDiscardCount && pHand.length > 1; n++) {
-              const discardIdx = Math.floor(Math.random() * pHand.length);
-              const [discardedCard] = pHand.splice(discardIdx, 1);
-              pDiscard.push(discardedCard);
-            }
-          }
-          if (b.playerDiscardNext && pHand.length > 1) {
-            const discardIdx = Math.floor(Math.random() * pHand.length);
-            const [discardedCard] = pHand.splice(discardIdx, 1);
-            pDiscard.push(discardedCard);
-          }
+          if (b.playerDiscardCount > 0) discardRandom(pHand, pDiscard, b.playerDiscardCount);
+          if (b.playerDiscardNext) discardRandom(pHand, pDiscard, 1);
 
           // rumor: 相手の手札1枚をデッキからランダムに差し替え
           if (b.rumorActive && oHand.length > 0 && oRemaining.length > 0) {
@@ -369,13 +350,8 @@ export const useGameStore = create<GameStore>()(
         const pCard = CARD_DATA[b.selectedCard];
         if (pCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
           const targetDrunk = b.opponentDrunk;
-          const targetLevel = get().getDrunkLevel(targetDrunk);
-          // バフによる必要Lv補正を考慮
-          let adjustedRequired = pCard.requiredDrunkLevel ?? 0;
-          if (b.playerBuffs.some(bf => bf.id === 'dimlight')) adjustedRequired = Math.max(0, adjustedRequired - 1);
-          if (b.playerBuffs.some(bf => bf.id === 'excuse')) adjustedRequired = Math.max(0, adjustedRequired - 1);
-          // 即勝利カード（Kiss等）はバフで下げても最低Lv2を要求
-          if (pCard.instantWin) adjustedRequired = Math.max(2, adjustedRequired);
+          const targetLevel = getDrunkLevel(targetDrunk);
+          const adjustedRequired = getAdjustedRequiredLevel(pCard.requiredDrunkLevel ?? 0, b.playerBuffs, b.opponentBuffs, !!pCard.instantWin);
           if (targetLevel >= adjustedRequired) {
             const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === b.selectedCard);
             if (cgEvent) {
@@ -389,11 +365,8 @@ export const useGameStore = create<GameStore>()(
         let opponentCgEvent: CGEvent | null = null;
         if (oCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
           const playerDrunk = b.playerDrunk;
-          const playerLevel = get().getDrunkLevel(playerDrunk);
-          let adjustedRequired = oCard.requiredDrunkLevel ?? 0;
-          if (b.opponentBuffs.some(bf => bf.id === 'dimlight')) adjustedRequired = Math.max(0, adjustedRequired - 1);
-          if (b.opponentBuffs.some(bf => bf.id === 'excuse')) adjustedRequired = Math.max(0, adjustedRequired - 1);
-          if (oCard.instantWin) adjustedRequired = Math.max(2, adjustedRequired);
+          const playerLevel = getDrunkLevel(playerDrunk);
+          const adjustedRequired = getAdjustedRequiredLevel(oCard.requiredDrunkLevel ?? 0, b.opponentBuffs, b.playerBuffs, !!oCard.instantWin);
           if (playerLevel >= adjustedRequired) {
             const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === opponentCardId);
             if (cgEvent) {
@@ -489,32 +462,15 @@ export const useGameStore = create<GameStore>()(
         // === 手札汚染処理（プレイヤー側） ===
         let corruptedSlots = [...b.corruptedSlots];
         if (result.corruptCount && result.corruptCount > 0) {
-          // 次のラウンドの手札サイズに合わせる（spill等で3枚の場合がある）
           const nextHandSize = (result.playerReducedHand ?? b.playerReducedHand) ? 3 : 4;
-          corruptedSlots = Array(nextHandSize).fill(false);
-          const indices = Array.from({ length: nextHandSize }, (_, i) => i);
-          for (let i = indices.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [indices[i], indices[j]] = [indices[j], indices[i]];
-          }
-          for (let i = 0; i < Math.min(result.corruptCount, nextHandSize); i++) {
-            corruptedSlots[indices[i]] = true;
-          }
+          corruptedSlots = buildCorruptedSlots(nextHandSize, result.corruptCount);
         }
 
         // === 手札汚染処理（相手側） ===
         let opponentCorruptedSlots = [...b.opponentCorruptedSlots];
         if (extResult.opponentCorruptCount && extResult.opponentCorruptCount > 0) {
           const nextOHandSize = (result.opponentReducedHand ?? b.opponentReducedHand) ? 3 : 4;
-          opponentCorruptedSlots = Array(nextOHandSize).fill(false);
-          const indices = Array.from({ length: nextOHandSize }, (_, i) => i);
-          for (let i = indices.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [indices[i], indices[j]] = [indices[j], indices[i]];
-          }
-          for (let i = 0; i < Math.min(extResult.opponentCorruptCount, nextOHandSize); i++) {
-            opponentCorruptedSlots[indices[i]] = true;
-          }
+          opponentCorruptedSlots = buildCorruptedSlots(nextOHandSize, extResult.opponentCorruptCount);
         }
 
         // 使用済みカードを1枚だけ除いた残り手札をデッキに戻す
@@ -878,13 +834,6 @@ export const useGameStore = create<GameStore>()(
         });
       },
 
-      getDrunkLevel: (drunkValue) => {
-        if (drunkValue >= 10) return 4;
-        if (drunkValue >= 7) return 3;
-        if (drunkValue >= 4) return 2;
-        if (drunkValue >= 2) return 1;
-        return 0;
-      },
     }),
     {
       name: 'closures_bar_save',

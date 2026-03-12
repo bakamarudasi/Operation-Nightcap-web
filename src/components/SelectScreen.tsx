@@ -9,18 +9,10 @@ import '../styles/select.css';
 const CARD_W = 280;       // カルーセルカード幅(px)
 const DRINK_COST = 500;   // 1回の飲み代
 
-/* ── 効果音ユーティリティ (AudioContext 再利用) ── */
-let sfxCtx: AudioContext | null = null;
-function getSfxCtx() {
-  if (!sfxCtx || sfxCtx.state === 'closed') {
-    sfxCtx = new AudioContext();
-  }
-  if (sfxCtx.state === 'suspended') sfxCtx.resume();
-  return sfxCtx;
-}
+import { getSharedAudioContext } from '../engine/audioContext.ts';
 
 function playErrSound() {
-  const ctx = getSfxCtx();
+  const ctx = getSharedAudioContext();
   const o = ctx.createOscillator();
   o.type = 'square';
   o.frequency.value = 200;
@@ -33,7 +25,7 @@ function playErrSound() {
 }
 
 function playVsSound() {
-  const ctx = getSfxCtx();
+  const ctx = getSharedAudioContext();
   [300, 450, 600].forEach((freq, i) => {
     const o = ctx.createOscillator();
     o.type = 'sawtooth';
@@ -49,7 +41,7 @@ function playVsSound() {
 }
 
 function playKanpaiSound() {
-  const ctx = getSfxCtx();
+  const ctx = getSharedAudioContext();
   const t = ctx.currentTime;
   // impact
   const n = ctx.createBufferSource();

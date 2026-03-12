@@ -4,20 +4,12 @@ import { CARD_DATA } from '../data/cards.ts';
 import { GACHA_SINGLE_COST, GACHA_MULTI_COST, DUPLICATE_REFUND } from '../data/gacha.ts';
 import type { GachaResult } from '../data/types.ts';
 
-// ─── 効果音ユーティリティ (AudioContext 再利用) ───
-let gachaCtx: AudioContext | null = null;
-function getGachaCtx() {
-  if (!gachaCtx || gachaCtx.state === 'closed') {
-    gachaCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  }
-  if (gachaCtx.state === 'suspended') gachaCtx.resume();
-  return gachaCtx;
-}
+import { getSharedAudioContext } from '../engine/audioContext.ts';
 
 /** 注ぎ音: ノイズ + 低音の持続音 */
 function playPourSound() {
   try {
-    const ctx = getGachaCtx();
+    const ctx = getSharedAudioContext();
     const t = ctx.currentTime;
     // ノイズ (液体感)
     const buf = ctx.createBuffer(1, ctx.sampleRate * 1.2, ctx.sampleRate);
@@ -51,7 +43,7 @@ function playPourSound() {
 /** グロー音: レアリティに応じた上昇音 */
 function playGlowSound(rarity: number) {
   try {
-    const ctx = getGachaCtx();
+    const ctx = getSharedAudioContext();
     const t = ctx.currentTime;
     if (rarity >= 5) {
       // 高レア: 和音で上昇するファンファーレ
@@ -86,7 +78,7 @@ function playGlowSound(rarity: number) {
 /** カード出現音: レアリティで音が変わる */
 function playRevealSound(rarity: number) {
   try {
-    const ctx = getGachaCtx();
+    const ctx = getSharedAudioContext();
     const t = ctx.currentTime;
     if (rarity >= 6) {
       // ★6: 衝撃音 + 高音チャイム
@@ -138,7 +130,7 @@ function playRevealSound(rarity: number) {
 /** 結果表示音: 全カード揃った時の締め音 */
 function playResultSound(highestRarity: number) {
   try {
-    const ctx = getGachaCtx();
+    const ctx = getSharedAudioContext();
     const t = ctx.currentTime;
     if (highestRarity >= 5) {
       // 高レア入り: 祝福チャイム
