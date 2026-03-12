@@ -16,7 +16,7 @@ export interface BuffMeta {
 export const BUFF_META: Record<Buff['id'], BuffMeta> = {
   stun:             { icon: '💫', label: 'スタン',       positive: false, message: () => '😵 スタン付与！次のターン行動不能…！' },
   atk_down:         { icon: '⬇️', label: '攻撃力低下',   positive: false, message: () => '⬇️ 攻撃力低下！次のターン、酒のダメージが半減…' },
-  dot:              { icon: '🩸', label: '継続ダメージ', positive: false, message: (b) => `💔 持続ダメージ付与！毎ターン理性が${b.value ?? 0}ずつ削られる…` },
+  dot:              { icon: '🩸', label: '継続ダメージ', positive: false, message: (b) => `💔 持続ダメージ付与！毎ターン酔いが${b.value ?? 0}ずつ回る…` },
   no_food:          { icon: '🚫', label: '食べ物封印',   positive: false, message: () => '🚫 つまみ封じ！防御カードが使用不可に…！' },
   corrupted_hand:   { icon: '💋', label: '手札汚染',     positive: false },
   tipsy:            { icon: '🍺', label: 'ほろ酔い',     positive: false, message: () => '😳 ほろ酔い状態！ドリンクダメージが1.5倍に…' },
@@ -55,7 +55,7 @@ export function getBuffMessage(buff: Buff): string | null {
 export const POSITIVE_BUFF_IDS: readonly Buff['id'][] = [
   'next_drink_boost', 'next_food_boost', 'drink_dmg_half', 'self_atk_up',
   'negate_next', 'stealth', 'karaoke', 'all_dmg_up',
-  'sanity_negate', 'thorns', 'reflect_all', 'finger_technique',
+  'sanity_negate', 'thorns', 'reflect_all', 'finger_technique', 'excuse',
 ];
 
 /** デバフとして扱うID一覧（クロージャの錠剤等で除去対象） */
