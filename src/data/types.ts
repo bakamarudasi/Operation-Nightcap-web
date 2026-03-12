@@ -4,7 +4,8 @@ export interface Buff {
     | 'tipsy' | 'blush' | 'alone' | 'karaoke' | 'dimlight' | 'excuse'
     | 'drink_dmg_half' | 'next_drink_boost' | 'next_food_boost'
     | 'negate_next' | 'stealth' | 'self_atk_up' | 'all_dmg_up'
-    | 'sanity_negate' | 'thorns' | 'reflect_all';
+    | 'sanity_negate' | 'thorns' | 'reflect_all'
+    | 'afterglow' | 'frustration' | 'finger_technique';
   duration: number;   // -1 = 永続, 1~ = 残りターン数
   value?: number;     // ダメージ量・倍率など
   source?: string;    // 付与元カードID
@@ -194,6 +195,8 @@ export interface CharacterDef {
   theme: CharacterTheme;
   drunkType: string;
   drunkMax: number;
+  /** 理性ゲージ上限。省略時デフォルト10 */
+  sanityMax?: number;
   drunkLevels: DrunkLevel[];
   costumeStates: CostumeState[];
   battleLines: BattleLines;
@@ -262,6 +265,10 @@ export interface BattleState {
   /** 次ラウンドで手札の1枚を変身させるカードID（ディープカラー） */
   playerTransformCard: string | null;
   opponentTransformCard: string | null;
+  /** プレイヤーの理性値（0で敗北） */
+  playerSanity: number;
+  /** 相手の理性値（0で敗北） */
+  opponentSanity: number;
 }
 
 export interface RoundResult {
@@ -283,4 +290,12 @@ export interface RoundResult {
   newOpponentBuffs?: Buff[];
   /** 手札汚染数 */
   corruptCount?: number;
+  /** プレイヤーへの理性ダメージ（酔いとは独立） */
+  playerSanityDamage: number;
+  /** 相手への理性ダメージ */
+  opponentSanityDamage: number;
+  /** プレイヤーの理性回復 */
+  playerSanityHeal: number;
+  /** 相手の理性回復 */
+  opponentSanityHeal: number;
 }

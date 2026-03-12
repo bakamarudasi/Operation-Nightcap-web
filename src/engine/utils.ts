@@ -9,12 +9,13 @@ import type { Buff } from '../data/types.ts';
 export const POSITIVE_BUFF_IDS: readonly Buff['id'][] = [
   'next_drink_boost', 'next_food_boost', 'drink_dmg_half', 'self_atk_up',
   'negate_next', 'stealth', 'karaoke', 'all_dmg_up',
-  'sanity_negate', 'thorns', 'reflect_all',
+  'sanity_negate', 'thorns', 'reflect_all', 'finger_technique',
 ];
 
 /** デバフとして扱うID一覧（クロージャの錠剤等で除去対象） */
 export const DEBUFF_IDS: readonly Buff['id'][] = [
   'dot', 'tipsy', 'blush', 'atk_down', 'stun', 'no_food', 'corrupted_hand',
+  'afterglow', 'frustration',
 ];
 
 // ============================================

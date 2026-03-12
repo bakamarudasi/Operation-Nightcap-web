@@ -51,7 +51,7 @@ export const BattleAI = {
 
     // 自分の酔いLvが高い（大胆になっている）→ 確定で逆セクハラを仕掛ける
     if (myDrunkLevel >= 3 && viableHarassments.length > 0) {
-      const pick = this.pickStrongestHarassment(viableHarassments);
+      const pick = this.pickStrongestHarassment(viableHarassments, battle);
       if (pick) return pick;
     }
 
@@ -177,13 +177,15 @@ export const BattleAI = {
   },
 
   /** 最も強力なセクハラカードを選択 */
-  pickStrongestHarassment(cards: string[]): string | null {
+  pickStrongestHarassment(cards: string[], battle?: BattleState): string | null {
     if (cards.length === 0) return null;
+    // プレイヤーの理性が低い時は sanityDamage の重みを上げる
+    const sanityWeight = battle && battle.playerSanity <= 3 ? 2.0 : 1.0;
     return cards.reduce((best, id) => {
       const card = CARD_DATA[id];
       const bestCard = CARD_DATA[best];
-      const score = (card.sanityDamage ?? 0) + (card.drunkDamage ?? 0) + (card.instantWin ? 10 : 0);
-      const bestScore = (bestCard.sanityDamage ?? 0) + (bestCard.drunkDamage ?? 0) + (bestCard.instantWin ? 10 : 0);
+      const score = (card.sanityDamage ?? 0) * sanityWeight + (card.drunkDamage ?? 0) + (card.instantWin ? 10 : 0);
+      const bestScore = (bestCard.sanityDamage ?? 0) * sanityWeight + (bestCard.drunkDamage ?? 0) + (bestCard.instantWin ? 10 : 0);
       return score > bestScore ? id : best;
     }, cards[0]);
   },

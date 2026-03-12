@@ -30,6 +30,9 @@ const BUFF_DISPLAY: Record<Buff['id'], { icon: string; label: string; positive: 
   sanity_negate:    { icon: '🧠', label: '理性ガード',   positive: true },
   thorns:           { icon: '🌵', label: '反撃',         positive: true },
   reflect_all:      { icon: '🪞', label: '全反射',       positive: true },
+  afterglow:        { icon: '✨', label: '余韻',         positive: false },
+  frustration:      { icon: '😤', label: '焦らし',       positive: false },
+  finger_technique: { icon: '🤌', label: '指先テク',     positive: true },
 };
 
 // 酔い段階
@@ -47,6 +50,21 @@ function getDrunkStage(value: number) {
     if (value <= s.max) return s;
   }
   return DRUNK_STAGES[DRUNK_STAGES.length - 1];
+}
+
+// 理性段階
+const SANITY_STAGES = [
+  { min: 8, text: '冷静',       cls: 'sanity-calm' },
+  { min: 5, text: '動揺',       cls: 'sanity-shaken' },
+  { min: 2, text: '理性崩壊寸前', cls: 'sanity-breaking' },
+  { min: 0, text: '理性ゼロ',    cls: 'sanity-gone' },
+];
+
+function getSanityStage(value: number) {
+  for (const s of SANITY_STAGES) {
+    if (value >= s.min) return s;
+  }
+  return SANITY_STAGES[SANITY_STAGES.length - 1];
 }
 
 // 効果音（AudioContextを再利用）
@@ -186,6 +204,8 @@ export function BattleScreen() {
 
   const oppDrunkStage = getDrunkStage(battle.opponentDrunk);
   const plDrunkStage = getDrunkStage(battle.playerDrunk);
+  const oppSanityStage = getSanityStage(battle.opponentSanity);
+  const plSanityStage = getSanityStage(battle.playerSanity);
 
   const drunkClassName = (level: number) => level > 0 ? `drunk-${level}` : '';
 
@@ -499,6 +519,19 @@ export function BattleScreen() {
                     <span className="lvl-n">({battle.opponentDrunk}/10)</span>
                   </div>
                 </div>
+                <div className="gauge-row">
+                  <div className="gauge-label-sm">理性</div>
+                  <div className="gauge-track">
+                    <div
+                      className="gauge-fill sanity-fill"
+                      style={{ width: `${Math.min(battle.opponentSanity / (currentOpponent.sanityMax ?? 10), 1) * 100}%` }}
+                    />
+                  </div>
+                  <div className={`gauge-lvl ${oppSanityStage.cls}`}>
+                    <span className="lvl-t">{oppSanityStage.text}</span>
+                    <span className="lvl-n">({battle.opponentSanity}/{currentOpponent.sanityMax ?? 10})</span>
+                  </div>
+                </div>
                 {battle.opponentBuffs.length > 0 && (
                   <div className="buff-icons">
                     {battle.opponentBuffs.map((buff, i) => {
@@ -591,6 +624,19 @@ export function BattleScreen() {
               <div className="gauge-lvl">
                 <span className="lvl-t">{plDrunkStage.text}</span>
                 <span className="lvl-n">({battle.playerDrunk}/10)</span>
+              </div>
+            </div>
+            <div className="player-gauge-row gauge-row">
+              <div className="gauge-label-sm">ドクターの理性</div>
+              <div className="gauge-track">
+                <div
+                  className="gauge-fill sanity-fill"
+                  style={{ width: `${Math.min(battle.playerSanity / 10, 1) * 100}%` }}
+                />
+              </div>
+              <div className={`gauge-lvl ${plSanityStage.cls}`}>
+                <span className="lvl-t">{plSanityStage.text}</span>
+                <span className="lvl-n">({battle.playerSanity}/10)</span>
               </div>
             </div>
             {battle.playerBuffs.length > 0 && (
@@ -708,8 +754,11 @@ export function BattleScreen() {
         <div className="battle-result">
           <div className="result-content">
             <h2>
-              {gameResult === 'player_win' ? '勝利！' :
-               gameResult === 'opponent_win' ? '敗北…' : '引き分け'}
+              {gameResult === 'player_win'
+                ? (battle.opponentSanity <= 0 ? '理性崩壊…勝利！' : '勝利！')
+                : gameResult === 'opponent_win'
+                ? (battle.playerSanity <= 0 ? '理性が持たなかった…' : '敗北…')
+                : '引き分け'}
             </h2>
             <p>
               {gameResult === 'player_win'

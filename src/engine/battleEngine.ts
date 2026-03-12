@@ -53,6 +53,8 @@ export interface ExtendedResult extends RoundResult {
   transformEnemyCard?: string;
   /** 次ラウンドでプレイヤーの手札1枚を変身 */
   transformPlayerCard?: string;
+  /** breast_touch: プレイヤーの手札Drink→Harassment交換 */
+  swapDrinkForHarassment?: boolean;
 }
 
 /** strategy / environment / status を「ユーティリティ」として判定 */
@@ -140,10 +142,16 @@ function applyDrinkBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBuffs: 
 }
 
 /** ハラスメントの必要酔いLvを環境バフで補正（即勝利カードは最低Lv2） */
-function getAdjustedRequiredLevel(requiredLevel: number, userBuffs: Buff[], isInstantWin?: boolean): number {
+function getAdjustedRequiredLevel(requiredLevel: number, userBuffs: Buff[], targetBuffs: Buff[], isInstantWin?: boolean): number {
   let lv = requiredLevel;
   if (hasBuff(userBuffs, 'dimlight')) lv = Math.max(0, lv - 1);
   if (hasBuff(userBuffs, 'excuse')) lv = Math.max(0, lv - 1);
+  // alone + 即勝利カード（Kiss等）: Lv2で発動可能
+  if (isInstantWin && (hasBuff(userBuffs, 'alone') || hasBuff(targetBuffs, 'alone'))) {
+    lv = Math.max(0, lv - 1);
+  }
+  // 余韻（afterglow）: 前ターンのセクハラ成功で条件緩和
+  if (hasBuff(targetBuffs, 'afterglow')) lv = Math.max(0, lv - 1);
   // 即勝利カード（Kiss等）はバフで下げても最低Lv2を要求
   if (isInstantWin) lv = Math.max(2, lv);
   return lv;
@@ -163,6 +171,10 @@ function applyHarassmentBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBu
   // all_dmg_up: 全ダメージ+N
   if (hasBuff(attackerBuffs, 'all_dmg_up')) {
     dmg += getBuffValue(attackerBuffs, 'all_dmg_up', 0);
+  }
+  // finger_technique: セクハラダメージ1.5倍
+  if (hasBuff(attackerBuffs, 'finger_technique')) {
+    dmg = Math.ceil(dmg * 1.5);
   }
   return dmg;
 }
@@ -775,13 +787,17 @@ export const BattleEngine = {
       newPlayerBuffs: [],
       newOpponentBuffs: [],
       corruptCount: 0,
+      playerSanityDamage: 0,
+      opponentSanityDamage: 0,
+      playerSanityHeal: 0,
+      opponentSanityHeal: 0,
     };
 
     // === フェーズ0: DoTバフのtick処理 ===
     const playerDoT = calcDoTDamage(battle.playerBuffs);
     if (playerDoT > 0) {
       result.playerDamage += playerDoT;
-      result.messages.push(`💔 持続ダメージ…理性が${playerDoT}削られる！`);
+      result.messages.push(`💔 持続ダメージ…酔いが${playerDoT}回る！`);
     }
     const opponentDoT = calcDoTDamage(battle.opponentBuffs);
     if (opponentDoT > 0) {
@@ -1203,13 +1219,15 @@ export const BattleEngine = {
     // バフによる必要Lv補正
     const userBuffs = user === 'player' ? battle.playerBuffs : battle.opponentBuffs;
     const targetBuffs = user === 'player' ? battle.opponentBuffs : battle.playerBuffs;
-    const adjustedRequired = getAdjustedRequiredLevel(hCard.requiredDrunkLevel ?? 0, userBuffs, !!hCard.instantWin);
+    const adjustedRequired = getAdjustedRequiredLevel(hCard.requiredDrunkLevel ?? 0, userBuffs, targetBuffs, !!hCard.instantWin);
 
     // stealth: 相手にstealthバフがある場合、ハラスメント不発
     if (hasBuff(targetBuffs, 'stealth')) {
       result.messages.push(`👻 隠密状態！${hCard.name}は届かない…！`);
     } else if (triggerLevel >= adjustedRequired) {
       // === 成功 ===
+      // afterglow ダメージボーナス
+      const hasAfterglow = hasBuff(targetBuffs, 'afterglow');
       if (user === 'player') {
         if (hCard.instantWin) {
           result.instantWin = true;
@@ -1217,6 +1235,26 @@ export const BattleEngine = {
         } else {
           let dmg = hCard.drunkDamage ?? 0;
           dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
+          if (hasAfterglow) { dmg += 2; result.messages.push(`✨ 余韻が残る体に追い打ち…！+2！`); }
+          // カード個別特殊効果
+          if (hCard.id === 'wall_pin') {
+            result.clearAllOpponentBuffs = true;
+            result.messages.push(`🧱 壁ドン…！相手のバフが全て吹き飛んだ！`);
+          }
+          if (hCard.id === 'ear_bite') {
+            // 相手の next_drink_boost を奪う
+            const stealBuff = targetBuffs.find(b => b.id === 'next_drink_boost');
+            if (stealBuff) {
+              result.consumeOpponentBuffs = [...(result.consumeOpponentBuffs ?? []), 'next_drink_boost'];
+              result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { id: 'next_drink_boost', duration: stealBuff.duration, value: stealBuff.value }];
+              result.messages.push(`👅 相手のドリンクブーストを奪った！`);
+            }
+          }
+          if (hCard.id === 'breast_touch') {
+            // 手札のDrink1枚→デッキからHarassment1枚交換
+            result.swapDrinkForHarassment = true;
+            result.messages.push(`🫦 酒を捨てて本番に移行…！手札交換！`);
+          }
           result.opponentDamage += dmg;
           result.messages.push(`${hCard.emoji} ${hCard.name}…成功！酔い+${dmg}！`);
         }
@@ -1231,6 +1269,8 @@ export const BattleEngine = {
         if (hCard.applySelfBuffs) {
           result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), ...hCard.applySelfBuffs];
         }
+        // 余韻付与: 次のセクハラが入りやすくなる
+        result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { id: 'afterglow', duration: 1 }];
       } else {
         // === 相手の逆セクハラ → プレイヤーに理性ダメージ ===
         if (hCard.sanityDamage) {
@@ -1240,12 +1280,14 @@ export const BattleEngine = {
           } else {
             let dmg = hCard.sanityDamage;
             dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
-            result.playerDamage += dmg;
+            if (hasAfterglow) { dmg += 2; result.messages.push(`✨ 余韻が残る体で更に…！理性+2追加！`); }
+            result.playerSanityDamage += dmg;
             result.messages.push(`${hCard.emoji} ${hCard.name}…！理性が${dmg}削られた！`);
           }
         } else if (hCard.drunkDamage) {
           let dmg = hCard.drunkDamage;
           dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
+          if (hasAfterglow) { dmg += 2; result.messages.push(`✨ 余韻が残る体に追い打ち…！+2！`); }
           result.playerDamage += dmg;
           result.messages.push(`${hCard.emoji} ${hCard.name}…！酔い+${dmg}！`);
         }
@@ -1267,12 +1309,38 @@ export const BattleEngine = {
           result.corruptCount = (result.corruptCount ?? 0) + hCard.corruptHand;
           result.messages.push(`🔥 手札${hCard.corruptHand}枚が発情状態に…！使うと自分にダメージ！`);
         }
+        // 余韻付与: 次の逆セクハラが入りやすくなる
+        result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { id: 'afterglow', duration: 1 }];
       }
     } else {
+      // === 不発 → 焦らし（Frustration）変換 ===
       if (user === 'player') {
         result.messages.push(`${hCard.emoji} ${hCard.name}…不発！条件を満たしていない！`);
+        // 焦らし: 不発でも相手にフラストレーション蓄積
+        const existing = targetBuffs.find(b => b.id === 'frustration');
+        const stacks = (existing?.value ?? 0) + 1;
+        if (stacks >= 2) {
+          // 2スタックで酔い+1 & リセット
+          result.opponentDamage += 1;
+          result.consumeOpponentBuffs = [...(result.consumeOpponentBuffs ?? []), 'frustration'];
+          result.messages.push(`😤 焦らしが溜まった…！相手の酔い+1！`);
+        } else {
+          result.newOpponentBuffs = [...(result.newOpponentBuffs ?? []), { id: 'frustration', duration: -1, value: stacks }];
+          result.messages.push(`😤 焦らし${stacks}/2…相手がムラムラしてきた`);
+        }
       } else {
         result.messages.push(`${hCard.emoji} ${hCard.name}…不発！まだそこまで酔ってない！`);
+        // 逆セクハラ不発でもプレイヤーにフラストレーション蓄積
+        const existing = targetBuffs.find(b => b.id === 'frustration');
+        const stacks = (existing?.value ?? 0) + 1;
+        if (stacks >= 2) {
+          result.playerDamage += 1;
+          result.consumePlayerBuffs = [...(result.consumePlayerBuffs ?? []), 'frustration'];
+          result.messages.push(`😤 焦らしが溜まった…！酔い+1！`);
+        } else {
+          result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { id: 'frustration', duration: -1, value: stacks }];
+          result.messages.push(`😤 焦らし${stacks}/2…ドクターもソワソワしてきた`);
+        }
       }
     }
 
@@ -1350,6 +1418,9 @@ function buffLabel(buff: Buff): string | null {
     case 'sanity_negate': return `✨ 加護展開！理性ダメージを無効化！`;
     case 'thorns': return `⚖️ 裁きの棘！ダメージを受けると${buff.value ?? 0}反射！`;
     case 'reflect_all': return `🛡️ 酒壁展開！全ダメージを跳ね返す！`;
+    case 'afterglow': return `✨ 余韻…次のセクハラが効きやすい`;
+    case 'frustration': return null; // メッセージは付与時に直接出力
+    case 'finger_technique': return `🤌 指先のテクニック！セクハラダメージ1.5倍！`;
     default: return null;
   }
 }

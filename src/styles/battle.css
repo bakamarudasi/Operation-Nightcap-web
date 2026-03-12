@@ -438,6 +438,23 @@
     0 0 8px rgba(80, 160, 200, 0.3);
 }
 
+.gauge-fill.sanity-fill {
+  background: linear-gradient(90deg, #6b21a8, #8b5cf6, #a78bfa);
+  box-shadow:
+    inset 0 1px 0 rgba(200, 180, 255, 0.2),
+    0 0 8px rgba(139, 92, 246, 0.3);
+}
+
+.sanity-calm { color: #a78bfa; }
+.sanity-shaken { color: #c084fc; }
+.sanity-breaking { color: #f472b6; animation: pulse-sanity 1s infinite; }
+.sanity-gone { color: #ef4444; animation: pulse-sanity 0.5s infinite; }
+
+@keyframes pulse-sanity {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .gauge-lvl {
   font-family: var(--font-body);
   font-size: 0.65rem;

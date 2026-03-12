@@ -128,7 +128,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   breast_touch: {
     id: 'breast_touch', name: '胸に触れる', emoji: '🫦', type: 'harassment',
     requiredDrunkLevel: 2, drunkDamage: 3,
-    description: '「酔ってるから」を口実にそっと手を伸ばす。「…これは、任務外です」酔いLv.2以上で発動。酔い+3 & CG再生', rarity: 5, price: 4000
+    description: '「酔ってるから」を口実にそっと手を伸ばす。成功時: 手札のDrink1枚→Harassment交換。酔いLv.2以上。酔い+3 & CG再生', rarity: 5, price: 4000
   },
   hip_touch: {
     id: 'hip_touch', name: 'お尻をなでる', emoji: '🍑', type: 'harassment',
@@ -138,12 +138,12 @@ export const CARD_DATA: Record<string, CardDef> = {
   ear_bite: {
     id: 'ear_bite', name: '耳を甘噛み', emoji: '👅', type: 'harassment',
     requiredDrunkLevel: 3, drunkDamage: 3,
-    description: '耳たぶをそっと唇で挟む。「…もう、やめて、ください」酔いLv.3以上で発動。酔い+3 & CG再生', rarity: 5, price: 4500
+    description: '耳たぶをそっと唇で挟む。成功時: 相手のドリンクブースト奪取。酔いLv.3以上。酔い+3 & CG再生', rarity: 5, price: 4500
   },
   kiss: {
     id: 'kiss', name: 'ディープキス', emoji: '💋', type: 'harassment',
     requiredDrunkLevel: 3, instantWin: true,
-    description: '腰を引き寄せて深く口づけ。「…もう、いいです。いいですから…」酔いLv.3以上で発動。即KO & CG再生', rarity: 6, price: 5000
+    description: '腰を引き寄せて深く口づけ。酔いLv.3以上で即KO（alone時Lv.2で発動） & CG再生', rarity: 6, price: 5000
   },
 
   // === アークナイツ特化ドリンク（攻撃） ===
@@ -314,7 +314,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   wall_pin: {
     id: 'wall_pin', name: '壁ドン', emoji: '🧱', type: 'harassment',
     requiredDrunkLevel: 2, drunkDamage: 2,
-    description: '「…逃がさない」廊下の壁際、腕で退路を塞ぐ', rarity: 4, price: 1500
+    description: '「…逃がさない」廊下の壁際、腕で退路を塞ぐ。成功時: 相手の全バフ解除', rarity: 4, price: 1500
   },
   piggyback: {
     id: 'piggyback', name: 'おんぶして帰る', emoji: '🌙', type: 'harassment',
@@ -865,6 +865,21 @@ export const CARD_DATA: Record<string, CardDef> = {
     id: 'paint_dummy', name: '動く絵画', emoji: '🖼️', type: 'food',
     heal: 0,
     description: 'ディープカラーの触手に変えられたカード。何の効果もない…', rarity: 0, price: 0
+  },
+
+  // === 新カード: セクハラ強化系 ===
+  finger_technique: {
+    id: 'finger_technique', name: '指先のテクニック', emoji: '🤌', type: 'status',
+    applySelfBuffs: [{ id: 'finger_technique', duration: 3 }],
+    description: '3T: セクハラダメージ1.5倍。「指先の感覚が研ぎ澄まされる…」', rarity: 4, price: 1200
+  },
+  aphrodisiac: {
+    id: 'aphrodisiac', name: '媚薬混入', emoji: '💜', type: 'environment',
+    applyBothBuffs: [
+      { id: 'drink_dmg_half', duration: 3 },
+      { id: 'dot', duration: 3, value: 1 },
+    ],
+    description: '3T: Drinkダメージ半減 & 毎ターン双方酔い+1。セクハラ合戦に持ち込む', rarity: 5, price: 1800
   },
 };
 

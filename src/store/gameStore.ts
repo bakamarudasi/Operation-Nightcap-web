@@ -112,6 +112,8 @@ const initialBattle: BattleState = {
   opponentExtraCards: [],
   playerTransformCard: null,
   opponentTransformCard: null,
+  playerSanity: 10,
+  opponentSanity: 10,
 };
 
 export const useGameStore = create<GameStore>()(
@@ -170,6 +172,7 @@ export const useGameStore = create<GameStore>()(
             opponentDeckRemaining: opponentDeckShuffled,
             // デバッグモード: 相手が最初から酔いLv3（値7）で開始
             opponentDrunk: state.debugMode ? 7 : 0,
+            opponentSanity: char.sanityMax ?? 10,
           },
         });
       },
@@ -541,6 +544,16 @@ export const useGameStore = create<GameStore>()(
           shuffleArray(pDeckReturn);
           shuffleArray(oDeckReturn);
 
+          // breast_touch: 手札のDrink1枚→デッキからHarassment1枚交換
+          if (extResult.swapDrinkForHarassment) {
+            const drinkIdx = pDeckReturn.findIndex(id => CARD_DATA[id]?.type === 'drink');
+            const harassIdx = pDeckReturn.findIndex(id => CARD_DATA[id]?.type === 'harassment');
+            if (drinkIdx >= 0 && harassIdx >= 0) {
+              // Drinkを捨てて、Harassmentをデッキの先頭付近に入れる（次の手札で引きやすく）
+              pDeckReturn.splice(drinkIdx, 1);
+            }
+          }
+
           // 使用したカードを捨て札に追加
           const pDiscardPile = [...state.battle.playerDiscardPile, b.selectedCard!];
           const oDiscardPile = [...state.battle.opponentDiscardPile, opponentCardId];
@@ -557,6 +570,13 @@ export const useGameStore = create<GameStore>()(
           newPlayerDrunk = Math.max(0, Math.min(10, newPlayerDrunk));
           newOpponentDrunk = Math.max(0, Math.min(10, newOpponentDrunk));
 
+          // 理性計算
+          const charSanityMax = state.currentOpponent?.sanityMax ?? 10;
+          let newPlayerSanity = state.battle.playerSanity - result.playerSanityDamage + result.playerSanityHeal;
+          let newOpponentSanity = state.battle.opponentSanity - result.opponentSanityDamage + result.opponentSanityHeal;
+          newPlayerSanity = Math.max(0, Math.min(10, newPlayerSanity));
+          newOpponentSanity = Math.max(0, Math.min(charSanityMax, newOpponentSanity));
+
           // maxRounds減少
           const newMaxRounds = Math.max(state.battle.round + 1, state.battle.maxRounds - roundReduction);
 
@@ -571,6 +591,8 @@ export const useGameStore = create<GameStore>()(
               maxRounds: newMaxRounds,
               playerDrunk: newPlayerDrunk,
               opponentDrunk: newOpponentDrunk,
+              playerSanity: newPlayerSanity,
+              opponentSanity: newOpponentSanity,
               playerDeckRemaining: pDeckReturn,
               opponentDeckRemaining: oDeckReturn,
               playerHand: [],
@@ -624,14 +646,18 @@ export const useGameStore = create<GameStore>()(
 
       checkGameEnd: () => {
         const b = get().battle;
-        if (b.opponentDrunk >= 10) return 'player_win';
-        if (b.playerDrunk >= 10) return 'opponent_win';
+        // 二軸勝敗: 酔いMAX or 理性ゼロ、どちらか先に達した方で決着
+        if (b.opponentDrunk >= 10 || b.opponentSanity <= 0) return 'player_win';
+        if (b.playerDrunk >= 10 || b.playerSanity <= 0) return 'opponent_win';
         // デッキ・捨て札・手札が全て空なら強制終了（詰み防止）
         const playerOutOfCards = b.playerDeckRemaining.length === 0 && b.playerDiscardPile.length === 0 && b.playerHand.length === 0;
         const opponentOutOfCards = b.opponentDeckRemaining.length === 0 && b.opponentDiscardPile.length === 0 && b.opponentHand.length === 0;
         if (playerOutOfCards || opponentOutOfCards || b.round >= b.maxRounds) {
           if (b.playerDrunk < b.opponentDrunk) return 'player_win';
           if (b.playerDrunk > b.opponentDrunk) return 'opponent_win';
+          // タイブレーク: 酔い同値なら理性が低い方が負け
+          if (b.playerSanity > b.opponentSanity) return 'player_win';
+          if (b.playerSanity < b.opponentSanity) return 'opponent_win';
           return 'draw';
         }
         return null;
