@@ -94,7 +94,7 @@
 }
 
 .battle-bar-name {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 1.05rem;
   letter-spacing: 0.15em;
   color: var(--paper);
@@ -292,7 +292,7 @@
 }
 
 .char-name {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 1.3rem;
   letter-spacing: 0.15em;
   color: var(--paper);
@@ -306,7 +306,7 @@
 }
 
 .char-drunk-label {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 0.9rem;
   margin-top: 8px;
   padding: 4px 16px;
@@ -383,7 +383,7 @@
 }
 
 .opp-name {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 1.1rem;
   letter-spacing: 0.12em;
   color: var(--paper);
@@ -617,7 +617,7 @@
   font-size: 2.8rem;
   color: rgba(138, 110, 56, 0.6);
   z-index: 1;
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
@@ -655,7 +655,7 @@
 }
 
 .card-front-name {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 1.05rem;
   letter-spacing: 0.1em;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
@@ -685,7 +685,7 @@
 
 /* VSバッジ */
 .vs-badge {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 2.8rem;
   color: var(--lantern-red);
   text-shadow:
@@ -721,7 +721,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 1.8rem;
   font-weight: 900;
   opacity: 0;
@@ -794,7 +794,7 @@
 }
 
 .dlg-name {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 0.82rem;
   color: var(--gold);
   letter-spacing: 0.1em;
@@ -972,24 +972,9 @@
 }
 
 /* 手札カードタイプ別 */
-.hand-card.type-drink {
-  border-bottom: 3px solid #884444;
-  background: linear-gradient(160deg, rgba(60, 25, 15, 0.9), rgba(40, 18, 10, 0.95));
-}
-
-.hand-card.type-food {
-  border-bottom: 3px solid #448844;
-  background: linear-gradient(160deg, rgba(20, 40, 20, 0.9), rgba(15, 30, 15, 0.95));
-}
-
-.hand-card.type-chug {
-  border-bottom: 3px solid #665588;
-  background: linear-gradient(160deg, rgba(35, 20, 50, 0.9), rgba(25, 15, 35, 0.95));
-}
-
-.hand-card.type-harassment {
-  border-bottom: 3px solid #884466;
-  background: linear-gradient(160deg, rgba(50, 18, 35, 0.9), rgba(35, 12, 25, 0.95));
+.hand-card[class*="type-"] {
+  background: var(--type-bg);
+  border-bottom: 3px solid var(--type-border);
 }
 
 .hand-card.corrupted {
@@ -1022,7 +1007,7 @@
 }
 
 .hand-name {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 0.7rem;
   letter-spacing: 0.08em;
   color: var(--paper);
@@ -1069,7 +1054,7 @@
 }
 
 .tooltip-name {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 0.8rem;
   color: var(--gold);
   margin-bottom: 4px;
@@ -1117,7 +1102,7 @@
 }
 
 .round-overlay-text {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 3rem;
   color: var(--gold-bright);
   letter-spacing: 0.3em;
@@ -1181,7 +1166,7 @@
 }
 
 .result-content h2 {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 32px;
   font-weight: 900;
   color: var(--paper);
@@ -1372,7 +1357,7 @@
 }
 
 .after-event-title {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 20px;
   font-weight: 700;
   color: #f5e6d3;
@@ -1463,7 +1448,7 @@
 }
 
 .revealed-hand-title {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 1rem;
   color: var(--gold-bright);
   letter-spacing: 0.1em;
@@ -1497,33 +1482,9 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-.revealed-card.type-drink {
-  background: linear-gradient(160deg, rgba(60, 25, 15, 0.9), rgba(40, 18, 10, 0.95));
-  border-bottom: 3px solid #884444;
-}
-.revealed-card.type-food {
-  background: linear-gradient(160deg, rgba(20, 40, 20, 0.9), rgba(15, 30, 15, 0.95));
-  border-bottom: 3px solid #448844;
-}
-.revealed-card.type-chug {
-  background: linear-gradient(160deg, rgba(35, 20, 50, 0.9), rgba(25, 15, 35, 0.95));
-  border-bottom: 3px solid #665588;
-}
-.revealed-card.type-harassment {
-  background: linear-gradient(160deg, rgba(50, 18, 35, 0.9), rgba(35, 12, 25, 0.95));
-  border-bottom: 3px solid #884466;
-}
-.revealed-card.type-strategy {
-  background: linear-gradient(160deg, rgba(30, 35, 50, 0.9), rgba(20, 25, 35, 0.95));
-  border-bottom: 3px solid #556688;
-}
-.revealed-card.type-environment {
-  background: linear-gradient(160deg, rgba(35, 40, 25, 0.9), rgba(25, 30, 15, 0.95));
-  border-bottom: 3px solid #668855;
-}
-.revealed-card.type-status {
-  background: linear-gradient(160deg, rgba(45, 30, 15, 0.9), rgba(35, 20, 10, 0.95));
-  border-bottom: 3px solid #886644;
+.revealed-card[class*="type-"] {
+  background: var(--type-bg);
+  border-bottom: 3px solid var(--type-border);
 }
 
 .revealed-card-emoji {
@@ -1531,7 +1492,7 @@
 }
 
 .revealed-card-name {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 0.6rem;
   color: var(--paper);
   text-align: center;

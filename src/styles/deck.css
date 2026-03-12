@@ -23,7 +23,7 @@
 }
 
 .deck-header h2 {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 1.2rem;
   color: var(--paper);
   letter-spacing: 0.1em;
@@ -93,7 +93,7 @@
 }
 
 .deck-section-title {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 0.9rem;
   color: var(--gold);
   margin-bottom: 12px;
@@ -150,33 +150,9 @@
 }
 
 /* タイプ別カラー */
-.deck-slot.type-drink {
-  background: linear-gradient(160deg, rgba(60, 25, 15, 0.9), rgba(40, 18, 10, 0.95));
-  border-bottom: 3px solid #884444;
-}
-.deck-slot.type-food {
-  background: linear-gradient(160deg, rgba(20, 40, 20, 0.9), rgba(15, 30, 15, 0.95));
-  border-bottom: 3px solid #448844;
-}
-.deck-slot.type-chug {
-  background: linear-gradient(160deg, rgba(35, 20, 50, 0.9), rgba(25, 15, 35, 0.95));
-  border-bottom: 3px solid #665588;
-}
-.deck-slot.type-harassment {
-  background: linear-gradient(160deg, rgba(50, 18, 35, 0.9), rgba(35, 12, 25, 0.95));
-  border-bottom: 3px solid #884466;
-}
-.deck-slot.type-strategy {
-  background: linear-gradient(160deg, rgba(30, 35, 50, 0.9), rgba(20, 25, 35, 0.95));
-  border-bottom: 3px solid #556688;
-}
-.deck-slot.type-environment {
-  background: linear-gradient(160deg, rgba(35, 40, 25, 0.9), rgba(25, 30, 15, 0.95));
-  border-bottom: 3px solid #668855;
-}
-.deck-slot.type-status {
-  background: linear-gradient(160deg, rgba(45, 30, 15, 0.9), rgba(35, 20, 10, 0.95));
-  border-bottom: 3px solid #886644;
+.deck-slot[class*="type-"] {
+  background: var(--type-bg);
+  border-bottom: 3px solid var(--type-border);
 }
 
 /* 空スロット */
@@ -214,7 +190,7 @@
 }
 
 .deck-slot-name {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 0.55rem;
   color: var(--paper);
   text-align: center;
@@ -551,13 +527,7 @@
   transform: none;
 }
 
-.inv-card.type-drink { background: rgba(60, 25, 15, 0.4); }
-.inv-card.type-food { background: rgba(20, 40, 20, 0.4); }
-.inv-card.type-chug { background: rgba(35, 20, 50, 0.4); }
-.inv-card.type-harassment { background: rgba(50, 18, 35, 0.4); }
-.inv-card.type-strategy { background: rgba(30, 35, 50, 0.4); }
-.inv-card.type-environment { background: rgba(35, 40, 25, 0.4); }
-.inv-card.type-status { background: rgba(45, 30, 15, 0.4); }
+.inv-card[class*="type-"] { background: var(--type-flat); }
 
 .inv-card-emoji {
   font-size: 1.4rem;
@@ -570,7 +540,7 @@
 }
 
 .inv-card-name {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 0.8rem;
   color: var(--paper);
 }
@@ -631,7 +601,7 @@
 }
 
 .card-preview-name {
-  font-family: 'Noto Serif JP', var(--font-heading);
+  font-family: var(--font-heading);
   font-size: 0.9rem;
   color: var(--paper);
   flex: 1;
