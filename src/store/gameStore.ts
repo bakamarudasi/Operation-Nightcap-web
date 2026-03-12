@@ -671,8 +671,14 @@ export const useGameStore = create<GameStore>()(
         const newDeck = [...state.playerDeck];
         newDeck.splice(index, 1);
 
+        // インベントリからも1枚除去（売却 = 所有権放棄）
+        const newInventory = [...state.inventory];
+        const invIdx = newInventory.indexOf(cardId);
+        if (invIdx >= 0) newInventory.splice(invIdx, 1);
+
         set({
           money: state.money + refund,
+          inventory: newInventory,
           playerDeck: newDeck,
         });
         return true;
