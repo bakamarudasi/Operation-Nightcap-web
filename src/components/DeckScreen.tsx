@@ -305,6 +305,9 @@ export function DeckScreen() {
       <div className="deck-header">
         <button className="back-btn" onClick={goBack}>← 戻る</button>
         <h2>🃏 デッキ編集</h2>
+        <button className="enhance-shortcut-btn" onClick={() => setScreen('enhance')}>
+          🔨 強化工房
+        </button>
         <div className={`deck-count ${deckFull ? 'deck-full' : ''}`}>
           {playerDeck.length}/12
           {deckFull && <span className="deck-full-label">FULL</span>}
