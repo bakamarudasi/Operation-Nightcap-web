@@ -19,6 +19,7 @@ function getTimeStatus(hour: number) {
 
 interface AudioNodes {
   masterGain: GainNode;
+  sources: AudioScheduledSourceNode[];
 }
 
 export function TitleScreen() {
@@ -110,8 +111,17 @@ export function TitleScreen() {
     setTimeout(() => el.classList.remove('clicked'), 600);
   }, []);
 
-  // Ambient audio
+  const chimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Ambient audio - 共有AudioContextを使用してメモリリーク防止
   const createAmbientAudio = useCallback(() => {
+    // 既に作成済みなら再利用（resume で対応）
+    if (audioCtxRef.current && audioNodesRef.current) {
+      audioCtxRef.current.resume();
+      audioNodesRef.current.masterGain.gain.linearRampToValueAtTime(1, audioCtxRef.current.currentTime + 0.5);
+      return;
+    }
+
     const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     audioCtxRef.current = ctx;
 
@@ -119,6 +129,7 @@ export function TitleScreen() {
     masterGain.gain.value = 0;
     masterGain.connect(ctx.destination);
 
+    const sources: AudioScheduledSourceNode[] = [];
     const bufferSize = 2 * ctx.sampleRate;
 
     // Brown noise (ambient chatter)
@@ -143,6 +154,7 @@ export function TitleScreen() {
     noiseFilter.connect(noiseGain);
     noiseGain.connect(masterGain);
     noiseNode.start();
+    sources.push(noiseNode);
 
     // Rain sound
     const rainBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -163,6 +175,7 @@ export function TitleScreen() {
     rainFilter.connect(rainGainNode);
     rainGainNode.connect(masterGain);
     rainNode.start();
+    sources.push(rainNode);
 
     // Low ambient drone
     const drone = ctx.createOscillator();
@@ -180,8 +193,9 @@ export function TitleScreen() {
     drone.connect(droneGain);
     droneGain.connect(masterGain);
     drone.start();
+    sources.push(drone, droneLfo);
 
-    // Wind chime (furin)
+    // Wind chime (furin) - isPlayingRef でアンマウント時に再帰を停止
     function playChime() {
       if (!isPlayingRef.current) return;
       const osc = ctx.createOscillator();
@@ -195,12 +209,12 @@ export function TitleScreen() {
       chimeGain.connect(masterGain);
       osc.start();
       osc.stop(ctx.currentTime + 2);
-      setTimeout(playChime, 5000 + Math.random() * 15000);
+      chimeTimerRef.current = setTimeout(playChime, 5000 + Math.random() * 15000);
     }
-    setTimeout(playChime, 3000);
+    chimeTimerRef.current = setTimeout(playChime, 3000);
 
     masterGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 2);
-    audioNodesRef.current = { masterGain };
+    audioNodesRef.current = { masterGain, sources };
   }, []);
 
   const toggleAudio = useCallback(() => {
@@ -225,11 +239,24 @@ export function TitleScreen() {
     }
   }, [isPlaying, createAmbientAudio]);
 
-  // Cleanup audio on unmount
+  // Cleanup audio on unmount - 全ソースを停止しコンテキストを閉じる
   useEffect(() => {
     return () => {
       isPlayingRef.current = false;
-      audioCtxRef.current?.close();
+      if (chimeTimerRef.current) clearTimeout(chimeTimerRef.current);
+      if (audioNodesRef.current) {
+        // 全てのオーディオソースを安全に停止
+        for (const source of audioNodesRef.current.sources) {
+          try { source.stop(); } catch { /* already stopped */ }
+          try { source.disconnect(); } catch { /* already disconnected */ }
+        }
+        try { audioNodesRef.current.masterGain.disconnect(); } catch { /* ok */ }
+        audioNodesRef.current = null;
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+        audioCtxRef.current = null;
+      }
     };
   }, []);
 

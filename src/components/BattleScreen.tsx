@@ -122,6 +122,27 @@ export function BattleScreen() {
   const tiltRef = useRef<HTMLDivElement>(null);
   const blurRef = useRef<HTMLDivElement>(null);
   const cardPlayLock = useRef(false);
+  const mountedRef = useRef(true);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // アンマウントガード付き setTimeout
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      if (mountedRef.current) fn();
+    }, ms);
+    timersRef.current.push(id);
+    return id;
+  }, []);
+
+  // アンマウント時に全タイマーをクリア
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
+    };
+  }, []);
 
   // 最初の手札を配る
   useEffect(() => {
@@ -217,7 +238,7 @@ export function BattleScreen() {
     if (!result) return;
 
     // cardPlayLock の安全タイムアウト（15秒で強制解除）
-    const lockSafetyTimer = setTimeout(() => {
+    const lockSafetyTimer = safeTimeout(() => {
       if (cardPlayLock.current) {
         cardPlayLock.current = false;
         setPlayingCardIdx(null);
@@ -238,11 +259,11 @@ export function BattleScreen() {
       setSlamPlayer(true);
       playSound('slam');
       setFieldShaking(true);
-      setTimeout(() => { setSlamPlayer(false); setFieldShaking(false); }, 400);
+      safeTimeout(() => { setSlamPlayer(false); setFieldShaking(false); }, 400);
     }
 
     // 相手カードを少し遅れて表示
-    setTimeout(() => {
+    safeTimeout(() => {
       // 相手カードをplayRoundの結果から直接取得
       const oppCard = CARD_DATA[result.opponentCardId];
       let oppCardInfo: { emoji: string; name: string; val: string } | null = null;
@@ -260,15 +281,15 @@ export function BattleScreen() {
 
       setSlamOpp(true);
       playSound('slam');
-      setTimeout(() => setSlamOpp(false), 400);
+      safeTimeout(() => setSlamOpp(false), 400);
 
       // 相手カードフリップ
-      setTimeout(() => {
+      safeTimeout(() => {
         setOppFlipped(true);
         playSound('flip');
 
         // 結果表示
-        setTimeout(() => {
+        safeTimeout(() => {
           // セリフ
           if (result.messages.length > 0) {
             setDialogue({ speaker: currentOpponent?.name ?? '', text: result.messages.join(' / ') });
@@ -284,11 +305,11 @@ export function BattleScreen() {
           } else {
             setReaction(null);
           }
-          setTimeout(() => setReaction(null), 2000);
+          safeTimeout(() => setReaction(null), 2000);
 
           if (result.playerMisplay) {
             setMisplayFlash(true);
-            setTimeout(() => setMisplayFlash(false), 900);
+            safeTimeout(() => setMisplayFlash(false), 900);
           }
           if (result.playerMatchup === 'advantage') setMatchupBadge('🔺 相性有利！');
           else if (result.playerMatchup === 'disadvantage') setMatchupBadge('🔻 相性不利…');
@@ -302,24 +323,24 @@ export function BattleScreen() {
           } else {
             setRoundPopup({ text: '引分', cls: 'result-draw' });
           }
-          setTimeout(() => setRoundPopup(null), 1800);
+          safeTimeout(() => setRoundPopup(null), 1800);
 
           // distract: 相手の手札を公開
           if (result.revealedHand && result.revealedHand.length > 0) {
             setRevealedCards(result.revealedHand);
-            setTimeout(() => setRevealedCards(null), 4000);
+            safeTimeout(() => setRevealedCards(null), 4000);
           }
 
           // CG（プレイヤーのセクハラ成功時）
           if (result.cgEvent) {
-            setTimeout(() => { showCG(result.cgEvent!); }, 1000);
+            safeTimeout(() => { showCG(result.cgEvent!); }, 1000);
           }
 
           // CG（相手の逆セクハラ成功時）
           // プレイヤー側CGがある場合はその後に表示、なければ同タイミング
           if (result.opponentCgEvent) {
             const delay = result.cgEvent ? 5000 : 1000;
-            setTimeout(() => { showCG(result.opponentCgEvent!); }, delay);
+            safeTimeout(() => { showCG(result.opponentCgEvent!); }, delay);
           }
 
           const hasCG = !!(result.cgEvent || result.opponentCgEvent);
@@ -327,7 +348,7 @@ export function BattleScreen() {
 
           // 即勝利
           if (result.instantWin) {
-            setTimeout(() => {
+            safeTimeout(() => {
               clearTimeout(lockSafetyTimer);
               cardPlayLock.current = false;
               const reward = endBattle('player_win');
@@ -341,7 +362,7 @@ export function BattleScreen() {
 
           // 勝敗チェック（CG表示中は待つ）
           const endCheckDelay = hasCG ? cgDelay : 1500;
-          setTimeout(() => {
+          safeTimeout(() => {
             const end = checkGameEnd();
             if (end) {
               clearTimeout(lockSafetyTimer);
@@ -393,7 +414,7 @@ export function BattleScreen() {
         }, 400);
       }, 400);
     }, 800);
-  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, playRound, checkAfterEvent]);
+  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, playRound, checkAfterEvent, safeTimeout]);
 
   // カード選択後に自動で出す
   useEffect(() => {
