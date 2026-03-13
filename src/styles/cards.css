@@ -141,6 +141,40 @@
     0 0 12px rgba(255, 68, 136, 0.25) !important;
 }
 
+/* --- カード強化レベル --- */
+.card-level-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 8px;
+  line-height: 1;
+  color: var(--gold-bright);
+  text-shadow: 0 0 4px rgba(240, 214, 138, 0.6);
+  z-index: 1;
+}
+
+.card-lv2 {
+  border-color: var(--gold) !important;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 8px rgba(212, 165, 116, 0.3) !important;
+}
+
+.card-lv3 {
+  border-color: #e0a0ff !important;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 12px rgba(224, 160, 255, 0.4) !important;
+  animation: rainbowGlow 3s linear infinite;
+}
+
+@keyframes rainbowGlow {
+  0% { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(255, 100, 100, 0.4); }
+  33% { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(100, 255, 100, 0.4); }
+  66% { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(100, 100, 255, 0.4); }
+  100% { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(255, 100, 100, 0.4); }
+}
+
 /* --- カード出し演出 --- */
 @keyframes cardPlay {
   0% { transform: scale(0.8) translateY(20px); opacity: 0; }

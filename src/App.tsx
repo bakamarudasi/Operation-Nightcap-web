@@ -7,6 +7,7 @@ import { GachaScreen } from './components/GachaScreen.tsx';
 import { GalleryScreen } from './components/GalleryScreen.tsx';
 import { SettingsScreen } from './components/SettingsScreen.tsx';
 import { DeckScreen } from './components/DeckScreen.tsx';
+import { EnhanceScreen } from './components/EnhanceScreen.tsx';
 import { CGOverlay } from './components/CGOverlay.tsx';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
       {currentScreen === 'gallery' && <GalleryScreen />}
       {currentScreen === 'settings' && <SettingsScreen />}
       {currentScreen === 'deck' && <DeckScreen />}
+      {currentScreen === 'enhance' && <EnhanceScreen />}
       <CGOverlay />
     </>
   );

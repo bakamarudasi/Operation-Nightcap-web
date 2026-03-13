@@ -885,6 +885,44 @@ export const CARD_DATA: Record<string, CardDef> = {
 
 
 
+/** カードの強化レベルに応じたステータス補正済みCardDefを返す */
+export function getEnhancedCard(cardId: string, level: number): CardDef {
+  const base = CARD_DATA[cardId];
+  if (!base || level <= 1) return base;
+  const bonus = level - 1;
+  const card = { ...base };
+
+  if (card.type === 'food') {
+    if (card.heal && card.heal > 0) card.heal += bonus;
+  } else if (card.type === 'environment') {
+    // 環境カードはバフ持続ターン数を延長
+    if (card.applyBothBuffs) {
+      card.applyBothBuffs = card.applyBothBuffs.map(b => ({
+        ...b,
+        duration: b.duration > 0 ? b.duration + bonus : b.duration,
+      }));
+    }
+  } else {
+    // drink, chug, harassment, strategy, status: ダメージ系を強化
+    if (card.damage !== undefined && card.damage > 0) card.damage += bonus;
+    if (card.drunkDamage !== undefined && card.drunkDamage > 0) card.drunkDamage += bonus;
+    if (card.sanityDamage !== undefined && card.sanityDamage > 0) card.sanityDamage += bonus;
+    if (card.enemyDamage !== undefined && card.enemyDamage > 0) card.enemyDamage += bonus;
+  }
+  return card;
+}
+
+/** 強化に必要な龍門幣を返す */
+export function getEnhanceCost(cardId: string, currentLevel: number): number {
+  const card = CARD_DATA[cardId];
+  if (!card) return Infinity;
+  if (currentLevel === 1) return card.price * 2;
+  if (currentLevel === 2) return card.price * 4;
+  return Infinity;
+}
+
+export const MAX_CARD_LEVEL = 3;
+
 export function getCardCost(card: CardDef): number {
   if (card.instantWin) return 3;
   if (card.rarity === 0) return 1;

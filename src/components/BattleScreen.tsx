@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
-import { CARD_DATA } from '../data/cards.ts';
+import { CARD_DATA, getEnhancedCard } from '../data/cards.ts';
+import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
 import { randomPick, getDrunkLevel, BUFF_META, getKanryoku, canPlayCard, isFoodDisabled } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
@@ -92,6 +93,7 @@ export function BattleScreen() {
   const checkAfterEvent = useGameStore((s) => s.checkAfterEvent);
   const showAfterEvent = useGameStore((s) => s.showAfterEvent);
   const activeAfterEvent = useGameStore((s) => s.activeAfterEvent);
+  const winsByCharacter = useGameStore((s) => s.winsByCharacter);
 
   const [dialogue, setDialogue] = useState({ speaker: '', text: '' });
   const [displayText, setDisplayText] = useState('');
@@ -648,6 +650,8 @@ export function BattleScreen() {
             const isCorrupted = battle.corruptedSlots[i] === true;
             const isHidden = battle.playerHiddenSlots.includes(i);
             const isBlurred = i === battle.playerBlurredSlot && !isHidden;
+            const cardLevel = battle.playerCardLevels?.[cardId] ?? 1;
+            const levelClass = cardLevel >= 3 ? 'card-lv3' : cardLevel >= 2 ? 'card-lv2' : '';
             const valText = isHidden ? '???' : card.type === 'food' ? (card.heal === 99 ? 'MAX回復' : `回復 ${card.heal}`) :
                             card.type === 'drink' ? (card.damage === -1 ? '1~3' : `${card.damage}`) :
                             card.type === 'chug' ? '特殊' :
@@ -657,9 +661,12 @@ export function BattleScreen() {
               <div
                 key={`${cardId}-${i}`}
                 ref={el => { handCardRefs.current[i] = el; }}
-                className={`hand-card type-${card.type} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${isDisabled ? 'disabled' : ''} ${isCorrupted ? 'corrupted' : ''} ${isBlurred ? 'card-blurred' : ''} ${isHidden ? 'card-hidden' : ''} ${costLocked ? 'card-cost-locked' : ''} ${foodLocked ? 'card-food-locked' : ''}`}
+                className={`hand-card type-${card.type} ${levelClass} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${isDisabled ? 'disabled' : ''} ${isCorrupted ? 'corrupted' : ''} ${isBlurred ? 'card-blurred' : ''} ${isHidden ? 'card-hidden' : ''} ${costLocked ? 'card-cost-locked' : ''} ${foodLocked ? 'card-food-locked' : ''}`}
                 onClick={() => handleCardClick(cardId, i)}
               >
+                {cardLevel >= 2 && !isHidden && (
+                  <div className="card-level-badge">{'★'.repeat(cardLevel)}</div>
+                )}
                 <div className="hand-tooltip">
                   <div className="tooltip-name">{isHidden ? '???' : card.name}</div>
                   <div className="tooltip-desc">{costLocked ? '肝力不足' : foodLocked ? '暴走中はfood使用不可' : (isHidden ? '隠されたカード' : card.description)}</div>
@@ -751,6 +758,17 @@ export function BattleScreen() {
                 : 'いい勝負だった…'}
             </p>
             <div className="result-reward">+{resultReward} 龍門幣</div>
+            {gameResult === 'player_win' && currentOpponent && (() => {
+              const charWins = winsByCharacter[currentOpponent.id] ?? 0;
+              const affLv = getAffinityLevel(charWins);
+              const bonus = getAffinityBonus(charWins);
+              return affLv > 0 ? (
+                <div className="result-affinity">
+                  {'❤'.repeat(affLv)} 好感度 Lv.{affLv}
+                  {bonus > 0 && <span className="affinity-bonus"> (報酬+{bonus})</span>}
+                </div>
+              ) : null;
+            })()}
             {gameResult === 'player_win' && pendingAfterEvent && (
               <button
                 className="menu-btn after-event-btn"

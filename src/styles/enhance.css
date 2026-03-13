@@ -1,0 +1,213 @@
+/* ============================================
+   強化工房画面 — 居酒屋テーマ
+   ============================================ */
+
+.enhance-screen {
+  overflow-y: auto;
+}
+
+/* メインレイアウト */
+.enhance-body {
+  display: flex;
+  gap: 24px;
+  padding: 16px 24px;
+  min-height: 0;
+}
+
+/* 左: カード一覧 */
+.enhance-card-list {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-content: flex-start;
+}
+
+.enhance-card-item {
+  width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  background: var(--wood-mid);
+  border: 1px solid var(--wood-surface);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.enhance-card-item:hover {
+  border-color: var(--gold);
+  box-shadow: 0 0 12px rgba(201, 168, 92, 0.15);
+  transform: translateY(-2px);
+}
+
+.enhance-card-item.selected-enhance {
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 16px rgba(240, 214, 138, 0.3);
+}
+
+.enhance-card-item.max-level {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.enhance-card-item .item-emoji {
+  font-size: 28px;
+}
+
+.enhance-card-item .item-name {
+  font-size: 10px;
+  color: var(--paper-dim);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.enhance-card-item .item-count {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.enhance-card-item .item-level {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* 右: 強化詳細パネル */
+.enhance-detail {
+  width: 280px;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid var(--wood-surface);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.enhance-detail-empty {
+  color: var(--text-dim);
+  text-align: center;
+  padding: 40px 0;
+  font-size: 14px;
+}
+
+.enhance-detail h3 {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  color: var(--paper);
+  text-align: center;
+  margin: 0;
+}
+
+.enhance-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.enhance-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--paper-dim);
+}
+
+.enhance-stat-row .stat-label {
+  color: var(--text-dim);
+}
+
+.enhance-stat-row .stat-current {
+  color: var(--paper);
+}
+
+.enhance-stat-row .stat-arrow {
+  color: var(--gold);
+  margin: 0 4px;
+}
+
+.enhance-stat-row .stat-next {
+  color: var(--gold-bright);
+  font-weight: 700;
+}
+
+.enhance-cost-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding-top: 8px;
+  border-top: 1px solid var(--wood-light);
+}
+
+.enhance-cost-row .cost-label {
+  color: var(--text-dim);
+}
+
+.enhance-cost-row .cost-value {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.enhance-cost-row .cost-value.insufficient {
+  color: #c44;
+}
+
+.enhance-btn {
+  padding: 12px 24px;
+  background: linear-gradient(180deg, var(--gold) 0%, #a07820 100%);
+  color: var(--wood-darkest);
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.enhance-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(201, 168, 92, 0.3);
+}
+
+.enhance-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--wood-mid);
+  color: var(--text-dim);
+}
+
+.enhance-btn-max {
+  background: var(--wood-mid);
+  color: var(--gold);
+  cursor: default;
+}
+
+/* 強化成功アニメーション */
+@keyframes enhanceSuccess {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.15); box-shadow: 0 0 30px rgba(240, 214, 138, 0.6); }
+  100% { transform: scale(1); }
+}
+
+.enhance-success {
+  animation: enhanceSuccess 0.5s ease-out;
+}
+
+/* レスポンシブ: 小画面で縦並び */
+@media (max-width: 640px) {
+  .enhance-body {
+    flex-direction: column;
+  }
+  .enhance-detail {
+    width: 100%;
+  }
+}

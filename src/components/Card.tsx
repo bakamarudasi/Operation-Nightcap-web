@@ -6,9 +6,11 @@ interface CardProps {
   selected?: boolean;
   size?: 'normal' | 'small' | 'deck' | 'table';
   showPrice?: boolean;
+  /** カード強化レベル（1=通常, 2=金枠, 3=虹枠） */
+  level?: number;
 }
 
-export function Card({ cardId, onClick, selected, size = 'normal', showPrice }: CardProps) {
+export function Card({ cardId, onClick, selected, size = 'normal', showPrice, level = 1 }: CardProps) {
   const card = CARD_DATA[cardId];
   if (!card) return null;
 
@@ -17,12 +19,16 @@ export function Card({ cardId, onClick, selected, size = 'normal', showPrice }: 
                     size === 'table' ? 'table-card' : '';
 
   const typeClass = `card-${card.type}`;
+  const levelClass = level >= 3 ? 'card-lv3' : level >= 2 ? 'card-lv2' : '';
 
   return (
     <div
-      className={`card card-face ${typeClass} ${sizeClass} ${selected ? 'selected' : ''}`}
+      className={`card card-face ${typeClass} ${sizeClass} ${levelClass} ${selected ? 'selected' : ''}`}
       onClick={onClick}
     >
+      {level >= 2 && (
+        <span className="card-level-badge">{'★'.repeat(level)}</span>
+      )}
       <span className="card-emoji">{card.emoji}</span>
       <span className="card-name">{card.name}</span>
       {card.type === 'drink' && card.damage !== undefined && (
