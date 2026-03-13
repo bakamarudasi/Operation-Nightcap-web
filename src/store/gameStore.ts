@@ -89,6 +89,8 @@ const initialBattle: BattleState = {
   selectedCard: null,
   playerHiddenSlots: [],
   opponentHiddenSlots: [],
+  playerBlurredSlot: -1,
+  opponentBlurredSlot: -1,
   playerMisplay: false,
   opponentMisplay: false,
   playerCardHistory: [],
@@ -281,13 +283,18 @@ export const useGameStore = create<GameStore>()(
             oHand.push(extraId);
           }
 
-          const playerHiddenCount = getHiddenSlotCount(getDrunkLevel(b.playerDrunk));
-          const opponentHiddenCount = getHiddenSlotCount(getDrunkLevel(b.opponentDrunk));
+          const playerDrunkLv = getDrunkLevel(b.playerDrunk);
+          const opponentDrunkLv = getDrunkLevel(b.opponentDrunk);
+          const playerHiddenCount = getHiddenSlotCount(playerDrunkLv);
+          const opponentHiddenCount = getHiddenSlotCount(opponentDrunkLv);
           const pickSlots = (size: number, count: number) => {
             const indices = Array.from({ length: size }, (_, i) => i);
             shuffleArray(indices);
             return indices.slice(0, Math.min(size, count));
           };
+
+          let pHiddenCache: number[] = [];
+          let oHiddenCache: number[] = [];
 
           // 汚染スロットを実際の手札サイズに合わせる（デッキ枯渇で手札が少ない場合）
           let adjustedCorrupted = b.corruptedSlots;
@@ -309,8 +316,18 @@ export const useGameStore = create<GameStore>()(
               corruptedSlots: adjustedCorrupted,
               opponentCorruptedSlots: adjustedOppCorrupted,
               selectedCard: null,
-              playerHiddenSlots: pickSlots(pHand.length, playerHiddenCount),
-              opponentHiddenSlots: pickSlots(oHand.length, opponentHiddenCount),
+              playerHiddenSlots: (() => { const s = pickSlots(pHand.length, playerHiddenCount); pHiddenCache = s; return s; })(),
+              opponentHiddenSlots: (() => { const s = pickSlots(oHand.length, opponentHiddenCount); oHiddenCache = s; return s; })(),
+              playerBlurredSlot: (() => {
+                if (playerDrunkLv < 1) return -1;
+                const avail = Array.from({ length: pHand.length }, (_, i) => i).filter(i => !pHiddenCache.includes(i));
+                return avail.length > 0 ? avail[Math.floor(Math.random() * avail.length)] : -1;
+              })(),
+              opponentBlurredSlot: (() => {
+                if (opponentDrunkLv < 1) return -1;
+                const avail = Array.from({ length: oHand.length }, (_, i) => i).filter(i => !oHiddenCache.includes(i));
+                return avail.length > 0 ? avail[Math.floor(Math.random() * avail.length)] : -1;
+              })(),
               playerMisplay: false,
               opponentMisplay: false,
               isProcessing: false,

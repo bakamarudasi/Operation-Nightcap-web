@@ -228,6 +228,9 @@ export interface BattleState {
   opponentHand: string[];
   playerHiddenSlots: number[];
   opponentHiddenSlots: number[];
+  /** Lv1ぼやけ: このインデックスのカードだけblur表示（-1=なし） */
+  playerBlurredSlot: number;
+  opponentBlurredSlot: number;
   playerMisplay: boolean;
   opponentMisplay: boolean;
   playerCardHistory: CardType[];

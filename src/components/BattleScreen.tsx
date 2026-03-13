@@ -607,7 +607,7 @@ export function BattleScreen() {
                   style={{ width: `${Math.min(battle.playerSanity / 10, 1) * 100}%` }}
                 />
               </div>
-              <div className="kanryoku-display">肝力: {Math.min(getKanryoku(getDrunkLevel(battle.playerDrunk)), 4)}/4</div>
+              <div className="kanryoku-display">肝力: {getKanryoku(getDrunkLevel(battle.playerDrunk))}/4</div>
               <div className={`gauge-lvl ${plSanityStage.cls}`}>
                 <span className="lvl-t">{plSanityStage.text}</span>
                 <span className="lvl-n">({battle.playerSanity}/10)</span>
@@ -647,7 +647,7 @@ export function BattleScreen() {
             const isSelected = battle.selectedCard === cardId && !isPlaying;
             const isCorrupted = battle.corruptedSlots[i] === true;
             const isHidden = battle.playerHiddenSlots.includes(i);
-            const isBlurred = playerDrunkLevel >= 1 && !isHidden;
+            const isBlurred = i === battle.playerBlurredSlot && !isHidden;
             const valText = isHidden ? '???' : card.type === 'food' ? (card.heal === 99 ? 'MAX回復' : `回復 ${card.heal}`) :
                             card.type === 'drink' ? (card.damage === -1 ? '1~3' : `${card.damage}`) :
                             card.type === 'chug' ? '特殊' :

@@ -41,7 +41,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   },
   ukon: {
     id: 'ukon', name: 'ケルシー処方薬', emoji: '💊', type: 'food',
-    heal: 5, description: 'クロージャが裏ルートで横流しした禁断の回復薬。「お前には過ぎた代物だ」', cost: 2, rarity: 5, price: 1500
+    heal: 5, description: 'クロージャが裏ルートで横流しした禁断の回復薬。「お前には過ぎた代物だ」', cost: 3, rarity: 5, price: 1500
   },
 
   // === 戦略・妨害カード ===
@@ -92,7 +92,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   alone: {
     id: 'alone', name: '二人きり', emoji: '🌙', type: 'status',
     applyBothBuffs: [{ id: 'alone', duration: 2 }],
-    description: '2ターン、場の状態を「二人きり」にする。この間ハラスメントカードのダメージが2倍', cost: 2, rarity: 5, price: 2000
+    description: '2ターン、場の状態を「二人きり」にする。この間ハラスメントカードのダメージが2倍', cost: 3, rarity: 5, price: 2000
   },
 
   // === 一気飲みカード（ハイリスク） ===
@@ -128,17 +128,17 @@ export const CARD_DATA: Record<string, CardDef> = {
   breast_touch: {
     id: 'breast_touch', name: '胸に触れる', emoji: '🫦', type: 'harassment',
     requiredDrunkLevel: 2, drunkDamage: 3,
-    description: '「酔ってるから」を口実にそっと手を伸ばす。成功時: 手札のDrink1枚→Harassment交換。酔いLv.2以上。酔い+3 & CG再生', cost: 2, rarity: 5, price: 4000
+    description: '「酔ってるから」を口実にそっと手を伸ばす。成功時: 手札のDrink1枚→Harassment交換。酔いLv.2以上。酔い+3 & CG再生', cost: 3, rarity: 5, price: 4000
   },
   hip_touch: {
     id: 'hip_touch', name: 'お尻をなでる', emoji: '🍑', type: 'harassment',
     requiredDrunkLevel: 2, drunkDamage: 2,
-    description: '隣に座ったまま大胆に手を滑らせる。「っ…ドクター、あなたは」酔いLv.2以上で発動。酔い+2 & CG再生', cost: 2, rarity: 5, price: 3500
+    description: '隣に座ったまま大胆に手を滑らせる。「っ…ドクター、あなたは」酔いLv.2以上で発動。酔い+2 & CG再生', cost: 3, rarity: 5, price: 3500
   },
   ear_bite: {
     id: 'ear_bite', name: '耳を甘噛み', emoji: '👅', type: 'harassment',
     requiredDrunkLevel: 3, drunkDamage: 3,
-    description: '耳たぶをそっと唇で挟む。成功時: 相手のドリンクブースト奪取。酔いLv.3以上。酔い+3 & CG再生', cost: 2, rarity: 5, price: 4500
+    description: '耳たぶをそっと唇で挟む。成功時: 相手のドリンクブースト奪取。酔いLv.3以上。酔い+3 & CG再生', cost: 3, rarity: 5, price: 4500
   },
   kiss: {
     id: 'kiss', name: 'ディープキス', emoji: '💋', type: 'harassment',
@@ -165,7 +165,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   sami_aurora: {
     id: 'sami_aurora', name: 'サーミ・オーロラ', emoji: '🌌', type: 'drink',
     damage: 3, discardEnemyHand: 1,
-    description: '極北の夜空を溶かした色の酒。記憶が1つ消える', cost: 2, rarity: 5, price: 1200
+    description: '極北の夜空を溶かした色の酒。記憶が1つ消える', cost: 3, rarity: 5, price: 1200
   },
   kazimierz_champagne: {
     id: 'kazimierz_champagne', name: 'カジミエーシュ凱旋杯', emoji: '🏆', type: 'drink',
@@ -180,7 +180,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   yen_ergot: {
     id: 'yen_ergot', name: '炎国・麦角酒', emoji: '🍄', type: 'drink',
     damage: 4, corruptHand: 1,
-    description: '禁制品。視界が歪み手札が1枚「発情」状態に汚染される', cost: 2, rarity: 5, price: 1300
+    description: '禁制品。視界が歪み手札が1枚「発情」状態に汚染される', cost: 3, rarity: 5, price: 1300
   },
 
   // === アークナイツ特化フード（回復・防御） ===
@@ -267,12 +267,12 @@ export const CARD_DATA: Record<string, CardDef> = {
   babel_requiem: {
     id: 'babel_requiem', name: 'バベルの残響', emoji: '💮', type: 'environment',
     applyBothBuffs: [{ id: 'dot', duration: 3, value: 1 }, { id: 'all_dmg_up', duration: 3, value: 1 }],
-    description: 'テレジアの記憶が蘇る。場の空気が重く、酒が深く染みる。3T: 全カードdmg+1 & 双方dot 1/T', cost: 2, rarity: 5, price: 1500
+    description: 'テレジアの記憶が蘇る。場の空気が重く、酒が深く染みる。3T: 全カードdmg+1 & 双方dot 1/T', cost: 3, rarity: 5, price: 1500
   },
   contingency_contract: {
     id: 'contingency_contract', name: '危機契約発令', emoji: '⚠️', type: 'environment',
     reduceMaxRounds: 3,
-    description: '「作戦時間短縮」残りラウンドが3減る。決着を急げ', cost: 2, rarity: 5, price: 1200
+    description: '「作戦時間短縮」残りラウンドが3減る。決着を急げ', cost: 3, rarity: 5, price: 1200
   },
 
   // === アークナイツ状態異常系 ===
@@ -320,7 +320,7 @@ export const CARD_DATA: Record<string, CardDef> = {
     id: 'piggyback', name: 'おんぶして帰る', emoji: '🌙', type: 'harassment',
     requiredDrunkLevel: 3, drunkDamage: 2,
     applyBuffs: [{ id: 'blush', duration: 2, value: 1 }],
-    description: '「帰れないでしょ、ほら背中」体温と鼓動が伝わるCG', cost: 2, rarity: 5, price: 3000
+    description: '「帰れないでしょ、ほら背中」体温と鼓動が伝わるCG', cost: 3, rarity: 5, price: 3000
   },
   oripathy_check: {
     id: 'oripathy_check', name: '鉱石病検診（意味深）', emoji: '🩺', type: 'harassment',
@@ -520,7 +520,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   lap_pillow: {
     id: 'lap_pillow', name: '膝枕', emoji: '🛌', type: 'harassment',
     requiredDrunkLevel: 3, drunkDamage: 2,
-    description: '相手の頭をそっと膝に導く。「…ここで寝ちゃっていいよ」酔いLv.3以上で発動。酔い+2 & CG再生', cost: 2, rarity: 5, price: 3000
+    description: '相手の頭をそっと膝に導く。「…ここで寝ちゃっていいよ」酔いLv.3以上で発動。酔い+2 & CG再生', cost: 3, rarity: 5, price: 3000
   },
 
   // === 逆セクハラカード（相手→プレイヤーへの理性攻撃） ===
@@ -529,14 +529,14 @@ export const CARD_DATA: Record<string, CardDef> = {
     requiredDrunkLevel: 2, sanityDamage: 3,
     applyBuffs: [{ id: 'atk_down', duration: 1, value: 0.5 }],
     description: '素足がテーブルの下でドクターの股間をゆっくり擦り上げる。酔いLv.2以上。理性+3 & 攻撃半減1T & CG再生',
-    cost: 2, rarity: 5, price: 3000
+    cost: 3, rarity: 5, price: 3000
   },
   dirty_talk: {
     id: 'dirty_talk', name: '淫らな耳元囁き', emoji: '👄', type: 'harassment',
     requiredDrunkLevel: 2, sanityDamage: 2,
     corruptHand: 2,
     description: '「今夜は最後まで帰さないから…」手札2枚を発情状態に。酔いLv.2以上。理性+2 & 手札汚染 & CG再生',
-    cost: 2, rarity: 5, price: 3500
+    cost: 3, rarity: 5, price: 3500
   },
 
   // ============================================
@@ -562,7 +562,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   higashi_junmai: {
     id: 'higashi_junmai', name: '東国・鬼殺し', emoji: '👹', type: 'drink',
     damage: 5, applySelfBuffs: [{ id: 'stun', duration: 1 }],
-    description: '鬼すら倒す東国最強の清酒。注いだ方も正気を失う', cost: 2, rarity: 5, price: 1400
+    description: '鬼すら倒す東国最強の清酒。注いだ方も正気を失う', cost: 3, rarity: 5, price: 1400
   },
   minos_blood_wine: {
     id: 'minos_blood_wine', name: 'ミノス闘牛の血潮', emoji: '🐂', type: 'drink',
@@ -615,7 +615,7 @@ export const CARD_DATA: Record<string, CardDef> = {
   sarkaz_ritual: {
     id: 'sarkaz_ritual', name: 'サルカズ式血盃の儀', emoji: '🩸', type: 'chug',
     effect: 'chug', enemyDamage: 5, selfDamage: 3,
-    description: '古の血の契約。互いに限界まで飲み干す死の儀式', cost: 2, rarity: 5, price: 1300
+    description: '古の血の契約。互いに限界まで飲み干す死の儀式', cost: 3, rarity: 5, price: 1300
   },
   kazimierz_duel: {
     id: 'kazimierz_duel', name: 'カジミエーシュ式決闘杯', emoji: '⚔️', type: 'chug',
@@ -639,7 +639,7 @@ export const CARD_DATA: Record<string, CardDef> = {
     id: 'kal_prescription', name: 'ケルシーの処方箋', emoji: '📋', type: 'strategy',
     cleanseSelf: 2, cleanseDot: true,
     applySelfBuffs: [{ id: 'drink_dmg_half', duration: 1 }],
-    description: '「私の言う通りにしろ」全デバフ2つ除去+dot除去+被ダメ半減1T', cost: 2, rarity: 5, price: 1500
+    description: '「私の言う通りにしろ」全デバフ2つ除去+dot除去+被ダメ半減1T', cost: 3, rarity: 5, price: 1500
   },
   amiya_inspiration: {
     id: 'amiya_inspiration', name: 'アーミヤの鼓舞', emoji: '🐰', type: 'strategy',
@@ -649,19 +649,19 @@ export const CARD_DATA: Record<string, CardDef> = {
   silverash_deal: {
     id: 'silverash_deal', name: 'シルバーアッシュの商談', emoji: '🤝', type: 'strategy',
     revealHand: true, discardHighest: true,
-    description: '「交渉の余地はない」相手の手札公開+最高dmgカード没収', cost: 2, rarity: 5, price: 1400
+    description: '「交渉の余地はない」相手の手札公開+最高dmgカード没収', cost: 3, rarity: 5, price: 1400
   },
   w_surprise: {
     id: 'w_surprise', name: 'Wのサプライズ', emoji: '🎁', type: 'strategy',
     discardEnemyHand: 2,
     applyBuffs: [{ id: 'dot', duration: 1, value: 2 }],
-    description: '「プレゼントだよ♪」手札2枚破棄+dot 2dmg。爆弾魔の贈り物', cost: 2, rarity: 5, price: 1300
+    description: '「プレゼントだよ♪」手札2枚破棄+dot 2dmg。爆弾魔の贈り物', cost: 3, rarity: 5, price: 1300
   },
   mostima_timestop: {
     id: 'mostima_timestop', name: 'モスティマの時間停止', emoji: '⏳', type: 'strategy',
     applyBuffs: [{ id: 'stun', duration: 1 }],
     applySelfBuffs: [{ id: 'stealth', duration: 1 }],
-    description: '時が止まる。相手1Tスタン+自分1T隠密。堕天使の特権', cost: 2, rarity: 5, price: 1200
+    description: '時が止まる。相手1Tスタン+自分1T隠密。堕天使の特権', cost: 3, rarity: 5, price: 1200
   },
   dobermann_drill: {
     id: 'dobermann_drill', name: 'ドーベルマン教官の訓示', emoji: '📢', type: 'strategy',
@@ -694,14 +694,14 @@ export const CARD_DATA: Record<string, CardDef> = {
   lungmen_downtown: {
     id: 'lungmen_downtown', name: '龍門繁華街・深夜', emoji: '🌃', type: 'environment',
     applyBothBuffs: [{ id: 'karaoke', duration: 2, value: 2 }, { id: 'dimlight', duration: 2 }],
-    description: '2T: ネオンの裏路地。ドリンクdmg+2 & セクハラ条件-1。夜の龍門は危険', cost: 2, rarity: 5, price: 1400
+    description: '2T: ネオンの裏路地。ドリンクdmg+2 & セクハラ条件-1。夜の龍門は危険', cost: 3, rarity: 5, price: 1400
   },
 
   // === 状態異常：キャラ特化デバフ/バフ ===
   ifrit_blaze_mix: {
     id: 'ifrit_blaze_mix', name: 'イフリータの火炎カクテル', emoji: '🔥', type: 'status',
     applyBuffs: [{ id: 'dot', duration: 3, value: 2 }],
-    description: '「燃えろ燃えろー！」3Tの間、毎ターン2ダメージ。止められない', cost: 2, rarity: 5, price: 1300
+    description: '「燃えろ燃えろー！」3Tの間、毎ターン2ダメージ。止められない', cost: 3, rarity: 5, price: 1300
   },
   ptilopsis_lullaby: {
     id: 'ptilopsis_lullaby', name: 'プティロプシスの子守唄', emoji: '🎵', type: 'status',
@@ -761,14 +761,14 @@ export const CARD_DATA: Record<string, CardDef> = {
     requiredDrunkLevel: 3, drunkDamage: 3,
     instantWin: false,
     applyBuffs: [{ id: 'blush', duration: 3, value: 1 }],
-    description: '「もう歩けないでしょ」軽々と抱え上げる。酔いLv.3以上。酔い+3 & 動揺3T', cost: 2, rarity: 5, price: 4000
+    description: '「もう歩けないでしょ」軽々と抱え上げる。酔いLv.3以上。酔い+3 & 動揺3T', cost: 3, rarity: 5, price: 4000
   },
 
   // === 逆セクハラ：相手からの理性攻撃 ===
   drunk_confession: {
     id: 'drunk_confession', name: '酔った勢いの告白', emoji: '💕', type: 'harassment',
     requiredDrunkLevel: 3, sanityDamage: 4,
-    description: '「…好き、です。ずっと…」酔った勢いの真剣な告白。酔いLv.3以上。理性+4', cost: 2, rarity: 5, price: 4000
+    description: '「…好き、です。ずっと…」酔った勢いの真剣な告白。酔いLv.3以上。理性+4', cost: 3, rarity: 5, price: 4000
   },
   sleeping_on_shoulder: {
     id: 'sleeping_on_shoulder', name: '肩で寝落ち', emoji: '😴', type: 'harassment',
@@ -804,7 +804,7 @@ export const CARD_DATA: Record<string, CardDef> = {
     effects: [
       { type: 'apply_buff', target: 'self', buff: { id: 'reflect_all', duration: 1 } },
     ],
-    description: '「鬼の盾、甘く見るなよ」1T: 受けるダメージを全て相手に跳ね返す。般若面が光る', cost: 2, rarity: 5, price: 1200
+    description: '「鬼の盾、甘く見るなよ」1T: 受けるダメージを全て相手に跳ね返す。般若面が光る', cost: 3, rarity: 5, price: 1200
   },
   conviction_luck: {
     id: 'conviction_luck', name: 'コンヴィクションの神判', emoji: '🎲', type: 'chug',
@@ -828,14 +828,14 @@ export const CARD_DATA: Record<string, CardDef> = {
     effects: [
       { type: 'swap_hands' },
     ],
-    description: '「あんたのカード、ちょっと貸しな」次ラウンドの手札を相手と入れ替える。運命の交差', cost: 2, rarity: 5, price: 1500
+    description: '「あんたのカード、ちょっと貸しな」次ラウンドの手札を相手と入れ替える。運命の交差', cost: 3, rarity: 5, price: 1500
   },
   deepcolor_paint: {
     id: 'deepcolor_paint', name: 'ディープカラーの彩筆', emoji: '🎨', type: 'strategy',
     effects: [
       { type: 'transform_card', target: 'enemy', cardId: 'paint_dummy' },
     ],
-    description: '「絵筆が…動いて…」相手の次の手札の最強カードを無力な絵に変える。芸術は爆発', cost: 2, rarity: 5, price: 1300
+    description: '「絵筆が…動いて…」相手の次の手札の最強カードを無力な絵に変える。芸術は爆発', cost: 3, rarity: 5, price: 1300
   },
   pallas_banquet: {
     id: 'pallas_banquet', name: 'パラスの大宴会', emoji: '🍺', type: 'chug',
@@ -849,7 +849,7 @@ export const CARD_DATA: Record<string, CardDef> = {
     effects: [
       { type: 'grant_card', target: 'self', cardId: 'mon3tr_strike' },
     ],
-    description: '「Mon3tr、行きなさい」次ラウンドの手札にMon3trカードを追加。5枚目の切り札', cost: 2, rarity: 5, price: 1800
+    description: '「Mon3tr、行きなさい」次ラウンドの手札にMon3trカードを追加。5枚目の切り札', cost: 3, rarity: 5, price: 1800
   },
 
   // ============================================
@@ -879,7 +879,7 @@ export const CARD_DATA: Record<string, CardDef> = {
       { id: 'drink_dmg_half', duration: 3 },
       { id: 'dot', duration: 3, value: 1 },
     ],
-    description: '3T: Drinkダメージ半減 & 毎ターン双方酔い+1。セクハラ合戦に持ち込む', cost: 2, rarity: 5, price: 1800
+    description: '3T: Drinkダメージ半減 & 毎ターン双方酔い+1。セクハラ合戦に持ち込む', cost: 3, rarity: 5, price: 1800
   },
 };
 
