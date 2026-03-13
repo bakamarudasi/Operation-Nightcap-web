@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, GachaResult } from '../data/types.ts';
+import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, GachaResult, CardType } from '../data/types.ts';
 import { DEFAULT_DECK, CARD_DATA } from '../data/cards.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
-import { shuffleArray, randomPick, POSITIVE_BUFF_IDS, DEBUFF_IDS, findHighestValueCardIndex, getDrunkLevel, hasBuff, buildCorruptedSlots } from '../engine/utils.ts';
+import { shuffleArray, randomPick, POSITIVE_BUFF_IDS, DEBUFF_IDS, findHighestValueCardIndex, getDrunkLevel, hasBuff, buildCorruptedSlots, getHiddenSlotCount, shouldMisplay, isFoodDisabled, canPlayCard } from '../engine/utils.ts';
 import { BattleEngine, tickBuffs, getAdjustedRequiredLevel, type ExtendedResult } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
 import { pullMulti } from '../engine/gachaEngine.ts';
@@ -42,7 +42,7 @@ interface GameStore {
   initBattle: (opponentId: string) => void;
   drawHands: () => void;
   selectCard: (cardId: string) => void;
-  playRound: () => { messages: string[]; cgEvent: CGEvent | null; opponentCgEvent: CGEvent | null; instantWin: boolean; opponentCardId: string; playerDamage: number; opponentDamage: number; playerHeal: number; opponentHeal: number; revealedHand?: string[]; rumorActive?: boolean } | null;
+  playRound: () => { messages: string[]; cgEvent: CGEvent | null; opponentCgEvent: CGEvent | null; instantWin: boolean; opponentCardId: string; playerCardId: string; playerDamage: number; opponentDamage: number; playerHeal: number; opponentHeal: number; revealedHand?: string[]; rumorActive?: boolean; playerMisplay: boolean; opponentMisplay: boolean; playerMatchup?: 'advantage' | 'disadvantage' | 'neutral' } | null;
   checkGameEnd: () => 'player_win' | 'opponent_win' | 'draw' | null;
   endBattle: (result: 'player_win' | 'opponent_win' | 'draw') => number;
 
@@ -87,6 +87,12 @@ const initialBattle: BattleState = {
   playerHand: [],
   opponentHand: [],
   selectedCard: null,
+  playerHiddenSlots: [],
+  opponentHiddenSlots: [],
+  playerMisplay: false,
+  opponentMisplay: false,
+  playerCardHistory: [],
+  opponentCardHistory: [],
   isProcessing: false,
   opponentDiscardNext: false,
   playerDiscardNext: false,
@@ -275,6 +281,14 @@ export const useGameStore = create<GameStore>()(
             oHand.push(extraId);
           }
 
+          const playerHiddenCount = getHiddenSlotCount(getDrunkLevel(b.playerDrunk));
+          const opponentHiddenCount = getHiddenSlotCount(getDrunkLevel(b.opponentDrunk));
+          const pickSlots = (size: number, count: number) => {
+            const indices = Array.from({ length: size }, (_, i) => i);
+            shuffleArray(indices);
+            return indices.slice(0, Math.min(size, count));
+          };
+
           // 汚染スロットを実際の手札サイズに合わせる（デッキ枯渇で手札が少ない場合）
           let adjustedCorrupted = b.corruptedSlots;
           if (adjustedCorrupted.length > pHand.length) {
@@ -295,6 +309,10 @@ export const useGameStore = create<GameStore>()(
               corruptedSlots: adjustedCorrupted,
               opponentCorruptedSlots: adjustedOppCorrupted,
               selectedCard: null,
+              playerHiddenSlots: pickSlots(pHand.length, playerHiddenCount),
+              opponentHiddenSlots: pickSlots(oHand.length, opponentHiddenCount),
+              playerMisplay: false,
+              opponentMisplay: false,
               isProcessing: false,
               opponentDiscardNext: false,
               playerDiscardNext: false,
@@ -327,13 +345,32 @@ export const useGameStore = create<GameStore>()(
         const b = state.battle;
         if (!b.selectedCard || b.isProcessing) return null;
 
-        const opponentCardId = BattleAI.selectCard(b.opponentHand, state.currentOpponent!, b);
+        const selectedCard = CARD_DATA[b.selectedCard];
+        if (!selectedCard) return null;
+
+        const playerDrunkLevel = getDrunkLevel(b.playerDrunk);
+        if (!canPlayCard(selectedCard, b.playerDrunk)) return null;
+        if (isFoodDisabled(playerDrunkLevel) && selectedCard.type === 'food') return null;
+
+        const aiPick = BattleAI.selectCard(b.opponentHand, state.currentOpponent!, b);
+        const opponentCardId = aiPick.cardId;
         if (!opponentCardId) return null;
 
-        const result = BattleEngine.resolveRound(b.selectedCard, opponentCardId, b);
+        let resolvedPlayerCardId = b.selectedCard;
+        let playerMisplay = false;
+        if (shouldMisplay(playerDrunkLevel) && b.playerHand.length > 1) {
+          const alt = b.playerHand.filter(id => id !== b.selectedCard);
+          const picked = randomPick(alt);
+          if (picked) {
+            resolvedPlayerCardId = picked;
+            playerMisplay = true;
+          }
+        }
+
+        const result = BattleEngine.resolveRound(resolvedPlayerCardId, opponentCardId, b);
 
         // BUG-006: 汚染カード使用時の自分へのダメージ処理（プレイヤー）
-        const selectedIdx = b.playerHand.indexOf(b.selectedCard);
+        const selectedIdx = b.playerHand.indexOf(resolvedPlayerCardId);
         if (selectedIdx >= 0 && b.corruptedSlots[selectedIdx]) {
           result.playerDamage += 1;
           result.messages.push('🔥 発情状態のカードを使った…自分に酔い+1！');
@@ -347,13 +384,13 @@ export const useGameStore = create<GameStore>()(
         }
 
         // === プレイヤーのセクハラ成功時 → CGイベント検索 ===
-        const pCard = CARD_DATA[b.selectedCard];
+        const pCard = CARD_DATA[resolvedPlayerCardId];
         if (pCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
           const targetDrunk = b.opponentDrunk;
           const targetLevel = getDrunkLevel(targetDrunk);
           const adjustedRequired = getAdjustedRequiredLevel(pCard.requiredDrunkLevel ?? 0, b.playerBuffs, b.opponentBuffs, !!pCard.instantWin);
           if (targetLevel >= adjustedRequired) {
-            const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === b.selectedCard);
+            const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === resolvedPlayerCardId);
             if (cgEvent) {
               result.cgEvent = cgEvent;
             }
@@ -475,7 +512,7 @@ export const useGameStore = create<GameStore>()(
 
         // 使用済みカードを1枚だけ除いた残り手札をデッキに戻す
         const unusedPlayerCards = [...b.playerHand];
-        const pIdx = unusedPlayerCards.indexOf(b.selectedCard!);
+        const pIdx = unusedPlayerCards.indexOf(resolvedPlayerCardId);
         if (pIdx >= 0) unusedPlayerCards.splice(pIdx, 1);
         const unusedOpponentCards = [...b.opponentHand];
         const oIdx = unusedOpponentCards.indexOf(opponentCardId);
@@ -500,7 +537,7 @@ export const useGameStore = create<GameStore>()(
           shuffleArray(oDeckReturn);
 
           // 使用したカードを捨て札に追加
-          const pDiscardPile = [...state.battle.playerDiscardPile, b.selectedCard!];
+          const pDiscardPile = [...state.battle.playerDiscardPile, resolvedPlayerCardId];
           const oDiscardPile = [...state.battle.opponentDiscardPile, opponentCardId];
 
           // breast_touch: デッキ内のDrink1枚を捨て札へ送り、Harassment1枚を先頭に移動（枚数維持）
@@ -585,6 +622,10 @@ export const useGameStore = create<GameStore>()(
                 : state.battle.opponentExtraCards,
               playerTransformCard: extResult.transformPlayerCard ?? state.battle.playerTransformCard,
               opponentTransformCard: extResult.transformEnemyCard ?? state.battle.opponentTransformCard,
+              playerMisplay,
+              opponentMisplay: aiPick.misplay,
+              playerCardHistory: [...state.battle.playerCardHistory, CARD_DATA[resolvedPlayerCardId]?.type].filter((x): x is CardType => !!x).slice(-3),
+              opponentCardHistory: [...state.battle.opponentCardHistory, CARD_DATA[opponentCardId]?.type].filter((x): x is CardType => !!x).slice(-3),
             },
           };
         });
@@ -595,6 +636,10 @@ export const useGameStore = create<GameStore>()(
           opponentCgEvent,
           instantWin: result.instantWin,
           opponentCardId,
+          playerCardId: resolvedPlayerCardId,
+          playerMisplay,
+          opponentMisplay: aiPick.misplay,
+          playerMatchup: result.playerMatchup,
           playerDamage: result.playerDamage,
           opponentDamage: result.opponentDamage,
           playerHeal: result.playerHeal,

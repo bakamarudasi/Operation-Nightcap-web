@@ -97,6 +97,7 @@ export interface CardDef {
    */
   effects?: EffectDef[];
   description: string;
+  cost: number;
   rarity: number;
   price: number;
 }
@@ -225,6 +226,12 @@ export interface BattleState {
   opponentDeckRemaining: string[];
   playerHand: string[];
   opponentHand: string[];
+  playerHiddenSlots: number[];
+  opponentHiddenSlots: number[];
+  playerMisplay: boolean;
+  opponentMisplay: boolean;
+  playerCardHistory: CardType[];
+  opponentCardHistory: CardType[];
   selectedCard: string | null;
   isProcessing: boolean;
   /** 乾杯強制: 相手の手札1枚ランダム破棄 */
@@ -281,6 +288,8 @@ export interface RoundResult {
   cgEvent: CGEvent | null;
   instantWin: boolean;
   spillNullified: boolean;
+  playerMatchup?: 'advantage' | 'disadvantage' | 'neutral';
+  opponentMatchup?: 'advantage' | 'disadvantage' | 'neutral';
   /** 相手のセクハラ/逆セクハラで発動するCGイベント */
   opponentCgEvent?: CGEvent | null;
   /** このラウンドで付与されるバフ（プレイヤー側） */

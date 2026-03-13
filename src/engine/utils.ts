@@ -112,6 +112,39 @@ export function hasBuff(buffs: { id: string }[], id: string): boolean {
 }
 
 /** 汚染スロットをランダム生成 */
+
+
+/** 酔いLvから肝力を算出 */
+export function getKanryoku(drunkLevel: number): number {
+  if (drunkLevel <= 0) return 1;
+  if (drunkLevel === 1) return 2;
+  if (drunkLevel === 2) return 3;
+  return 4;
+}
+
+/** 現在の酔い値でカードが使用可能か判定 */
+export function canPlayCard(card: { cost: number }, drunkValue: number): boolean {
+  const drunkLevel = getDrunkLevel(drunkValue);
+  return card.cost <= getKanryoku(drunkLevel);
+}
+
+/** 酔いLvに応じた隠しスロット数 */
+export function getHiddenSlotCount(drunkLevel: number): number {
+  if (drunkLevel >= 3) return 2;
+  if (drunkLevel >= 2) return 1;
+  return 0;
+}
+
+/** 暴走判定（Lv3以上で20%） */
+export function shouldMisplay(drunkLevel: number): boolean {
+  return drunkLevel >= 3 && Math.random() < 0.2;
+}
+
+/** food封印判定（Lv3以上） */
+export function isFoodDisabled(drunkLevel: number): boolean {
+  return drunkLevel >= 3;
+}
+
 export function buildCorruptedSlots(handSize: number, corruptCount: number): boolean[] {
   const slots = Array(handSize).fill(false);
   const indices = Array.from({ length: handSize }, (_, i) => i);
