@@ -293,8 +293,17 @@ export const useGameStore = create<GameStore>()(
             return indices.slice(0, Math.min(size, count));
           };
 
-          let pHiddenCache: number[] = [];
-          let oHiddenCache: number[] = [];
+          const pHiddenSlots = pickSlots(pHand.length, playerHiddenCount);
+          const oHiddenSlots = pickSlots(oHand.length, opponentHiddenCount);
+
+          // ぼやけスロット: hidden以外からランダム1枚
+          const pickBlurred = (handLen: number, drunkLv: number, hiddenSlots: number[]): number => {
+            if (drunkLv < 1) return -1;
+            const avail = Array.from({ length: handLen }, (_, i) => i).filter(i => !hiddenSlots.includes(i));
+            return avail.length > 0 ? avail[Math.floor(Math.random() * avail.length)] : -1;
+          };
+          const pBlurredSlot = pickBlurred(pHand.length, playerDrunkLv, pHiddenSlots);
+          const oBlurredSlot = pickBlurred(oHand.length, opponentDrunkLv, oHiddenSlots);
 
           // 汚染スロットを実際の手札サイズに合わせる（デッキ枯渇で手札が少ない場合）
           let adjustedCorrupted = b.corruptedSlots;
@@ -316,18 +325,10 @@ export const useGameStore = create<GameStore>()(
               corruptedSlots: adjustedCorrupted,
               opponentCorruptedSlots: adjustedOppCorrupted,
               selectedCard: null,
-              playerHiddenSlots: (() => { const s = pickSlots(pHand.length, playerHiddenCount); pHiddenCache = s; return s; })(),
-              opponentHiddenSlots: (() => { const s = pickSlots(oHand.length, opponentHiddenCount); oHiddenCache = s; return s; })(),
-              playerBlurredSlot: (() => {
-                if (playerDrunkLv < 1) return -1;
-                const avail = Array.from({ length: pHand.length }, (_, i) => i).filter(i => !pHiddenCache.includes(i));
-                return avail.length > 0 ? avail[Math.floor(Math.random() * avail.length)] : -1;
-              })(),
-              opponentBlurredSlot: (() => {
-                if (opponentDrunkLv < 1) return -1;
-                const avail = Array.from({ length: oHand.length }, (_, i) => i).filter(i => !oHiddenCache.includes(i));
-                return avail.length > 0 ? avail[Math.floor(Math.random() * avail.length)] : -1;
-              })(),
+              playerHiddenSlots: pHiddenSlots,
+              opponentHiddenSlots: oHiddenSlots,
+              playerBlurredSlot: pBlurredSlot,
+              opponentBlurredSlot: oBlurredSlot,
               playerMisplay: false,
               opponentMisplay: false,
               isProcessing: false,
