@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
-import { randomPick, getDrunkLevel, BUFF_META } from '../engine/utils.ts';
+import { randomPick, getDrunkLevel, BUFF_META, getKanryoku, canPlayCard, isFoodDisabled } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
 
@@ -110,6 +110,8 @@ export function BattleScreen() {
   const [slamOpp, setSlamOpp] = useState(false);
 
   const [roundPopup, setRoundPopup] = useState<{ text: string; cls: string } | null>(null);
+  const [matchupBadge, setMatchupBadge] = useState<string | null>(null);
+  const [misplayFlash, setMisplayFlash] = useState(false);
   const [revealedCards, setRevealedCards] = useState<string[] | null>(null);
   const [playingCardIdx, setPlayingCardIdx] = useState<number | null>(null);
   const [lastRound, setLastRound] = useState<{ pl: string; op: string; res: string; resColor: string }>({
@@ -223,13 +225,14 @@ export function BattleScreen() {
     }, 15000);
 
     // プレイヤーカードをフィールドに表示
-    if (pCard) {
-      const val = pCard.type === 'food' ? (pCard.heal === 99 ? '+MAX' : `+${pCard.heal ?? 0}`) :
-                  pCard.type === 'drink' ? `${pCard.damage === -1 ? '1~3' : pCard.damage}` :
+    const resolvedCard = CARD_DATA[result.playerCardId] ?? pCard;
+    if (resolvedCard) {
+      const val = resolvedCard.type === 'food' ? (resolvedCard.heal === 99 ? '+MAX' : `+${resolvedCard.heal ?? 0}`) :
+                  resolvedCard.type === 'drink' ? `${resolvedCard.damage === -1 ? '1~3' : resolvedCard.damage}` :
                   '';
       setTableCards(prev => ({
         ...prev,
-        player: { id: selectedId, emoji: pCard.emoji, name: pCard.name, val }
+        player: { id: result.playerCardId, emoji: resolvedCard.emoji, name: resolvedCard.name, val }
       }));
       setPlayerFlipped(true);
       setSlamPlayer(true);
@@ -282,6 +285,14 @@ export function BattleScreen() {
             setReaction(null);
           }
           setTimeout(() => setReaction(null), 2000);
+
+          if (result.playerMisplay) {
+            setMisplayFlash(true);
+            setTimeout(() => setMisplayFlash(false), 900);
+          }
+          if (result.playerMatchup === 'advantage') setMatchupBadge('🔺 相性有利！');
+          else if (result.playerMatchup === 'disadvantage') setMatchupBadge('🔻 相性不利…');
+          else setMatchupBadge(null);
 
           // ラウンド結果ポップアップ
           if (oppNetDamage > plNetDamage) {
@@ -363,6 +374,7 @@ export function BattleScreen() {
               setPlayerFlipped(false);
               setOppFlipped(false);
               setPlayingCardIdx(null);
+              setMatchupBadge(null);
               clearTimeout(lockSafetyTimer);
               cardPlayLock.current = false;
               drawHands();
@@ -595,6 +607,7 @@ export function BattleScreen() {
                   style={{ width: `${Math.min(battle.playerSanity / 10, 1) * 100}%` }}
                 />
               </div>
+              <div className="kanryoku-display">肝力: {Math.min(getKanryoku(getDrunkLevel(battle.playerDrunk)), 4)}/4</div>
               <div className={`gauge-lvl ${plSanityStage.cls}`}>
                 <span className="lvl-t">{plSanityStage.text}</span>
                 <span className="lvl-n">({battle.playerSanity}/10)</span>
@@ -627,10 +640,15 @@ export function BattleScreen() {
             const card = CARD_DATA[cardId];
             if (!card) return null;
             const isPlaying = playingCardIdx === i;
-            const isDisabled = (battle.isProcessing || playingCardIdx !== null) && !isPlaying;
+            const playerDrunkLevel = getDrunkLevel(battle.playerDrunk);
+            const costLocked = !canPlayCard(card, battle.playerDrunk);
+            const foodLocked = isFoodDisabled(playerDrunkLevel) && card.type === 'food';
+            const isDisabled = ((battle.isProcessing || playingCardIdx !== null) && !isPlaying) || costLocked || foodLocked;
             const isSelected = battle.selectedCard === cardId && !isPlaying;
             const isCorrupted = battle.corruptedSlots[i] === true;
-            const valText = card.type === 'food' ? (card.heal === 99 ? 'MAX回復' : `回復 ${card.heal}`) :
+            const isHidden = battle.playerHiddenSlots.includes(i);
+            const isBlurred = playerDrunkLevel >= 1 && !isHidden;
+            const valText = isHidden ? '???' : card.type === 'food' ? (card.heal === 99 ? 'MAX回復' : `回復 ${card.heal}`) :
                             card.type === 'drink' ? (card.damage === -1 ? '1~3' : `${card.damage}`) :
                             card.type === 'chug' ? '特殊' :
                             card.type === 'harassment' ? '特殊' : '';
@@ -639,20 +657,24 @@ export function BattleScreen() {
               <div
                 key={`${cardId}-${i}`}
                 ref={el => { handCardRefs.current[i] = el; }}
-                className={`hand-card type-${card.type} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${isDisabled ? 'disabled' : ''} ${isCorrupted ? 'corrupted' : ''}`}
+                className={`hand-card type-${card.type} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${isDisabled ? 'disabled' : ''} ${isCorrupted ? 'corrupted' : ''} ${isBlurred ? 'card-blurred' : ''} ${isHidden ? 'card-hidden' : ''} ${costLocked ? 'card-cost-locked' : ''} ${foodLocked ? 'card-food-locked' : ''}`}
                 onClick={() => handleCardClick(cardId, i)}
               >
                 <div className="hand-tooltip">
-                  <div className="tooltip-name">{card.name}</div>
-                  <div className="tooltip-desc">{card.description}</div>
+                  <div className="tooltip-name">{isHidden ? '???' : card.name}</div>
+                  <div className="tooltip-desc">{costLocked ? '肝力不足' : foodLocked ? '暴走中はfood使用不可' : (isHidden ? '隠されたカード' : card.description)}</div>
                 </div>
-                <div className="hand-icon">{card.emoji}</div>
-                <div className="hand-name">{card.name}</div>
+                <div className="hand-cost">{card.cost}</div>
+                <div className="hand-icon">{isHidden ? '❓' : card.emoji}</div>
+                <div className="hand-name">{isHidden ? '???' : card.name}</div>
                 <div className="hand-val">{valText}</div>
               </div>
             );
           })}
         </div>
+
+        {matchupBadge && <div className="matchup-badge">{matchupBadge}</div>}
+        {misplayFlash && <div className="matchup-badge misplay-shake">⚠️ 暴走！</div>}
 
         {/* 下部ステータスバー */}
         <div className="battle-status-bar">

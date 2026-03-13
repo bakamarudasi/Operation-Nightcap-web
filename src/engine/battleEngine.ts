@@ -57,6 +57,18 @@ export interface ExtendedResult extends RoundResult {
   swapDrinkForHarassment?: boolean;
 }
 
+
+
+export function getMatchupResult(playerType: CardDef['type'], opponentType: CardDef['type']): 'advantage' | 'disadvantage' | 'neutral' {
+  if (playerType === 'drink' && opponentType === 'harassment') return 'advantage';
+  if (playerType === 'harassment' && opponentType === 'drink') return 'disadvantage';
+  if (playerType === 'harassment' && opponentType === 'food') return 'advantage';
+  if (playerType === 'food' && opponentType === 'harassment') return 'disadvantage';
+  if (playerType === 'food' && opponentType === 'drink') return 'advantage';
+  if (playerType === 'drink' && opponentType === 'food') return 'disadvantage';
+  return 'neutral';
+}
+
 /** strategy / environment / status を「ユーティリティ」として判定 */
 function isUtilityType(type: string): boolean {
   return type === 'strategy' || type === 'environment' || type === 'status';
@@ -807,6 +819,8 @@ export const BattleEngine = {
       cgEvent: null,
       instantWin: false,
       spillNullified: false,
+      playerMatchup: 'neutral',
+      opponentMatchup: 'neutral',
       newPlayerBuffs: [],
       newOpponentBuffs: [],
       corruptCount: 0,
@@ -815,6 +829,21 @@ export const BattleEngine = {
       playerSanityHeal: 0,
       opponentSanityHeal: 0,
     };
+
+    const playerMatchup = getMatchupResult(pCard.type, oCard.type);
+    const opponentMatchup = getMatchupResult(oCard.type, pCard.type);
+    result.playerMatchup = playerMatchup;
+    result.opponentMatchup = opponentMatchup;
+
+    const playerNullifiesHarassment = pCard.type === 'drink' && oCard.type === 'harassment';
+    const opponentNullifiesHarassment = oCard.type === 'drink' && pCard.type === 'harassment';
+    const playerHalvesDrink = pCard.type === 'food' && oCard.type === 'drink';
+    const opponentHalvesDrink = oCard.type === 'food' && pCard.type === 'drink';
+    const playerHalvesFood = pCard.type === 'harassment' && oCard.type === 'food';
+    const opponentHalvesFood = oCard.type === 'harassment' && pCard.type === 'food';
+
+    if (playerMatchup === 'advantage') result.messages.push('🔺 相性有利！');
+    else if (playerMatchup === 'disadvantage') result.messages.push('🔻 相性不利…');
 
     // === フェーズ0: DoTバフのtick処理 ===
     const playerDoT = calcDoTDamage(battle.playerBuffs);
@@ -892,7 +921,8 @@ export const BattleEngine = {
     if (isUtilityType(pCard.type)) {
       // プレイヤーがユーティリティ → 相手の攻撃だけ通る
       if (oCard.type === 'drink') {
-        const dmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
+        let dmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
+        if (playerHalvesDrink) dmg = Math.floor(dmg * 0.5);
         result.playerDamage += dmg;
         result.messages.push(`${oCard.emoji} ${oCard.name}で酔い${dmg}ダメージ！`);
         applyCardExtras(oCard, result, 'opponent');
@@ -908,7 +938,8 @@ export const BattleEngine = {
     }
     if (isUtilityType(oCard.type)) {
       if (pCard.type === 'drink') {
-        const dmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
+        let dmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
+        if (opponentHalvesDrink) dmg = Math.floor(dmg * 0.5);
         result.opponentDamage += dmg;
         result.messages.push(`${pCard.emoji} ${pCard.name}で酔い${dmg}ダメージ！`);
         applyCardExtras(pCard, result, 'player');
@@ -937,6 +968,17 @@ export const BattleEngine = {
     }
 
     // === セクハラカード処理（プレイヤー・相手 双方向対応） ===
+    if (opponentNullifiesHarassment && pCard.type === 'harassment') {
+      result.spillNullified = true;
+      result.messages.push('🍺 勢いで流された！プレイヤーのharassmentは無効！');
+      return this.resolveSingleCard(oCard, pCard, result, 'opponent', battle);
+    }
+    if (playerNullifiesHarassment && oCard.type === 'harassment') {
+      result.spillNullified = true;
+      result.messages.push('🍺 相手のharassmentを勢いで無効化！');
+      return this.resolveSingleCard(pCard, oCard, result, 'player', battle);
+    }
+
     if (pCard.type === 'harassment' && oCard.type === 'harassment') {
       this.resolveHarassmentCard(pCard, oCard, result, 'player', battle);
       this.resolveHarassmentCard(oCard, pCard, result, 'opponent', battle);
@@ -952,6 +994,7 @@ export const BattleEngine = {
     // === ドリンク vs ドリンク ===
     if (pCard.type === 'drink' && oCard.type === 'drink') {
       let pDmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
+      if (opponentHalvesDrink) pDmg = Math.floor(pDmg * 0.5);
       let oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
 
       if (hasBuff(battle.playerBuffs, 'atk_down')) {
@@ -984,6 +1027,7 @@ export const BattleEngine = {
     // === ドリンク vs つまみ ===
     else if (pCard.type === 'drink' && oCard.type === 'food') {
       let pDmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
+      if (opponentHalvesDrink) pDmg = Math.floor(pDmg * 0.5);
       result.opponentDamage += pDmg;
       if (hasBuff(battle.opponentBuffs, 'no_food')) {
         result.messages.push(`${pCard.emoji} ${pCard.name}で酔い${pDmg}ダメージ！`);
@@ -991,6 +1035,7 @@ export const BattleEngine = {
       } else {
         let heal = oCard.heal === 99 ? Math.max(0, battle.opponentDrunk + pDmg) : (oCard.heal ?? 0);
         heal = applyFoodBuffs(heal, battle.opponentBuffs);
+        if (playerHalvesFood) heal = Math.floor(heal * 0.5);
         result.opponentHeal += heal;
         result.messages.push(`${pCard.emoji} ${pCard.name}で酔い${pDmg}ダメージ！`);
         result.messages.push(`${oCard.emoji} ${oCard.name}で${heal}回復！`);
@@ -1007,14 +1052,17 @@ export const BattleEngine = {
     else if (pCard.type === 'food' && oCard.type === 'drink') {
       if (hasBuff(battle.playerBuffs, 'no_food')) {
         result.messages.push(`🚫 つまみ封じ中！${pCard.emoji}${pCard.name}が使えない！`);
-        const oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
+        let oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
+        if (playerHalvesDrink) oDmg = Math.floor(oDmg * 0.5);
         result.playerDamage += oDmg;
         result.messages.push(`${oCard.emoji} ${oCard.name}で酔い${oDmg}ダメージ！`);
       } else {
-        const oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
+        let oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
+        if (playerHalvesDrink) oDmg = Math.floor(oDmg * 0.5);
         result.playerDamage += oDmg;
         let heal = pCard.heal === 99 ? Math.max(0, battle.playerDrunk + oDmg) : (pCard.heal ?? 0);
         heal = applyFoodBuffs(heal, battle.playerBuffs);
+        if (opponentHalvesFood) heal = Math.floor(heal * 0.5);
         result.playerHeal += heal;
         result.messages.push(`${oCard.emoji} ${oCard.name}で酔い${oDmg}ダメージ！`);
         result.messages.push(`${pCard.emoji} ${pCard.name}で${heal}回復！`);
@@ -1035,6 +1083,7 @@ export const BattleEngine = {
       } else {
         let heal = pCard.heal === 99 ? Math.max(0, battle.playerDrunk) : (pCard.heal ?? 0);
         heal = applyFoodBuffs(heal, battle.playerBuffs);
+        if (opponentHalvesFood) heal = Math.floor(heal * 0.5);
         result.playerHeal += heal;
         result.messages.push(`${pCard.emoji} ${pCard.name}で${heal}回復！`);
         applyCardExtras(pCard, result, 'player');
@@ -1047,6 +1096,7 @@ export const BattleEngine = {
       } else {
         let heal = oCard.heal === 99 ? Math.max(0, battle.opponentDrunk) : (oCard.heal ?? 0);
         heal = applyFoodBuffs(heal, battle.opponentBuffs);
+        if (playerHalvesFood) heal = Math.floor(heal * 0.5);
         result.opponentHeal += heal;
         result.messages.push(`${oCard.emoji} ${oCard.name}で相手も${heal}回復！`);
         applyCardExtras(oCard, result, 'opponent');
