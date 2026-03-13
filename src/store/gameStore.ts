@@ -89,6 +89,8 @@ const initialBattle: BattleState = {
   selectedCard: null,
   playerHiddenSlots: [],
   opponentHiddenSlots: [],
+  playerBlurredSlot: -1,
+  opponentBlurredSlot: -1,
   playerMisplay: false,
   opponentMisplay: false,
   playerCardHistory: [],
@@ -281,13 +283,27 @@ export const useGameStore = create<GameStore>()(
             oHand.push(extraId);
           }
 
-          const playerHiddenCount = getHiddenSlotCount(getDrunkLevel(b.playerDrunk));
-          const opponentHiddenCount = getHiddenSlotCount(getDrunkLevel(b.opponentDrunk));
+          const playerDrunkLv = getDrunkLevel(b.playerDrunk);
+          const opponentDrunkLv = getDrunkLevel(b.opponentDrunk);
+          const playerHiddenCount = getHiddenSlotCount(playerDrunkLv);
+          const opponentHiddenCount = getHiddenSlotCount(opponentDrunkLv);
           const pickSlots = (size: number, count: number) => {
             const indices = Array.from({ length: size }, (_, i) => i);
             shuffleArray(indices);
             return indices.slice(0, Math.min(size, count));
           };
+
+          const pHiddenSlots = pickSlots(pHand.length, playerHiddenCount);
+          const oHiddenSlots = pickSlots(oHand.length, opponentHiddenCount);
+
+          // ぼやけスロット: hidden以外からランダム1枚
+          const pickBlurred = (handLen: number, drunkLv: number, hiddenSlots: number[]): number => {
+            if (drunkLv < 1) return -1;
+            const avail = Array.from({ length: handLen }, (_, i) => i).filter(i => !hiddenSlots.includes(i));
+            return avail.length > 0 ? avail[Math.floor(Math.random() * avail.length)] : -1;
+          };
+          const pBlurredSlot = pickBlurred(pHand.length, playerDrunkLv, pHiddenSlots);
+          const oBlurredSlot = pickBlurred(oHand.length, opponentDrunkLv, oHiddenSlots);
 
           // 汚染スロットを実際の手札サイズに合わせる（デッキ枯渇で手札が少ない場合）
           let adjustedCorrupted = b.corruptedSlots;
@@ -309,8 +325,10 @@ export const useGameStore = create<GameStore>()(
               corruptedSlots: adjustedCorrupted,
               opponentCorruptedSlots: adjustedOppCorrupted,
               selectedCard: null,
-              playerHiddenSlots: pickSlots(pHand.length, playerHiddenCount),
-              opponentHiddenSlots: pickSlots(oHand.length, opponentHiddenCount),
+              playerHiddenSlots: pHiddenSlots,
+              opponentHiddenSlots: oHiddenSlots,
+              playerBlurredSlot: pBlurredSlot,
+              opponentBlurredSlot: oBlurredSlot,
               playerMisplay: false,
               opponentMisplay: false,
               isProcessing: false,

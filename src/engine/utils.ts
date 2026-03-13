@@ -116,8 +116,7 @@ export function hasBuff(buffs: { id: string }[], id: string): boolean {
 
 /** 酔いLvから肝力を算出 */
 export function getKanryoku(drunkLevel: number): number {
-  if (drunkLevel <= 0) return 1;
-  if (drunkLevel === 1) return 2;
+  if (drunkLevel <= 1) return 2;
   if (drunkLevel === 2) return 3;
   return 4;
 }

@@ -994,7 +994,6 @@ export const BattleEngine = {
     // === ドリンク vs ドリンク ===
     if (pCard.type === 'drink' && oCard.type === 'drink') {
       let pDmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
-      if (opponentHalvesDrink) pDmg = Math.floor(pDmg * 0.5);
       let oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
 
       if (hasBuff(battle.playerBuffs, 'atk_down')) {
