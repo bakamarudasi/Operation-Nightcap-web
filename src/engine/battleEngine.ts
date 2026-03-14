@@ -1,4 +1,4 @@
-import { CARD_DATA, getCardDamage } from '../data/cards.ts';
+import { CARD_DATA, getCardDamage, getEnhancedCard } from '../data/cards.ts';
 import type { BattleState, RoundResult, CGEvent, CharacterDef, Buff, CardDef, EffectDef } from '../data/types.ts';
 import { randomPick, POSITIVE_BUFF_IDS, getDrunkLevel, hasBuff, getBuffMessage } from './utils.ts';
 
@@ -806,7 +806,8 @@ export const BattleEngine = {
   },
 
   _resolveRoundCore(playerCardId: string, opponentCardId: string, battle: BattleState, currentOpponent?: CharacterDef | null): ExtendedResult {
-    const pCard = CARD_DATA[playerCardId];
+    const pCardLevel = battle.playerCardLevels?.[playerCardId] ?? 1;
+    const pCard = getEnhancedCard(playerCardId, pCardLevel);
     const oCard = CARD_DATA[opponentCardId];
     const result: ExtendedResult = {
       playerCard: pCard,

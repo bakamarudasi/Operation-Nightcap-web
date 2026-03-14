@@ -29,6 +29,32 @@
   letter-spacing: 0.1em;
 }
 
+/* ── 強化工房ショートカットボタン ── */
+.enhance-shortcut-btn {
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  padding: 5px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(201, 168, 92, 0.4);
+  background: linear-gradient(135deg, rgba(180, 100, 40, 0.3), rgba(140, 70, 20, 0.4));
+  color: var(--gold-bright);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.enhance-shortcut-btn:hover {
+  background: linear-gradient(135deg, rgba(200, 120, 50, 0.5), rgba(160, 90, 30, 0.6));
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 12px rgba(201, 168, 92, 0.25);
+  transform: translateY(-1px);
+}
+
+.enhance-shortcut-btn:active {
+  transform: translateY(0);
+}
+
 .deck-count {
   font-size: 1rem;
   font-weight: 700;

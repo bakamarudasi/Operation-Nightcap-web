@@ -273,6 +273,16 @@
   color: var(--paper);
 }
 
+.sel-affinity {
+  letter-spacing: 1px;
+}
+
+.sel-affinity-next {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
 .sel-detail-quote {
   font-family: var(--font-heading);
   font-size: 13px;

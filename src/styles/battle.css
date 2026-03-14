@@ -1201,6 +1201,18 @@
   color: var(--gold-bright);
 }
 
+.result-affinity {
+  font-size: 14px;
+  color: #ff8899;
+  margin-top: 4px;
+  letter-spacing: 1px;
+}
+
+.result-affinity .affinity-bonus {
+  font-size: 12px;
+  color: var(--gold);
+}
+
 /* ============================================
    衣装崩れ演出
    ============================================ */

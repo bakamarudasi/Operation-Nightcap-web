@@ -206,7 +206,7 @@ export interface CharacterDef {
   afterEvents: AfterEvent[];
 }
 
-export type ScreenId = 'title' | 'select' | 'battle' | 'shop' | 'gacha' | 'gallery' | 'settings' | 'deck';
+export type ScreenId = 'title' | 'select' | 'battle' | 'shop' | 'gacha' | 'gallery' | 'settings' | 'deck' | 'enhance';
 
 /** ガチャ1回分の排出結果 */
 export interface GachaResult {
@@ -278,6 +278,8 @@ export interface BattleState {
   playerSanity: number;
   /** 相手の理性値（0で敗北） */
   opponentSanity: number;
+  /** プレイヤーのカード強化レベル */
+  playerCardLevels: Record<string, number>;
 }
 
 export interface RoundResult {
