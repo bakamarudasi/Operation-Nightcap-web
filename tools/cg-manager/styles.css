@@ -615,3 +615,21 @@ button.sm { padding: 3px 7px; font-size: 0.72em; }
 .sync-unmatched { margin: 2px 0; }
 .sync-unmatched code { background: var(--surface2); padding: 1px 5px; border-radius: 3px; margin: 1px 2px; display: inline-block; font-size: 0.9em; }
 .frame-src-warn { color: var(--missing); font-weight: bold; margin-left: 4px; cursor: help; }
+
+/* Export Preview Modal */
+.export-section { margin-bottom: 12px; }
+.export-section h4 { margin-bottom: 6px; font-size: 0.85em; }
+.export-errors { background: rgba(192, 57, 43, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--missing); }
+.export-error-item { color: #ff6b6b; font-size: 0.82em; padding: 2px 0; }
+.export-error-item::before { content: '✕ '; }
+.export-warnings { background: rgba(255, 217, 61, 0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--warn); }
+.export-warn-item { color: var(--warn); font-size: 0.82em; padding: 2px 0; }
+.export-warn-item::before { content: '⚠ '; }
+
+/* Diff View */
+.diff-view { font-size: 0.78em; }
+.diff-header { padding: 4px 8px; background: var(--surface2); font-weight: 600; font-size: 0.85em; border-radius: 4px 4px 0 0; margin-top: 8px; }
+.diff-old, .diff-new { margin: 0; padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 0 0 4px 4px; max-height: 200px; overflow-y: auto; white-space: pre; tab-size: 2; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.95em; }
+.diff-line { padding: 0 4px; }
+.diff-remove { background: rgba(192, 57, 43, 0.15); color: #ff8888; }
+.diff-add { background: rgba(39, 174, 96, 0.15); color: #88ff88; }

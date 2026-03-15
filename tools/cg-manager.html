@@ -157,7 +157,8 @@
           <button onclick="generateEventCode()">このイベントのコード</button>
           <button onclick="generateAllEventsCode()">全イベントのコード</button>
           <button class="sm" onclick="copyCodeOutput()">コピー</button>
-          <button onclick="confirmExportToCharactersTS()" style="background:#2a4a5e;border-color:#4a9eff;margin-left:auto" title="characters.ts の cgEvents を直接上書き">📤 characters.ts に直接反映</button>
+          <button onclick="confirmExportToCharactersTS()" style="background:#2a4a5e;border-color:#4a9eff;margin-left:auto" title="バリデーション＋差分プレビュー付き">📤 characters.ts に直接反映</button>
+          <button id="rollbackBtn" onclick="rollbackExport()" style="background:#5a2a2a;border-color:var(--missing);display:none" title="直前のエクスポートを取り消す">↩ 元に戻す</button>
         </div>
         <textarea class="code-output" id="codeOutput" readonly placeholder="上のボタンでコードを生成..."></textarea>
       </div>
