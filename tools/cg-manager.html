@@ -20,8 +20,12 @@
     <button onclick="checkAllFiles()">ファイル確認</button>
     <button onclick="showCompareView()" style="background:var(--surface2)">キャラ比較</button>
     <button onclick="showMissingCGModal()" style="background:#2a5a4e;border-color:var(--success)">不足CG出力</button>
+    <button onclick="rescanAssets()" style="background:#2a3a5e;border-color:#5588cc">🔄 アセット同期</button>
   </div>
 </div>
+
+<!-- Asset sync status bar -->
+<div class="asset-sync-bar" id="assetSyncStatus" style="padding:4px 16px;font-size:0.75em;border-bottom:1px solid var(--border);min-height:20px"></div>
 
 <!-- Character tabs -->
 <div class="char-tabs" id="charTabs"></div>
@@ -153,6 +157,7 @@
           <button onclick="generateEventCode()">このイベントのコード</button>
           <button onclick="generateAllEventsCode()">全イベントのコード</button>
           <button class="sm" onclick="copyCodeOutput()">コピー</button>
+          <button onclick="confirmExportToCharactersTS()" style="background:#2a4a5e;border-color:#4a9eff;margin-left:auto" title="characters.ts の cgEvents を直接上書き">📤 characters.ts に直接反映</button>
         </div>
         <textarea class="code-output" id="codeOutput" readonly placeholder="上のボタンでコードを生成..."></textarea>
       </div>

@@ -606,3 +606,12 @@ button.sm { padding: 3px 7px; font-size: 0.72em; }
   overflow: hidden; margin-top: 4px;
 }
 .compare-summary .cs-fill { height: 100%; background: var(--done); border-radius: 3px; transition: width 0.3s; }
+
+/* Asset Sync */
+.asset-sync-bar { background: var(--surface); }
+.sync-warnings { margin: 2px 0 4px; }
+.sync-warning-item { padding: 1px 0; font-size: 0.9em; }
+.sync-warn-icon { color: var(--missing); font-weight: bold; }
+.sync-unmatched { margin: 2px 0; }
+.sync-unmatched code { background: var(--surface2); padding: 1px 5px; border-radius: 3px; margin: 1px 2px; display: inline-block; font-size: 0.9em; }
+.frame-src-warn { color: var(--missing); font-weight: bold; margin-left: 4px; cursor: help; }
