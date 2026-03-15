@@ -39,6 +39,10 @@ async function init() {
   renderList();
   updateCounts();
   checkAllFiles();
+  if (projectDirHandle) {
+    await scanAssetFiles(currentCharId);
+    renderAssetSyncStatus();
+  }
 }
 
 // Keyboard shortcuts

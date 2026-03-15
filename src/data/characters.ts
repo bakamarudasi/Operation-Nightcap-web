@@ -147,9 +147,21 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
         frames: [
           {
-            src: '/characters/blaze/cg/headpat.webp',
+            src: '/characters/blaze/cg/headpat_frame1.webp',
             label: 'うなじを撫でる',
             dialogueStart: 0,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/headpat_frame2.webp',
+            label: 'うなじを撫でる',
+            dialogueStart: 1,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/headpat_frame3.webp',
+            label: 'うなじを撫でる',
+            dialogueStart: 2,
             transition: 'fade',
           },
         ],
