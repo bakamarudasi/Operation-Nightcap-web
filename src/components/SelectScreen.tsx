@@ -3,6 +3,7 @@ import { useGameStore } from '../store/gameStore.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import type { CharacterDef } from '../data/types.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
+import { getAffinityLevel, AFFINITY_LEVELS } from '../data/affinity.ts';
 import '../styles/select.css';
 
 /* ── 定数 ── */
@@ -79,6 +80,7 @@ export function SelectScreen() {
   const wins = useGameStore((s) => s.wins);
   const losses = useGameStore((s) => s.losses);
   const unlockedCGs = useGameStore((s) => s.unlockedCGs);
+  const winsByCharacter = useGameStore((s) => s.winsByCharacter);
 
   // Fix #3: useMemo でキャラ配列を安定化
   const characters = useMemo(() => Object.values(CHARACTER_DATA), []);
@@ -215,6 +217,10 @@ export function SelectScreen() {
     ? currentChar.cgEvents.filter(e => unlockedCGs.includes(e.id)).length
     : 0;
   const cgTotal = currentChar?.cgEvents.length ?? 0;
+  const charWins = currentChar ? (winsByCharacter[currentChar.id] ?? 0) : 0;
+  const affinityLv = getAffinityLevel(charWins);
+  const nextAffinity = AFFINITY_LEVELS.find(a => a.requiredWins > charWins);
+  const affinityStars = affinityLv > 0 ? '❤'.repeat(affinityLv) + '🤍'.repeat(4 - affinityLv) : '🤍🤍🤍🤍';
 
   /* ── セレクトUI表示条件 ── */
   const showSelectContent = phase === 'select' || phase === 'noren-close' || phase === 'noren-closed' || phase === 'noren-final';
@@ -310,12 +316,16 @@ export function SelectScreen() {
                   <span className="sel-stat-value">{currentChar.drunkType}</span>
                 </div>
                 <div className="sel-stat">
-                  <span className="sel-stat-label">戦績</span>
-                  <span className="sel-stat-value">{wins}勝 {losses}敗</span>
+                  <span className="sel-stat-label">対戦績</span>
+                  <span className="sel-stat-value">{charWins}勝</span>
                 </div>
                 <div className="sel-stat">
                   <span className="sel-stat-label">CG</span>
                   <span className="sel-stat-value">{cgCount}/{cgTotal}</span>
+                </div>
+                <div className="sel-stat">
+                  <span className="sel-stat-label">好感度</span>
+                  <span className="sel-stat-value sel-affinity">{affinityStars}{nextAffinity ? <span className="sel-affinity-next"> (次: {nextAffinity.requiredWins}勝)</span> : ''}</span>
                 </div>
               </div>
               <div className="sel-detail-quote">
@@ -328,6 +338,13 @@ export function SelectScreen() {
                   onClick={() => setScreen('deck')}
                 >
                   🃏 デッキ編集
+                </button>
+                <button
+                  className="sel-deck-btn"
+                  disabled={isAnim}
+                  onClick={() => setScreen('enhance')}
+                >
+                  🔨 強化工房
                 </button>
                 <button
                   className="sel-drink-btn"

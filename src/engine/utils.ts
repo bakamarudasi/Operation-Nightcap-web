@@ -16,7 +16,7 @@ export interface BuffMeta {
 export const BUFF_META: Record<Buff['id'], BuffMeta> = {
   stun:             { icon: '💫', label: 'スタン',       positive: false, message: () => '😵 スタン付与！次のターン行動不能…！' },
   atk_down:         { icon: '⬇️', label: '攻撃力低下',   positive: false, message: () => '⬇️ 攻撃力低下！次のターン、酒のダメージが半減…' },
-  dot:              { icon: '🩸', label: '継続ダメージ', positive: false, message: (b) => `💔 持続ダメージ付与！毎ターン理性が${b.value ?? 0}ずつ削られる…` },
+  dot:              { icon: '🩸', label: '継続ダメージ', positive: false, message: (b) => `💔 持続ダメージ付与！毎ターン酔いが${b.value ?? 0}ずつ回る…` },
   no_food:          { icon: '🚫', label: '食べ物封印',   positive: false, message: () => '🚫 つまみ封じ！防御カードが使用不可に…！' },
   corrupted_hand:   { icon: '💋', label: '手札汚染',     positive: false },
   tipsy:            { icon: '🍺', label: 'ほろ酔い',     positive: false, message: () => '😳 ほろ酔い状態！ドリンクダメージが1.5倍に…' },
@@ -55,7 +55,7 @@ export function getBuffMessage(buff: Buff): string | null {
 export const POSITIVE_BUFF_IDS: readonly Buff['id'][] = [
   'next_drink_boost', 'next_food_boost', 'drink_dmg_half', 'self_atk_up',
   'negate_next', 'stealth', 'karaoke', 'all_dmg_up',
-  'sanity_negate', 'thorns', 'reflect_all', 'finger_technique',
+  'sanity_negate', 'thorns', 'reflect_all', 'finger_technique', 'excuse',
 ];
 
 /** デバフとして扱うID一覧（クロージャの錠剤等で除去対象） */
@@ -112,6 +112,38 @@ export function hasBuff(buffs: { id: string }[], id: string): boolean {
 }
 
 /** 汚染スロットをランダム生成 */
+
+
+/** 酔いLvから肝力を算出 */
+export function getKanryoku(drunkLevel: number): number {
+  if (drunkLevel <= 1) return 2;
+  if (drunkLevel === 2) return 3;
+  return 4;
+}
+
+/** 現在の酔い値でカードが使用可能か判定 */
+export function canPlayCard(card: { cost: number }, drunkValue: number): boolean {
+  const drunkLevel = getDrunkLevel(drunkValue);
+  return card.cost <= getKanryoku(drunkLevel);
+}
+
+/** 酔いLvに応じた隠しスロット数 */
+export function getHiddenSlotCount(drunkLevel: number): number {
+  if (drunkLevel >= 3) return 2;
+  if (drunkLevel >= 2) return 1;
+  return 0;
+}
+
+/** 暴走判定（Lv3以上で20%） */
+export function shouldMisplay(drunkLevel: number): boolean {
+  return drunkLevel >= 3 && Math.random() < 0.2;
+}
+
+/** food封印判定（Lv3以上） */
+export function isFoodDisabled(drunkLevel: number): boolean {
+  return drunkLevel >= 3;
+}
+
 export function buildCorruptedSlots(handSize: number, corruptCount: number): boolean[] {
   const slots = Array(handSize).fill(false);
   const indices = Array.from({ length: handSize }, (_, i) => i);

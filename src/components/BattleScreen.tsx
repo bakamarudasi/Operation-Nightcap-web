@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
-import { CARD_DATA } from '../data/cards.ts';
-import { randomPick, getDrunkLevel, BUFF_META } from '../engine/utils.ts';
+import { CARD_DATA, getEnhancedCard } from '../data/cards.ts';
+import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
+import { randomPick, getDrunkLevel, BUFF_META, getKanryoku, canPlayCard, isFoodDisabled } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
 
@@ -92,6 +93,7 @@ export function BattleScreen() {
   const checkAfterEvent = useGameStore((s) => s.checkAfterEvent);
   const showAfterEvent = useGameStore((s) => s.showAfterEvent);
   const activeAfterEvent = useGameStore((s) => s.activeAfterEvent);
+  const winsByCharacter = useGameStore((s) => s.winsByCharacter);
 
   const [dialogue, setDialogue] = useState({ speaker: '', text: '' });
   const [displayText, setDisplayText] = useState('');
@@ -110,6 +112,8 @@ export function BattleScreen() {
   const [slamOpp, setSlamOpp] = useState(false);
 
   const [roundPopup, setRoundPopup] = useState<{ text: string; cls: string } | null>(null);
+  const [matchupBadge, setMatchupBadge] = useState<string | null>(null);
+  const [misplayFlash, setMisplayFlash] = useState(false);
   const [revealedCards, setRevealedCards] = useState<string[] | null>(null);
   const [playingCardIdx, setPlayingCardIdx] = useState<number | null>(null);
   const [lastRound, setLastRound] = useState<{ pl: string; op: string; res: string; resColor: string }>({
@@ -120,6 +124,27 @@ export function BattleScreen() {
   const tiltRef = useRef<HTMLDivElement>(null);
   const blurRef = useRef<HTMLDivElement>(null);
   const cardPlayLock = useRef(false);
+  const mountedRef = useRef(true);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // アンマウントガード付き setTimeout
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      if (mountedRef.current) fn();
+    }, ms);
+    timersRef.current.push(id);
+    return id;
+  }, []);
+
+  // アンマウント時に全タイマーをクリア
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
+    };
+  }, []);
 
   // 最初の手札を配る
   useEffect(() => {
@@ -215,7 +240,7 @@ export function BattleScreen() {
     if (!result) return;
 
     // cardPlayLock の安全タイムアウト（15秒で強制解除）
-    const lockSafetyTimer = setTimeout(() => {
+    const lockSafetyTimer = safeTimeout(() => {
       if (cardPlayLock.current) {
         cardPlayLock.current = false;
         setPlayingCardIdx(null);
@@ -223,23 +248,24 @@ export function BattleScreen() {
     }, 15000);
 
     // プレイヤーカードをフィールドに表示
-    if (pCard) {
-      const val = pCard.type === 'food' ? (pCard.heal === 99 ? '+MAX' : `+${pCard.heal ?? 0}`) :
-                  pCard.type === 'drink' ? `${pCard.damage === -1 ? '1~3' : pCard.damage}` :
+    const resolvedCard = CARD_DATA[result.playerCardId] ?? pCard;
+    if (resolvedCard) {
+      const val = resolvedCard.type === 'food' ? (resolvedCard.heal === 99 ? '+MAX' : `+${resolvedCard.heal ?? 0}`) :
+                  resolvedCard.type === 'drink' ? `${resolvedCard.damage === -1 ? '1~3' : resolvedCard.damage}` :
                   '';
       setTableCards(prev => ({
         ...prev,
-        player: { id: selectedId, emoji: pCard.emoji, name: pCard.name, val }
+        player: { id: result.playerCardId, emoji: resolvedCard.emoji, name: resolvedCard.name, val }
       }));
       setPlayerFlipped(true);
       setSlamPlayer(true);
       playSound('slam');
       setFieldShaking(true);
-      setTimeout(() => { setSlamPlayer(false); setFieldShaking(false); }, 400);
+      safeTimeout(() => { setSlamPlayer(false); setFieldShaking(false); }, 400);
     }
 
     // 相手カードを少し遅れて表示
-    setTimeout(() => {
+    safeTimeout(() => {
       // 相手カードをplayRoundの結果から直接取得
       const oppCard = CARD_DATA[result.opponentCardId];
       let oppCardInfo: { emoji: string; name: string; val: string } | null = null;
@@ -257,15 +283,15 @@ export function BattleScreen() {
 
       setSlamOpp(true);
       playSound('slam');
-      setTimeout(() => setSlamOpp(false), 400);
+      safeTimeout(() => setSlamOpp(false), 400);
 
       // 相手カードフリップ
-      setTimeout(() => {
+      safeTimeout(() => {
         setOppFlipped(true);
         playSound('flip');
 
         // 結果表示
-        setTimeout(() => {
+        safeTimeout(() => {
           // セリフ
           if (result.messages.length > 0) {
             setDialogue({ speaker: currentOpponent?.name ?? '', text: result.messages.join(' / ') });
@@ -281,7 +307,15 @@ export function BattleScreen() {
           } else {
             setReaction(null);
           }
-          setTimeout(() => setReaction(null), 2000);
+          safeTimeout(() => setReaction(null), 2000);
+
+          if (result.playerMisplay) {
+            setMisplayFlash(true);
+            safeTimeout(() => setMisplayFlash(false), 900);
+          }
+          if (result.playerMatchup === 'advantage') setMatchupBadge('🔺 相性有利！');
+          else if (result.playerMatchup === 'disadvantage') setMatchupBadge('🔻 相性不利…');
+          else setMatchupBadge(null);
 
           // ラウンド結果ポップアップ
           if (oppNetDamage > plNetDamage) {
@@ -291,24 +325,24 @@ export function BattleScreen() {
           } else {
             setRoundPopup({ text: '引分', cls: 'result-draw' });
           }
-          setTimeout(() => setRoundPopup(null), 1800);
+          safeTimeout(() => setRoundPopup(null), 1800);
 
           // distract: 相手の手札を公開
           if (result.revealedHand && result.revealedHand.length > 0) {
             setRevealedCards(result.revealedHand);
-            setTimeout(() => setRevealedCards(null), 4000);
+            safeTimeout(() => setRevealedCards(null), 4000);
           }
 
           // CG（プレイヤーのセクハラ成功時）
           if (result.cgEvent) {
-            setTimeout(() => { showCG(result.cgEvent!); }, 1000);
+            safeTimeout(() => { showCG(result.cgEvent!); }, 1000);
           }
 
           // CG（相手の逆セクハラ成功時）
           // プレイヤー側CGがある場合はその後に表示、なければ同タイミング
           if (result.opponentCgEvent) {
             const delay = result.cgEvent ? 5000 : 1000;
-            setTimeout(() => { showCG(result.opponentCgEvent!); }, delay);
+            safeTimeout(() => { showCG(result.opponentCgEvent!); }, delay);
           }
 
           const hasCG = !!(result.cgEvent || result.opponentCgEvent);
@@ -316,7 +350,7 @@ export function BattleScreen() {
 
           // 即勝利
           if (result.instantWin) {
-            setTimeout(() => {
+            safeTimeout(() => {
               clearTimeout(lockSafetyTimer);
               cardPlayLock.current = false;
               const reward = endBattle('player_win');
@@ -330,7 +364,7 @@ export function BattleScreen() {
 
           // 勝敗チェック（CG表示中は待つ）
           const endCheckDelay = hasCG ? cgDelay : 1500;
-          setTimeout(() => {
+          safeTimeout(() => {
             const end = checkGameEnd();
             if (end) {
               clearTimeout(lockSafetyTimer);
@@ -363,6 +397,7 @@ export function BattleScreen() {
               setPlayerFlipped(false);
               setOppFlipped(false);
               setPlayingCardIdx(null);
+              setMatchupBadge(null);
               clearTimeout(lockSafetyTimer);
               cardPlayLock.current = false;
               drawHands();
@@ -381,7 +416,7 @@ export function BattleScreen() {
         }, 400);
       }, 400);
     }, 800);
-  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, playRound, checkAfterEvent]);
+  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, playRound, checkAfterEvent, safeTimeout]);
 
   // カード選択後に自動で出す
   useEffect(() => {
@@ -595,6 +630,7 @@ export function BattleScreen() {
                   style={{ width: `${Math.min(battle.playerSanity / 10, 1) * 100}%` }}
                 />
               </div>
+              <div className="kanryoku-display">肝力: {getKanryoku(getDrunkLevel(battle.playerDrunk))}/4</div>
               <div className={`gauge-lvl ${plSanityStage.cls}`}>
                 <span className="lvl-t">{plSanityStage.text}</span>
                 <span className="lvl-n">({battle.playerSanity}/10)</span>
@@ -627,10 +663,17 @@ export function BattleScreen() {
             const card = CARD_DATA[cardId];
             if (!card) return null;
             const isPlaying = playingCardIdx === i;
-            const isDisabled = (battle.isProcessing || playingCardIdx !== null) && !isPlaying;
+            const playerDrunkLevel = getDrunkLevel(battle.playerDrunk);
+            const costLocked = !canPlayCard(card, battle.playerDrunk);
+            const foodLocked = isFoodDisabled(playerDrunkLevel) && card.type === 'food';
+            const isDisabled = ((battle.isProcessing || playingCardIdx !== null) && !isPlaying) || costLocked || foodLocked;
             const isSelected = battle.selectedCard === cardId && !isPlaying;
             const isCorrupted = battle.corruptedSlots[i] === true;
-            const valText = card.type === 'food' ? (card.heal === 99 ? 'MAX回復' : `回復 ${card.heal}`) :
+            const isHidden = battle.playerHiddenSlots.includes(i);
+            const isBlurred = i === battle.playerBlurredSlot && !isHidden;
+            const cardLevel = battle.playerCardLevels?.[cardId] ?? 1;
+            const levelClass = cardLevel >= 3 ? 'card-lv3' : cardLevel >= 2 ? 'card-lv2' : '';
+            const valText = isHidden ? '???' : card.type === 'food' ? (card.heal === 99 ? 'MAX回復' : `回復 ${card.heal}`) :
                             card.type === 'drink' ? (card.damage === -1 ? '1~3' : `${card.damage}`) :
                             card.type === 'chug' ? '特殊' :
                             card.type === 'harassment' ? '特殊' : '';
@@ -639,20 +682,27 @@ export function BattleScreen() {
               <div
                 key={`${cardId}-${i}`}
                 ref={el => { handCardRefs.current[i] = el; }}
-                className={`hand-card type-${card.type} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${isDisabled ? 'disabled' : ''} ${isCorrupted ? 'corrupted' : ''}`}
+                className={`hand-card type-${card.type} ${levelClass} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${isDisabled ? 'disabled' : ''} ${isCorrupted ? 'corrupted' : ''} ${isBlurred ? 'card-blurred' : ''} ${isHidden ? 'card-hidden' : ''} ${costLocked ? 'card-cost-locked' : ''} ${foodLocked ? 'card-food-locked' : ''}`}
                 onClick={() => handleCardClick(cardId, i)}
               >
+                {cardLevel >= 2 && !isHidden && (
+                  <div className="card-level-badge">{'★'.repeat(cardLevel)}</div>
+                )}
                 <div className="hand-tooltip">
-                  <div className="tooltip-name">{card.name}</div>
-                  <div className="tooltip-desc">{card.description}</div>
+                  <div className="tooltip-name">{isHidden ? '???' : card.name}</div>
+                  <div className="tooltip-desc">{costLocked ? '肝力不足' : foodLocked ? '暴走中はfood使用不可' : (isHidden ? '隠されたカード' : card.description)}</div>
                 </div>
-                <div className="hand-icon">{card.emoji}</div>
-                <div className="hand-name">{card.name}</div>
+                <div className="hand-cost">{card.cost}</div>
+                <div className="hand-icon">{isHidden ? '❓' : card.emoji}</div>
+                <div className="hand-name">{isHidden ? '???' : card.name}</div>
                 <div className="hand-val">{valText}</div>
               </div>
             );
           })}
         </div>
+
+        {matchupBadge && <div className="matchup-badge">{matchupBadge}</div>}
+        {misplayFlash && <div className="matchup-badge misplay-shake">⚠️ 暴走！</div>}
 
         {/* 下部ステータスバー */}
         <div className="battle-status-bar">
@@ -729,6 +779,17 @@ export function BattleScreen() {
                 : 'いい勝負だった…'}
             </p>
             <div className="result-reward">+{resultReward} 龍門幣</div>
+            {gameResult === 'player_win' && currentOpponent && (() => {
+              const charWins = winsByCharacter[currentOpponent.id] ?? 0;
+              const affLv = getAffinityLevel(charWins);
+              const bonus = getAffinityBonus(charWins);
+              return affLv > 0 ? (
+                <div className="result-affinity">
+                  {'❤'.repeat(affLv)} 好感度 Lv.{affLv}
+                  {bonus > 0 && <span className="affinity-bonus"> (報酬+{bonus})</span>}
+                </div>
+              ) : null;
+            })()}
             {gameResult === 'player_win' && pendingAfterEvent && (
               <button
                 className="menu-btn after-event-btn"

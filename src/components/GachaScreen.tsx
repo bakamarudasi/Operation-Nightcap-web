@@ -1,261 +1,21 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
-import { GACHA_SINGLE_COST, GACHA_MULTI_COST, DUPLICATE_REFUND } from '../data/gacha.ts';
+import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
 import type { GachaResult } from '../data/types.ts';
 
-import { getSharedAudioContext } from '../engine/audioContext.ts';
+import { playPourSound, playGlowSound, playRevealSound, playResultSound } from '../engine/gachaAudio.ts';
+import { useParticles } from './gacha/useParticles.ts';
+import { RARITY_CONFIG, MENU_ROWS, GACHA_CSS } from './gacha/gachaConstants.ts';
+import { GachaCollection } from './gacha/GachaCollection.tsx';
+import { FeaturedCard } from './gacha/FeaturedCard.tsx';
 
-/** 注ぎ音: ノイズ + 低音の持続音 */
-function playPourSound() {
-  try {
-    const ctx = getSharedAudioContext();
-    const t = ctx.currentTime;
-    // ノイズ (液体感)
-    const buf = ctx.createBuffer(1, ctx.sampleRate * 1.2, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.5;
-    const ns = ctx.createBufferSource();
-    ns.buffer = buf;
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass'; bp.frequency.value = 600; bp.Q.value = 2;
-    const ng = ctx.createGain();
-    ng.gain.setValueAtTime(0, t);
-    ng.gain.linearRampToValueAtTime(0.08, t + 0.2);
-    ng.gain.setValueAtTime(0.08, t + 0.8);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
-    ns.connect(bp).connect(ng).connect(ctx.destination);
-    ns.start(t); ns.stop(t + 1.2);
-    // 低いうなり (とくとく感)
-    const o = ctx.createOscillator();
-    o.type = 'sine'; o.frequency.value = 80;
-    o.frequency.setValueAtTime(80, t);
-    o.frequency.linearRampToValueAtTime(120, t + 0.5);
-    o.frequency.linearRampToValueAtTime(80, t + 1.0);
-    const og = ctx.createGain();
-    og.gain.setValueAtTime(0.04, t);
-    og.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
-    o.connect(og).connect(ctx.destination);
-    o.start(t); o.stop(t + 1.2);
-  } catch { /* audio not supported */ }
-}
-
-/** グロー音: レアリティに応じた上昇音 */
-function playGlowSound(rarity: number) {
-  try {
-    const ctx = getSharedAudioContext();
-    const t = ctx.currentTime;
-    if (rarity >= 5) {
-      // 高レア: 和音で上昇するファンファーレ
-      const freqs = rarity >= 6 ? [400, 600, 800, 1000] : [350, 525, 700];
-      freqs.forEach((freq, i) => {
-        const o = ctx.createOscillator();
-        o.type = 'sine';
-        o.frequency.setValueAtTime(freq * 0.7, t + i * 0.12);
-        o.frequency.exponentialRampToValueAtTime(freq, t + i * 0.12 + 0.2);
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0, t + i * 0.12);
-        g.gain.linearRampToValueAtTime(rarity >= 6 ? 0.1 : 0.07, t + i * 0.12 + 0.05);
-        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.8);
-        o.connect(g).connect(ctx.destination);
-        o.start(t + i * 0.12);
-        o.stop(t + i * 0.12 + 0.8);
-      });
-    } else {
-      // 低レア: 短い確認音
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = 300 + rarity * 60;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.06, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.4);
-    }
-  } catch { /* audio not supported */ }
-}
-
-/** カード出現音: レアリティで音が変わる */
-function playRevealSound(rarity: number) {
-  try {
-    const ctx = getSharedAudioContext();
-    const t = ctx.currentTime;
-    if (rarity >= 6) {
-      // ★6: 衝撃音 + 高音チャイム
-      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-      const ns = ctx.createBufferSource(); ns.buffer = buf;
-      const ng = ctx.createGain();
-      ng.gain.setValueAtTime(0.25, t);
-      ng.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-      ns.connect(ng).connect(ctx.destination);
-      ns.start(t);
-      [1000, 1500, 2000].forEach((freq, i) => {
-        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0.08, t + 0.05 + i * 0.06);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.05 + i * 0.06 + 0.6);
-        o.connect(g).connect(ctx.destination);
-        o.start(t + 0.05 + i * 0.06);
-        o.stop(t + 0.05 + i * 0.06 + 0.6);
-      });
-    } else if (rarity >= 4) {
-      // ★4-5: キラッと光る音
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      const baseFreq = rarity >= 5 ? 1200 : 800;
-      o.frequency.setValueAtTime(baseFreq * 0.6, t);
-      o.frequency.exponentialRampToValueAtTime(baseFreq, t + 0.08);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(rarity >= 5 ? 0.08 : 0.06, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.3);
-    } else {
-      // ★1-3: 軽い「ポン」
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(500 + rarity * 80, t);
-      o.frequency.exponentialRampToValueAtTime(200, t + 0.1);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.04, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.12);
-    }
-  } catch { /* audio not supported */ }
-}
-
-/** 結果表示音: 全カード揃った時の締め音 */
-function playResultSound(highestRarity: number) {
-  try {
-    const ctx = getSharedAudioContext();
-    const t = ctx.currentTime;
-    if (highestRarity >= 5) {
-      // 高レア入り: 祝福チャイム
-      const chords = highestRarity >= 6
-        ? [[523, 659, 784], [659, 784, 1047]] // C5-E5-G5 → E5-G5-C6
-        : [[440, 554, 659]]; // A4-C#5-E5
-      chords.forEach((freqs, ci) => {
-        freqs.forEach((freq, fi) => {
-          const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
-          const g = ctx.createGain();
-          const start = t + ci * 0.25 + fi * 0.03;
-          g.gain.setValueAtTime(0.07, start);
-          g.gain.exponentialRampToValueAtTime(0.001, start + 0.8);
-          o.connect(g).connect(ctx.destination);
-          o.start(start); o.stop(start + 0.8);
-        });
-      });
-    } else {
-      // 通常: 短い完了音
-      const o = ctx.createOscillator();
-      o.type = 'triangle'; o.frequency.value = 600;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.05, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-      o.connect(g).connect(ctx.destination);
-      o.start(t); o.stop(t + 0.25);
-    }
-  } catch { /* audio not supported */ }
-}
-
-// ─── UI定数 ───
-const RC: Record<number, { label: string; border: string; text: string; glow: string; bg: string; menuColor: string; particle: string }> = {
-  1: { label:'並',   border:'#6b4e2a', text:'#c4a06a', glow:'rgba(180,130,60,0.4)',  bg:'linear-gradient(160deg,#3a2e1e,#2a2015)', menuColor:'#8a6a3a', particle:'#c4a06a' },
-  2: { label:'上',   border:'#3a6a3a', text:'#7abf7a', glow:'rgba(80,160,80,0.4)',   bg:'linear-gradient(160deg,#1e2e1e,#151f15)', menuColor:'#5a9a5a', particle:'#7abf7a' },
-  3: { label:'特上', border:'#3a5aaa', text:'#7a9aee', glow:'rgba(80,120,220,0.45)', bg:'linear-gradient(160deg,#1a1e30,#12152a)', menuColor:'#5a7acc', particle:'#7a9aee' },
-  4: { label:'極',   border:'#8844bb', text:'#cc88ff', glow:'rgba(160,60,240,0.5)',  bg:'linear-gradient(160deg,#2a1a35,#1e1228)', menuColor:'#aa66dd', particle:'#cc88ff' },
-  5: { label:'秘蔵', border:'#cc8800', text:'#ffcc44', glow:'rgba(220,160,0,0.55)',  bg:'linear-gradient(160deg,#352510,#281a08)', menuColor:'#ffaa00', particle:'#ffd700' },
-  6: { label:'幻',   border:'#cc2244', text:'#ff6688', glow:'rgba(220,30,60,0.6)',   bg:'linear-gradient(160deg,#350a0a,#220606)', menuColor:'#ff3355', particle:'#ff4466' },
-};
-
-// ─── パーティクルシステム ───
-function useParticles(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
-  const particles = useRef<Array<{
-    x: number; y: number; vx: number; vy: number;
-    life: number; decay: number; size: number; color: string;
-    type: 'spark' | 'dot';
-  }>>([]);
-  const animId = useRef<number | null>(null);
-
-  const emit = useCallback((x: number, y: number, color: string, count = 20, spread = 120) => {
-    for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.8;
-      const speed = 1.5 + Math.random() * spread / 30;
-      particles.current.push({
-        x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 2,
-        life: 1, decay: 0.012 + Math.random() * 0.015,
-        size: 2 + Math.random() * 4, color,
-        type: Math.random() > 0.6 ? 'spark' : 'dot',
-      });
-    }
-  }, []);
-
-  const burstCenter = useCallback((color: string, count = 50) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    emit(canvas.width / 2, canvas.height / 2, color, count, 200);
-  }, [canvasRef, emit]);
-
-  const rain = useCallback((color: string, count = 30) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    for (let i = 0; i < count; i++) {
-      particles.current.push({
-        x: Math.random() * canvas.width,
-        y: -10 - Math.random() * 40,
-        vx: (Math.random() - 0.5) * 1.5,
-        vy: 2 + Math.random() * 3,
-        life: 1, decay: 0.008 + Math.random() * 0.008,
-        size: 1.5 + Math.random() * 3, color,
-        type: 'spark',
-      });
-    }
-  }, [canvasRef]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const resize = () => { canvas.width = canvas.offsetWidth * 2; canvas.height = canvas.offsetHeight * 2; };
-    resize();
-    window.addEventListener('resize', resize);
-    const loop = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.current = particles.current.filter(p => p.life > 0);
-      for (const p of particles.current) {
-        p.x += p.vx; p.y += p.vy; p.vy += 0.06; p.life -= p.decay;
-        ctx.globalAlpha = p.life * 0.9;
-        if (p.type === 'spark') {
-          ctx.strokeStyle = p.color; ctx.lineWidth = p.size * 0.6;
-          ctx.beginPath(); ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x - p.vx * 3, p.y - p.vy * 3); ctx.stroke();
-        } else {
-          ctx.fillStyle = p.color; ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); ctx.fill();
-        }
-      }
-      ctx.globalAlpha = 1;
-      animId.current = requestAnimationFrame(loop);
-    };
-    animId.current = requestAnimationFrame(loop);
-    return () => { if (animId.current) cancelAnimationFrame(animId.current); window.removeEventListener('resize', resize); };
-  }, [canvasRef]);
-
-  return { emit, burstCenter, rain };
-}
-
-// ─── メインコンポーネント ───
 export function GachaScreen() {
   const money = useGameStore(s => s.money);
   const inventory = useGameStore(s => s.inventory);
   const pullGacha = useGameStore(s => s.pullGacha);
   const setScreen = useGameStore(s => s.setScreen);
 
-  // inventory string[] → count map
   const inventoryMap = useMemo(() => {
     const map: Record<string, number> = {};
     for (const id of inventory) { map[id] = (map[id] ?? 0) + 1; }
@@ -274,13 +34,11 @@ export function GachaScreen() {
   const [flash, setFlash] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<'rates' | 'collection'>('rates');
   const [pullCount, setPullCount] = useState(0);
-  const [manualReveal, setManualReveal] = useState(false); // 10連タップめくりモード
-  const [collectionDetail, setCollectionDetail] = useState<string | null>(null); // コレクション詳細表示中のカードID
-  const [collectionFilter, setCollectionFilter] = useState<string>('all'); // all | drink | food | harassment | strategy | environment | status | chug
+  const [manualReveal, setManualReveal] = useState(false);
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const fillRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const gachaPulledRef = useRef(false); // pour中にpullGacha済みかを追跡（二重引き防止）
+  const gachaPulledRef = useRef(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { burstCenter, rain } = useParticles(canvasRef);
 
@@ -305,12 +63,10 @@ export function GachaScreen() {
     timers.current.push(t);
   };
 
-  // スキップ: 演出を飛ばして結果表示
   const skipToResult = useCallback(() => {
     if (animPhase === 'idle' || animPhase === 'result') return;
     clearAll();
     if (animPhase === 'pour') {
-      // pourフェーズ中はまだガチャ結果が無い場合がある → 強制的にpull（二重引き防止）
       if (gachaPulledRef.current) { setAnimPhase('idle'); return; }
       gachaPulledRef.current = true;
       const count = pendingCount;
@@ -324,14 +80,12 @@ export function GachaScreen() {
       setAnimPhase('result');
       playResultSound(highest);
     } else {
-      // glow/reveal中は既にresultsがある
       setRevealedCount(results.length);
       setAnimPhase('result');
       if (results.length > 0) playResultSound(Math.max(...results.map(r => r.rarity)));
     }
   }, [animPhase, pendingCount, pullGacha, results]);
 
-  // 10連タップめくり: クリックで1枚ずつ公開
   const revealNext = useCallback(() => {
     if (!manualReveal || animPhase !== 'reveal') return;
     if (revealedCount < results.length) {
@@ -339,7 +93,6 @@ export function GachaScreen() {
       setRevealedCount(c => c + 1);
       playRevealSound(r.rarity);
       if (r.rarity >= 4) triggerShake(r.rarity >= 6 ? 2 : 0.5);
-      // 最後の1枚を開いたら結果フェーズへ
       if (revealedCount + 1 >= results.length) {
         const t = setTimeout(() => {
           setAnimPhase('result');
@@ -373,9 +126,8 @@ export function GachaScreen() {
       if (fill >= 100 && fillRef.current) clearInterval(fillRef.current);
     }, 25);
 
-    // 注ぎ演出後にストア経由でガチャ実行
     const t1 = setTimeout(() => {
-      if (gachaPulledRef.current) return; // スキップで既にpull済みなら何もしない
+      if (gachaPulledRef.current) return;
       gachaPulledRef.current = true;
       const res = pullGacha(count);
       if (!res) { setAnimPhase('idle'); return; }
@@ -396,16 +148,14 @@ export function GachaScreen() {
 
       const t2 = setTimeout(() => {
         setRevealedCount(0); setAnimPhase('reveal');
-        const pc = RC[highest]?.particle || '#ffaa44';
+        const pc = RARITY_CONFIG[highest]?.particle || '#ffaa44';
         if (highest >= 5) burstCenter(pc, highest >= 6 ? 80 : 40);
         if (highest >= 4) rain(pc, highest >= 6 ? 50 : 20);
 
-        // 10連はタップめくりモード、1連は自動
         const useManual = count === 10;
         setManualReveal(useManual);
 
         if (useManual) {
-          // 最初の1枚だけ自動で開く
           const t = setTimeout(() => {
             setRevealedCount(1);
             playRevealSound(res[0].rarity);
@@ -436,26 +186,7 @@ export function GachaScreen() {
   useEffect(() => () => clearAll(), []);
 
   const highest = results.length > 0 ? Math.max(...results.map(r => r.rarity)) : 0;
-  const menuRows = [
-    { r: 6, emoji: '💋', items: '幻のカード', rate: '0.5%' },
-    { r: 5, emoji: '💊', items: '秘蔵品カード', rate: '3.5%' },
-    { r: 4, emoji: '🍶', items: '極レアカード', rate: '9.0%' },
-    { r: 3, emoji: '🥃', items: '特上カード', rate: '17.0%' },
-    { r: 2, emoji: '🍷', items: '上カード', rate: '25.0%' },
-    { r: 1, emoji: '🍺', items: '並カード', rate: '45.0%' },
-  ];
 
-  // コレクション用のグループ化データ
-  const collectionGrouped = useMemo(() => {
-    const grouped: Record<number, Array<{ id: string; name: string; emoji: string; count: number }>> = {};
-    for (const [id, card] of Object.entries(CARD_DATA)) {
-      if (!grouped[card.rarity]) grouped[card.rarity] = [];
-      grouped[card.rarity].push({ id, name: card.name, emoji: card.emoji, count: inventoryMap[id] ?? 0 });
-    }
-    return grouped;
-  }, [inventoryMap]);
-
-  // ── メイン画面 ──
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
@@ -465,102 +196,7 @@ export function GachaScreen() {
       transform: shake ? `translate(${(Math.random() - 0.5) * 8}px, ${(Math.random() - 0.5) * 6}px)` : 'none',
       transition: shake ? 'none' : 'transform 0.1s ease-out',
     }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700;900&family=Zen+Maru+Gothic:wght@400;700;900&family=Shippori+Mincho:wght@400;700&display=swap');
-        @keyframes flicker{0%,100%{opacity:1}91%{opacity:1}92%{opacity:.75}93%{opacity:1}97%{opacity:.88}98%{opacity:1}}
-        @keyframes sway{0%,100%{transform:rotate(-2.5deg) translateX(0)}50%{transform:rotate(2.5deg) translateX(1px)}}
-        @keyframes shimGold{0%{background-position:-200% center}100%{background-position:200% center}}
-        @keyframes cardDrop{
-          0%{transform:translateY(-40px) scale(0.85) rotate(-4deg);opacity:0}
-          50%{transform:translateY(5px) scale(1.08) rotate(.5deg);opacity:1}
-          100%{transform:translateY(0) scale(1) rotate(0);opacity:1}
-        }
-        @keyframes cardPopRare{
-          0%{transform:scale(0.5) rotate(-5deg);opacity:0;filter:brightness(3)}
-          40%{transform:scale(1.15) rotate(1deg);filter:brightness(1.6)}
-          70%{transform:scale(0.97);filter:brightness(1.2)}
-          100%{transform:scale(1) rotate(0);opacity:1;filter:brightness(1)}
-        }
-        @keyframes cardPopLegend{
-          0%{transform:scale(0.3) rotate(-10deg);opacity:0;filter:brightness(5) saturate(2)}
-          30%{transform:scale(1.25) rotate(2deg);filter:brightness(2) saturate(1.5)}
-          50%{transform:scale(0.95) rotate(-1deg);filter:brightness(1.3)}
-          70%{transform:scale(1.05);filter:brightness(1.1)}
-          100%{transform:scale(1) rotate(0);opacity:1;filter:brightness(1)}
-        }
-        @keyframes glassGlow{
-          0%{box-shadow:0 0 0px transparent;filter:brightness(1)}
-          30%{box-shadow:0 0 50px var(--gc),0 0 100px var(--gc);filter:brightness(2.5)}
-          60%{box-shadow:0 0 80px var(--gc),0 0 160px var(--gc);filter:brightness(3)}
-          100%{box-shadow:0 0 24px var(--gc);filter:brightness(1.5)}
-        }
-        @keyframes pourDrop{
-          0%{transform:translateY(-10px);opacity:0}
-          35%{opacity:1}
-          100%{transform:translateY(32px);opacity:0}
-        }
-        @keyframes menuFadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes pulseGlow{0%,100%{opacity:.5}50%{opacity:1}}
-        @keyframes resultIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
-        @keyframes bgPulse{0%,100%{opacity:.15}50%{opacity:.4}}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-        @keyframes bubbleUp{
-          0%{transform:translateY(0) scale(1);opacity:.6}
-          100%{transform:translateY(-40px) scale(.3);opacity:0}
-        }
-        @keyframes borderShine{
-          0%{background-position:0% 0%}
-          100%{background-position:200% 0%}
-        }
-        @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes smokeRise{
-          0%{transform:translateY(0) scaleX(1);opacity:.08}
-          50%{transform:translateY(-60px) scaleX(1.8);opacity:.04}
-          100%{transform:translateY(-120px) scaleX(2.5);opacity:0}
-        }
-        @keyframes glassIdle{
-          0%,100%{transform:rotate(-1deg) translateY(0)}
-          25%{transform:rotate(0.5deg) translateY(-3px)}
-          50%{transform:rotate(1deg) translateY(-1px)}
-          75%{transform:rotate(-0.5deg) translateY(-4px)}
-        }
-        @keyframes gentlePulse{0%,100%{opacity:.6}50%{opacity:1}}
-        @keyframes steamWisp{
-          0%{transform:translateY(0) translateX(0) scale(1);opacity:.15}
-          33%{transform:translateY(-15px) translateX(5px) scale(1.3);opacity:.1}
-          66%{transform:translateY(-30px) translateX(-3px) scale(1.6);opacity:.05}
-          100%{transform:translateY(-45px) translateX(2px) scale(2);opacity:0}
-        }
-        @keyframes neonFlicker{0%,18%,22%,25%,53%,57%,100%{opacity:1}20%{opacity:.4}24%{opacity:.6}55%{opacity:.5}}
-        @keyframes bottleFloat{
-          0%,100%{transform:translateY(0) rotate(-2deg)}
-          50%{transform:translateY(-8px) rotate(2deg)}
-        }
-        @keyframes heroFadeIn{from{opacity:0;transform:scale(.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
-        @keyframes featuredSlide{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
-        @keyframes floatLantern{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}}
-        @keyframes fadeSlideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
-        @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
-        .hero-fade{animation:heroFadeIn .6s ease both;}
-        .featured-slide{animation:featuredSlide .5s ease both;}
-        .bottle-float{animation:bottleFloat 4s ease-in-out infinite;}
-        .gbtn{cursor:pointer;border:none;outline:none;transition:all .18s;-webkit-tap-highlight-color:transparent;}
-        .gbtn:hover:not(:disabled){filter:brightness(1.2);transform:translateY(-2px);}
-        .gbtn:active:not(:disabled){transform:translateY(1px) scale(.97);}
-        .gbtn:disabled{opacity:.3;cursor:not-allowed;filter:grayscale(.5);}
-        .gold{background:linear-gradient(90deg,#aa6600,#ffdd55,#ffaa00,#ffee88,#aa6600);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shimGold 3s linear infinite;}
-        .flick{animation:flicker 5s ease-in-out infinite;}
-        .sway1{animation:sway 3.2s ease-in-out infinite;}
-        .sway2{animation:sway 3.8s ease-in-out .7s infinite;}
-        .menu-row{animation:menuFadeIn .4s ease both;}
-        .card-drop{animation:cardDrop .4s cubic-bezier(.34,1.4,.64,1) forwards;}
-        .card-rare{animation:cardPopRare .5s cubic-bezier(.34,1.56,.64,1) forwards;}
-        .card-legend{animation:cardPopLegend .7s cubic-bezier(.22,1,.36,1) forwards;}
-        .result-in{animation:resultIn .4s ease forwards;}
-        .slide-up{animation:slideUp .4s ease both;}
-        .card-hover{transition:transform .15s,box-shadow .15s,border-color .15s;}
-        .card-hover:hover{transform:translateY(-3px) scale(1.04)!important;}
-      `}</style>
+      <style>{GACHA_CSS}</style>
 
       {/* パーティクルキャンバス */}
       <canvas ref={canvasRef} style={{
@@ -965,7 +601,7 @@ export function GachaScreen() {
               {results.map((res, i) => {
                 const revealed = i < revealedCount;
                 const card = getCard(res.cardId);
-                const cfg = RC[res.rarity];
+                const cfg = RARITY_CONFIG[res.rarity];
                 const isLegend = res.rarity >= 6;
                 const isRare = res.rarity >= 4;
                 return (
@@ -1011,10 +647,10 @@ export function GachaScreen() {
               <div className="slide-up" style={{
                 textAlign: 'center', marginBottom: 10, padding: '9px 14px',
                 background: `rgba(${highest === 6 ? '150,10,20' : '130,85,0'},.2)`,
-                border: `1px solid ${RC[highest].border}`, borderRadius: 8,
-                boxShadow: `0 0 20px ${RC[highest].glow}`,
+                border: `1px solid ${RARITY_CONFIG[highest].border}`, borderRadius: 8,
+                boxShadow: `0 0 20px ${RARITY_CONFIG[highest].glow}`,
               }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: RC[highest].text, letterSpacing: 3 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: RARITY_CONFIG[highest].text, letterSpacing: 3 }}>
                   {highest === 6 ? '🎉 幻の一品、入荷！！ 🎉' : '✨ 秘蔵品、入荷！ ✨'}
                 </span>
               </div>
@@ -1032,7 +668,7 @@ export function GachaScreen() {
             }}>
               {results.map((res, i) => {
                 const card = getCard(res.cardId);
-                const cfg = RC[res.rarity];
+                const cfg = RARITY_CONFIG[res.rarity];
                 const isSel = selected === res;
                 const isRare = res.rarity >= 4;
                 const isLegend = res.rarity >= 6;
@@ -1089,7 +725,7 @@ export function GachaScreen() {
             {/* 詳細パネル */}
             {selected && (() => {
               const card = getCard(selected.cardId);
-              const cfg = RC[selected.rarity];
+              const cfg = RARITY_CONFIG[selected.rarity];
               return (
                 <div className="slide-up" style={{
                   marginTop: 12, padding: '16px 18px',
@@ -1231,8 +867,8 @@ export function GachaScreen() {
                 <div style={{ textAlign: 'right', marginBottom: 8 }}>
                   <span style={{ color: '#aaa', fontSize: 12 }}>提供割合</span>
                 </div>
-                {menuRows.map((row, idx) => {
-                  const cfg = RC[row.r];
+                {MENU_ROWS.map((row, idx) => {
+                  const cfg = RARITY_CONFIG[row.r];
                   const isHighRare = row.r >= 5;
                   return (
                     <div key={row.r} style={{
@@ -1284,185 +920,7 @@ export function GachaScreen() {
                 </div>
               </div>
             ) : (
-              /* コレクション表示タブ */
-              <div style={{
-                background: 'linear-gradient(180deg, rgba(50,25,10,0.6) 0%, rgba(25,12,5,0.8) 100%)',
-                border: '1px solid rgba(255,180,80,0.15)', borderTop: 'none',
-                borderRadius: '0 0 12px 12px', padding: '20px 16px',
-                position: 'relative',
-              }}>
-                {/* タイプフィルター */}
-                <div style={{
-                  display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 14,
-                  padding: '8px 0', borderBottom: '1px solid rgba(255,180,80,.08)',
-                }}>
-                  {[
-                    { key: 'all', label: '全て', emoji: '📋' },
-                    { key: 'drink', label: 'ドリンク', emoji: '🍺' },
-                    { key: 'food', label: 'フード', emoji: '🍖' },
-                    { key: 'chug', label: 'イッキ', emoji: '🍻' },
-                    { key: 'harassment', label: 'セクハラ', emoji: '💋' },
-                    { key: 'strategy', label: '戦略', emoji: '🧠' },
-                    { key: 'environment', label: '環境', emoji: '🌙' },
-                    { key: 'status', label: '状態', emoji: '💫' },
-                  ].map(f => (
-                    <button key={f.key} className="gbtn" onClick={() => setCollectionFilter(f.key)} style={{
-                      background: collectionFilter === f.key ? 'rgba(255,180,80,.18)' : 'rgba(255,255,255,.03)',
-                      border: `1px solid ${collectionFilter === f.key ? 'rgba(255,180,80,.4)' : 'rgba(255,255,255,.06)'}`,
-                      borderRadius: 6, padding: '4px 8px', fontSize: 10,
-                      color: collectionFilter === f.key ? '#fbbf24' : '#666',
-                      fontWeight: collectionFilter === f.key ? 700 : 400,
-                      transition: 'all 0.15s',
-                    }}>{f.emoji} {f.label}</button>
-                  ))}
-                </div>
-
-                {/* レアリティ別プログレスバー */}
-                <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {[6, 5, 4, 3, 2, 1].map(r => {
-                    const allCards = Object.values(CARD_DATA).filter(c => c.rarity === r);
-                    const ownedCards = allCards.filter(c => (inventoryMap[c.id] ?? 0) > 0);
-                    if (allCards.length === 0) return null;
-                    const pct = (ownedCards.length / allCards.length) * 100;
-                    const cfg = RC[r];
-                    return (
-                      <div key={r} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 9, color: cfg.text, fontWeight: 700, width: 28, textAlign: 'right' }}>{cfg.label}</span>
-                        <div style={{
-                          flex: 1, height: 5, background: 'rgba(255,255,255,.05)',
-                          borderRadius: 3, overflow: 'hidden',
-                        }}>
-                          <div style={{
-                            height: '100%', borderRadius: 3,
-                            width: `${pct}%`,
-                            background: `linear-gradient(90deg, ${cfg.border}, ${cfg.text})`,
-                            transition: 'width 0.5s ease',
-                          }} />
-                        </div>
-                        <span style={{
-                          fontSize: 9, color: cfg.menuColor, fontFamily: "'Courier New',monospace",
-                          width: 36, textAlign: 'right',
-                        }}>{ownedCards.length}/{allCards.length}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {[6, 5, 4, 3, 2, 1].map(r => {
-                  const cards = (collectionGrouped[r] || []).filter(card => {
-                    if (collectionFilter === 'all') return true;
-                    const fullCard = CARD_DATA[card.id];
-                    return fullCard && fullCard.type === collectionFilter;
-                  });
-                  if (!cards.length) return null;
-                  const cfg = RC[r];
-                  return (
-                    <div key={r} style={{ marginBottom: 16 }}>
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
-                        padding: '6px 10px', background: 'rgba(0,0,0,.4)', borderRadius: 6,
-                        borderLeft: `3px solid ${cfg.border}`,
-                      }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: cfg.text }}>{cfg.label}</span>
-                        <span style={{ fontSize: 10, color: cfg.menuColor }}>
-                          {cards.filter(c => c.count > 0).length}/{cards.length}
-                        </span>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(80px,1fr))', gap: 6 }}>
-                        {cards.map(card => {
-                          const owned = card.count > 0;
-                          return (
-                            <div key={card.id} className="card-hover"
-                              onClick={owned ? () => setCollectionDetail(collectionDetail === card.id ? null : card.id) : undefined}
-                              style={{
-                                background: owned ? cfg.bg : 'rgba(10,5,0,.6)',
-                                border: `1px solid ${owned ? (collectionDetail === card.id ? cfg.text : cfg.border) : '#1a1008'}`,
-                                borderRadius: 8, padding: '8px 4px', textAlign: 'center',
-                                opacity: owned ? 1 : 0.35,
-                                position: 'relative', cursor: owned ? 'pointer' : 'default',
-                                boxShadow: collectionDetail === card.id ? `0 0 16px ${cfg.glow}` : 'none',
-                                transform: collectionDetail === card.id ? 'scale(1.05)' : 'scale(1)',
-                                transition: 'all 0.15s',
-                              }}>
-                              <div style={{ fontSize: 22, lineHeight: 1.2 }}>{owned ? card.emoji : '？'}</div>
-                              <div style={{ fontSize: 8, color: owned ? cfg.text : '#333', fontWeight: 600, marginTop: 2, lineHeight: 1.2 }}>
-                                {owned ? card.name : '？？？'}
-                              </div>
-                              {owned && card.count > 1 && (
-                                <div style={{
-                                  position: 'absolute', top: 2, right: 2, fontSize: 7,
-                                  background: 'rgba(0,0,0,.6)', borderRadius: 3, padding: '1px 3px',
-                                  color: cfg.menuColor,
-                                }}>×{card.count}</div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* コレクション詳細ポップアップ */}
-                {collectionDetail && (() => {
-                  const card = CARD_DATA[collectionDetail];
-                  if (!card) return null;
-                  const cfg = RC[card.rarity];
-                  const ownedCount = inventoryMap[collectionDetail] ?? 0;
-                  const typeLabels: Record<string, string> = {
-                    drink: '🍺 ドリンク', food: '🍖 フード', chug: '🍻 イッキ',
-                    harassment: '💋 セクハラ', strategy: '🧠 戦略', environment: '🌙 環境', status: '💫 状態',
-                  };
-                  return (
-                    <div className="slide-up" style={{
-                      position: 'sticky', bottom: 0,
-                      marginTop: 8, padding: '14px 16px',
-                      background: 'rgba(8,4,0,.96)',
-                      border: `1px solid ${cfg.border}`, borderRadius: 10,
-                      boxShadow: `0 0 28px ${cfg.glow}, 0 -4px 20px rgba(0,0,0,.8)`,
-                    }}>
-                      <button className="gbtn" onClick={() => setCollectionDetail(null)} style={{
-                        position: 'absolute', top: 6, right: 8, background: 'none',
-                        border: 'none', color: '#555', fontSize: 16, padding: 4,
-                      }}>✕</button>
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        <div style={{
-                          fontSize: 36, flexShrink: 0, width: 52, height: 52,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: 'rgba(0,0,0,.3)', borderRadius: 10,
-                          border: `1px solid ${cfg.border}44`,
-                        }}>{card.emoji}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 15, color: '#ddd', fontWeight: 700 }}>{card.name}</span>
-                            <span style={{
-                              fontSize: 8, padding: '2px 7px', borderRadius: 4,
-                              background: 'rgba(0,0,0,.5)', border: `1px solid ${cfg.border}`, color: cfg.text,
-                            }}>{cfg.label}</span>
-                            <span style={{
-                              fontSize: 8, padding: '2px 6px', borderRadius: 4,
-                              background: 'rgba(0,0,0,.3)', color: '#888',
-                            }}>{typeLabels[card.type] ?? card.type}</span>
-                          </div>
-                          <div style={{
-                            fontSize: 11, color: '#aa8866', lineHeight: 1.8,
-                            borderLeft: `2px solid ${cfg.border}44`, paddingLeft: 10,
-                            marginBottom: 6,
-                          }}>{card.description}</div>
-                          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 10, color: '#5a3a18' }}>
-                              所持: <span style={{ color: cfg.menuColor, fontWeight: 700 }}>{ownedCount}</span>/3
-                            </span>
-                            {card.damage != null && <span style={{ fontSize: 9, color: '#cc6644' }}>DMG {card.damage}</span>}
-                            {card.heal != null && <span style={{ fontSize: 9, color: '#66aa66' }}>回復 {card.heal}</span>}
-                            <span style={{ fontSize: 9, color: '#777' }}>価格 🪙{card.price}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
+              <GachaCollection inventoryMap={inventoryMap} />
             )}
 
             {/* 累計カウント */}
@@ -1478,58 +936,6 @@ export function GachaScreen() {
           </div>
 
       </div>{/* END MAIN GRID */}
-    </div>
-  );
-}
-
-// ── おすすめカード（分離して再レンダリング削減） ──
-function FeaturedCard({ getCard }: { getCard: (id: string) => { name: string; emoji: string; rarity: number; description: string } }) {
-  const featuredCards = ['kiss', 'ear_bite', 'breast_touch', 'baijiu', 'ukon'];
-  const fc = featuredCards[Math.floor(Date.now() / 60000) % featuredCards.length];
-  const card = getCard(fc);
-  const cfg = RC[card.rarity];
-
-  return (
-    <div className="featured-slide" style={{
-      background: 'rgba(12,6,0,.7)',
-      border: '1px solid rgba(100,55,15,.35)',
-      borderRadius: 10, padding: '10px 14px',
-      display: 'flex', alignItems: 'center', gap: 12,
-      position: 'relative', overflow: 'hidden',
-    }}>
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'linear-gradient(90deg,transparent,rgba(200,120,20,.04),transparent)',
-      }} />
-      <div style={{
-        fontSize: 8, color: '#7a5020', letterSpacing: 2,
-        position: 'absolute', top: 3, left: 10, fontWeight: 600,
-      }}>▸ 今宵のおすすめ</div>
-      <div style={{
-        fontSize: 30, flexShrink: 0, marginTop: 6, position: 'relative',
-        animation: 'gentlePulse 3s ease-in-out infinite',
-      }}>
-        {card.emoji}
-        <div style={{
-          position: 'absolute', bottom: -2, left: '50%', transform: 'translateX(-50%)',
-          width: 20, height: 3, borderRadius: 2, background: cfg.glow, filter: 'blur(2px)',
-        }} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0, marginTop: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: cfg.text }}>{card.name}</span>
-          <span style={{
-            fontSize: 8, padding: '1px 5px', borderRadius: 3,
-            background: 'rgba(0,0,0,.5)', border: `1px solid ${cfg.border}`,
-            color: cfg.menuColor, fontWeight: 700,
-          }}>{cfg.label}</span>
-        </div>
-        <div style={{
-          fontSize: 10, color: '#7a5a35', lineHeight: 1.6,
-          overflow: 'hidden', textOverflow: 'ellipsis',
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-        }}>{card.description}</div>
-      </div>
     </div>
   );
 }

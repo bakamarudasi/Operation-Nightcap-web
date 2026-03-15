@@ -97,6 +97,7 @@ export interface CardDef {
    */
   effects?: EffectDef[];
   description: string;
+  cost: number;
   rarity: number;
   price: number;
 }
@@ -205,7 +206,7 @@ export interface CharacterDef {
   afterEvents: AfterEvent[];
 }
 
-export type ScreenId = 'title' | 'select' | 'battle' | 'shop' | 'gacha' | 'gallery' | 'settings' | 'deck';
+export type ScreenId = 'title' | 'select' | 'battle' | 'shop' | 'gacha' | 'gallery' | 'settings' | 'deck' | 'enhance';
 
 /** ガチャ1回分の排出結果 */
 export interface GachaResult {
@@ -225,6 +226,15 @@ export interface BattleState {
   opponentDeckRemaining: string[];
   playerHand: string[];
   opponentHand: string[];
+  playerHiddenSlots: number[];
+  opponentHiddenSlots: number[];
+  /** Lv1ぼやけ: このインデックスのカードだけblur表示（-1=なし） */
+  playerBlurredSlot: number;
+  opponentBlurredSlot: number;
+  playerMisplay: boolean;
+  opponentMisplay: boolean;
+  playerCardHistory: CardType[];
+  opponentCardHistory: CardType[];
   selectedCard: string | null;
   isProcessing: boolean;
   /** 乾杯強制: 相手の手札1枚ランダム破棄 */
@@ -268,6 +278,8 @@ export interface BattleState {
   playerSanity: number;
   /** 相手の理性値（0で敗北） */
   opponentSanity: number;
+  /** プレイヤーのカード強化レベル */
+  playerCardLevels: Record<string, number>;
 }
 
 export interface RoundResult {
@@ -281,6 +293,8 @@ export interface RoundResult {
   cgEvent: CGEvent | null;
   instantWin: boolean;
   spillNullified: boolean;
+  playerMatchup?: 'advantage' | 'disadvantage' | 'neutral';
+  opponentMatchup?: 'advantage' | 'disadvantage' | 'neutral';
   /** 相手のセクハラ/逆セクハラで発動するCGイベント */
   opponentCgEvent?: CGEvent | null;
   /** このラウンドで付与されるバフ（プレイヤー側） */

@@ -1,20 +1,59 @@
 import { CARD_DATA } from '../data/cards.ts';
-import type { BattleState, CharacterDef } from '../data/types.ts';
-import { randomPick, getDrunkLevel, hasBuff } from './utils.ts';
+import type { BattleState, CardType, CharacterDef } from '../data/types.ts';
+import { randomPick, getDrunkLevel, hasBuff, canPlayCard, isFoodDisabled } from './utils.ts';
+
+/** 三すくみカウンタータイプ */
+function counterType(t: CardType): CardType {
+  if (t === 'harassment') return 'drink';
+  if (t === 'food') return 'harassment';
+  if (t === 'drink') return 'food';
+  return 'drink';
+}
 
 /** プレイヤーがつまみばかり使っているか判定 */
 function isPlayerStalling(battle: BattleState): boolean {
   return battle.round >= 3 && battle.playerDrunk <= 1;
 }
 
+/** セクハラカードの発動条件チェック */
+function isHarassmentViable(id: string, playerDrunkLevel: number, opponentBuffs: { id: string }[]): boolean {
+  const card = CARD_DATA[id];
+  if (!card || card.type !== 'harassment') return false;
+  let required = card.requiredDrunkLevel ?? 0;
+  if (hasBuff(opponentBuffs, 'dimlight')) required = Math.max(0, required - 1);
+  if (hasBuff(opponentBuffs, 'excuse')) required = Math.max(0, required - 1);
+  if (card.instantWin) required = Math.max(2, required);
+  return playerDrunkLevel >= required;
+}
+
 export const BattleAI = {
-  selectCard(hand: string[], character: CharacterDef, battle: BattleState): string | null {
-    if (hand.length === 0) return null;
+  selectCard(hand: string[], character: CharacterDef, battle: BattleState): { cardId: string | null; misplay: boolean } {
+    if (hand.length === 0) return { cardId: null, misplay: false };
 
     const personality = character.deck_ai.personality;
     const myDrunkLevel = getDrunkLevel(battle.opponentDrunk);
     const playerDrunkLevel = getDrunkLevel(battle.playerDrunk);
 
+    // === 新メカニクス: コスト制限 & food封印フィルタ ===
+    let candidates = hand.filter(id => {
+      const card = CARD_DATA[id];
+      if (!card) return false;
+      if (!canPlayCard(card, battle.opponentDrunk)) return false;
+      if (isFoodDisabled(myDrunkLevel) && card.type === 'food') return false;
+      return true;
+    });
+    if (candidates.length === 0) candidates = [...hand];
+
+    // === 新メカニクス: 暴走 (Lv2: ランダム除外, Lv3: 20%完全ランダム) ===
+    if (myDrunkLevel >= 2 && candidates.length > 1) {
+      const dropIdx = Math.floor(Math.random() * candidates.length);
+      candidates.splice(dropIdx, 1);
+    }
+    if (myDrunkLevel >= 3 && Math.random() < 0.2) {
+      return { cardId: randomPick(candidates), misplay: true };
+    }
+
+    // === タイプ別分類 ===
     const drinks: string[] = [];
     const foods: string[] = [];
     const chugs: string[] = [];
@@ -22,7 +61,7 @@ export const BattleAI = {
     const strategies: string[] = [];
     const environments: string[] = [];
     const statuses: string[] = [];
-    for (const id of hand) {
+    for (const id of candidates) {
       switch (CARD_DATA[id]?.type) {
         case 'drink': drinks.push(id); break;
         case 'food': foods.push(id); break;
@@ -34,64 +73,79 @@ export const BattleAI = {
       }
     }
 
-    // === 逆セクハラ条件行動 ===
-    // セクハラが成功するためにはプレイヤーの酔いLvが必要条件を満たす必要がある
-    // 使用可能なセクハラカード = プレイヤーの酔いLvで発動条件を満たすもの
-    const viableHarassments = harassments.filter(id => {
-      const card = CARD_DATA[id];
-      const required = card.requiredDrunkLevel ?? 0;
-      // excuse/dimlight によるLv軽減を考慮
-      let adjusted = required;
-      if (hasBuff(battle.opponentBuffs, 'dimlight')) adjusted = Math.max(0, adjusted - 1);
-      if (hasBuff(battle.opponentBuffs, 'excuse')) adjusted = Math.max(0, adjusted - 1);
-      if (card.instantWin) adjusted = Math.max(2, adjusted);
-      return playerDrunkLevel >= adjusted;
-    });
+    // 発動条件を満たすセクハラカードのみ
+    const viableHarassments = harassments.filter(id =>
+      isHarassmentViable(id, playerDrunkLevel, battle.opponentBuffs)
+    );
 
+    // === 新メカニクス: 三すくみカウンター予測 (30%で発動) ===
+    if (Math.random() < 0.3) {
+      const history = battle.playerCardHistory.slice(-2);
+      if (history.length > 0) {
+        const freq: Record<string, number> = {};
+        for (const h of history) freq[h] = (freq[h] ?? 0) + 1;
+        const major = Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] as CardType | undefined;
+        if (major) {
+          const ct = counterType(major);
+          const counterCards = candidates.filter(id => {
+            const card = CARD_DATA[id];
+            if (!card || card.type !== ct) return false;
+            // harassmentカウンターの場合、発動条件チェック
+            if (ct === 'harassment') return isHarassmentViable(id, playerDrunkLevel, battle.opponentBuffs);
+            return true;
+          });
+          if (counterCards.length > 0) {
+            const pick = ct === 'drink' ? this.pickBestDrink(counterCards)
+                       : ct === 'food' ? this.pickBestFood(counterCards)
+                       : randomPick(counterCards);
+            if (pick) return { cardId: pick, misplay: false };
+          }
+        }
+      }
+    }
+
+    // === 逆セクハラ条件行動 ===
     // 自分の酔いLvが高い（大胆になっている）→ 確定で逆セクハラを仕掛ける
     if (myDrunkLevel >= 3 && viableHarassments.length > 0) {
       const pick = this.pickStrongestHarassment(viableHarassments, battle);
-      if (pick) return pick;
+      if (pick) return { cardId: pick, misplay: false };
     }
 
     // プレイヤーが守りに徹している → しびれを切らして逆セクハラ
     if (isPlayerStalling(battle) && viableHarassments.length > 0 && myDrunkLevel >= 2) {
       if (Math.random() < 0.6) {
-        return randomPick(viableHarassments);
+        return { cardId: randomPick(viableHarassments), misplay: false };
       }
     }
 
     // === 環境カード: 序盤に使いたい ===
     if (battle.round <= 3 && environments.length > 0) {
       if (Math.random() < 0.5) {
-        return randomPick(environments);
+        return { cardId: randomPick(environments), misplay: false };
       }
     }
 
     // === 状態異常カード: ハラスメント前の布石 ===
     if (statuses.length > 0 && (harassments.length > 0 || viableHarassments.length > 0) && myDrunkLevel >= 1) {
-      // alone は特に強力 → 積極的に使用
       const aloneCard = statuses.find(id => CARD_DATA[id]?.applyBothBuffs?.some(b => b.id === 'alone'));
       if (aloneCard && !hasBuff(battle.opponentBuffs, 'alone') && Math.random() < 0.7) {
-        return aloneCard;
+        return { cardId: aloneCard, misplay: false };
       }
       if (Math.random() < 0.4) {
-        return randomPick(statuses);
+        return { cardId: randomPick(statuses), misplay: false };
       }
     }
 
     // === 戦略カード ===
     if (strategies.length > 0) {
-      // excuse: セクハラカードがある時に先使い
       const excuseCard = strategies.find(id => CARD_DATA[id]?.applySelfBuffs?.some(b => b.id === 'excuse'));
       if (excuseCard && harassments.length > 0 && !hasBuff(battle.opponentBuffs, 'excuse')) {
         if (Math.random() < 0.5) {
-          return excuseCard;
+          return { cardId: excuseCard, misplay: false };
         }
       }
-      // rumor: 相手が強そうな時
       if (playerDrunkLevel <= 1 && Math.random() < 0.3) {
-        return randomPick(strategies);
+        return { cardId: randomPick(strategies), misplay: false };
       }
     }
 
@@ -100,7 +154,7 @@ export const BattleAI = {
     if (myDrunkLevel >= 2 && foods.length > 0) {
       if (Math.random() < 0.7) {
         const pick = this.pickBestFood(foods);
-        if (pick) return pick;
+        if (pick) return { cardId: pick, misplay: false };
       }
     }
 
@@ -108,21 +162,21 @@ export const BattleAI = {
     if (playerDrunkLevel >= 2 && drinks.length > 0) {
       if (Math.random() < 0.7) {
         const pick = this.pickBestDrink(drinks);
-        if (pick) return pick;
+        if (pick) return { cardId: pick, misplay: false };
       }
     }
 
     // 一気飲みカード判定
     if (chugs.length > 0 && playerDrunkLevel >= 2) {
       if (Math.random() < 0.5) {
-        return randomPick(chugs);
+        return { cardId: randomPick(chugs), misplay: false };
       }
     }
 
     // 逆セクハラ: 成功見込みがあれば低確率で使用
     if (viableHarassments.length > 0 && myDrunkLevel >= 2) {
       if (Math.random() < 0.3) {
-        return randomPick(viableHarassments);
+        return { cardId: randomPick(viableHarassments), misplay: false };
       }
     }
 
@@ -131,28 +185,28 @@ export const BattleAI = {
       case 'aggressive':
         if (drinks.length > 0 && Math.random() < 0.7) {
           const pick = this.pickBestDrink(drinks);
-          if (pick) return pick;
+          if (pick) return { cardId: pick, misplay: false };
         }
         break;
       case 'defensive':
         if (foods.length > 0 && Math.random() < 0.6) {
           const pick = this.pickBestFood(foods);
-          if (pick) return pick;
+          if (pick) return { cardId: pick, misplay: false };
         }
         break;
       case 'balanced':
       default:
         if (Math.random() < 0.5 && drinks.length > 0) {
-          return randomPick(drinks);
+          return { cardId: randomPick(drinks), misplay: false };
         }
         if (foods.length > 0) {
-          return randomPick(foods);
+          return { cardId: randomPick(foods), misplay: false };
         }
         break;
     }
 
-    // 最終フォールバック: 手札からランダム（手札が空ならnull）
-    return hand.length > 0 ? hand[Math.floor(Math.random() * hand.length)] : null;
+    // 最終フォールバック
+    return { cardId: candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : null, misplay: false };
   },
 
   pickBestDrink(drinks: string[]): string | null {
@@ -175,10 +229,8 @@ export const BattleAI = {
     }, foods[0]);
   },
 
-  /** 最も強力なセクハラカードを選択 */
   pickStrongestHarassment(cards: string[], battle?: BattleState): string | null {
     if (cards.length === 0) return null;
-    // プレイヤーの理性が低い時は sanityDamage の重みを上げる
     const sanityWeight = battle && battle.playerSanity <= 3 ? 2.0 : 1.0;
     return cards.reduce((best, id) => {
       const card = CARD_DATA[id];
