@@ -237,7 +237,12 @@ export function BattleScreen() {
     const selectedId = battle.selectedCard;
     const pCard = CARD_DATA[selectedId];
     const result = playRound();
-    if (!result) return;
+    if (!result) {
+      // playRound失敗時はロックを解除して復帰
+      cardPlayLock.current = false;
+      setPlayingCardIdx(null);
+      return;
+    }
 
     // cardPlayLock の安全タイムアウト（15秒で強制解除）
     const lockSafetyTimer = safeTimeout(() => {
