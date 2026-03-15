@@ -32,6 +32,10 @@ async function switchChar(id) {
   updateCounts();
   showEmpty();
   checkAllFiles();
+  if (projectDirHandle) {
+    await scanAssetFiles(id);
+    renderAssetSyncStatus();
+  }
 }
 
 async function addNewChar() {

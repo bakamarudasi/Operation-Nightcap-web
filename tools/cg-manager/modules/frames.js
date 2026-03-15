@@ -23,10 +23,31 @@ function renderFrames(item) {
       ? `<img src="${f.src}" alt="F${i + 1}">`
       : '🖼';
 
+    // フレームsrcからファイル名を抽出
+    const currentFileName = f.src ? f.src.split('/').pop() : '';
+    const isDataUrl = f.src && (f.src.startsWith('data:') || f.src.startsWith('idb:'));
+    const fileExists = currentFileName && scannedCGFiles.includes(currentFileName);
+    const srcWarning = currentFileName && !isDataUrl && !fileExists && scannedCGFiles.length > 0
+      ? `<span class="frame-src-warn" title="ファイルが見つかりません: ${esc(currentFileName)}">⚠</span>`
+      : '';
+
+    // ファイル選択ドロップダウンを構築
+    let fileSelectHtml = '';
+    if (scannedCGFiles.length > 0) {
+      fileSelectHtml = `<div>
+        <label>画像ファイル ${srcWarning}</label>
+        <select onchange="selectFrameFile(${i},this.value)" style="max-width:180px">
+          <option value="">-- 選択 --</option>
+          ${scannedCGFiles.map(fn => `<option value="${esc(fn)}"${fn === currentFileName ? ' selected' : ''}>${esc(fn)}</option>`).join('')}
+        </select>
+      </div>`;
+    }
+
     card.innerHTML = `
       <span class="frame-num">#${i + 1}</span>
       <div class="frame-thumb" onclick="pickFrameImage(${i})" title="クリックで画像設定">${thumbContent}</div>
       <div class="frame-fields">
+        ${fileSelectHtml}
         <div>
           <label>ラベル</label>
           <input value="${esc(f.label || '')}" onchange="updateFrame(${i},'label',this.value)" placeholder="シーン説明">
@@ -87,6 +108,18 @@ function updateFrame(idx, key, val) {
   if (!item?.frames?.[idx]) return;
   item.frames[idx][key] = val;
   saveAll();
+}
+
+function selectFrameFile(idx, fileName) {
+  const item = items.find(i => i.id === selectedId);
+  if (!item?.frames?.[idx]) return;
+  if (fileName) {
+    item.frames[idx].src = `/characters/${currentCharId}/cg/${fileName}`;
+  } else {
+    item.frames[idx].src = null;
+  }
+  renderFrames(item);
+  try { saveAll(); } catch(e) { console.warn('saveAll failed:', e); }
 }
 
 function pickFrameImage(idx) {
