@@ -415,14 +415,25 @@ export const useGameStore = create<GameStore>()(
 
         // === プレイヤーのセクハラ成功時 → CGイベント検索 ===
         const pCard = CARD_DATA[resolvedPlayerCardId];
-        if (pCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
+        if (pCard?.type === 'harassment') {
           const targetDrunk = b.opponentDrunk;
           const targetLevel = getDrunkLevel(targetDrunk);
           const adjustedRequired = getAdjustedRequiredLevel(pCard.requiredDrunkLevel ?? 0, b.playerBuffs, b.opponentBuffs, !!pCard.instantWin);
-          if (targetLevel >= adjustedRequired) {
-            const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === resolvedPlayerCardId);
-            if (cgEvent) {
-              result.cgEvent = cgEvent;
+          const hasCgEvent = state.currentOpponent?.cgEvents.some(e => e.triggerCard === resolvedPlayerCardId);
+          console.log('[CG判定:プレイヤー]', {
+            card: resolvedPlayerCardId,
+            spillNullified: result.spillNullified,
+            targetDrunk, targetLevel, adjustedRequired,
+            conditionMet: targetLevel >= adjustedRequired,
+            hasCgEvent,
+            opponent: state.currentOpponent?.id,
+          });
+          if (!result.spillNullified && state.currentOpponent) {
+            if (targetLevel >= adjustedRequired) {
+              const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === resolvedPlayerCardId);
+              if (cgEvent) {
+                result.cgEvent = cgEvent;
+              }
             }
           }
         }
@@ -430,14 +441,24 @@ export const useGameStore = create<GameStore>()(
         // === 相手の逆セクハラ成功時 → CGイベント検索 ===
         const oCard = CARD_DATA[opponentCardId];
         let opponentCgEvent: CGEvent | null = null;
-        if (oCard?.type === 'harassment' && !result.spillNullified && state.currentOpponent) {
+        if (oCard?.type === 'harassment') {
           const playerDrunk = b.playerDrunk;
           const playerLevel = getDrunkLevel(playerDrunk);
           const adjustedRequired = getAdjustedRequiredLevel(oCard.requiredDrunkLevel ?? 0, b.opponentBuffs, b.playerBuffs, !!oCard.instantWin);
-          if (playerLevel >= adjustedRequired) {
-            const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === opponentCardId);
-            if (cgEvent) {
-              opponentCgEvent = cgEvent;
+          const hasCgEvent = state.currentOpponent?.cgEvents.some(e => e.triggerCard === opponentCardId);
+          console.log('[CG判定:相手]', {
+            card: opponentCardId,
+            spillNullified: result.spillNullified,
+            playerDrunk, playerLevel, adjustedRequired,
+            conditionMet: playerLevel >= adjustedRequired,
+            hasCgEvent,
+          });
+          if (!result.spillNullified && state.currentOpponent) {
+            if (playerLevel >= adjustedRequired) {
+              const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === opponentCardId);
+              if (cgEvent) {
+                opponentCgEvent = cgEvent;
+              }
             }
           }
         }
