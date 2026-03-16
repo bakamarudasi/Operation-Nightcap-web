@@ -28,6 +28,7 @@ export function EnhanceScreen() {
   const inventory = useGameStore((s) => s.inventory);
   const cardLevels = useGameStore((s) => s.cardLevels);
   const setScreen = useGameStore((s) => s.setScreen);
+  const previousScreen = useGameStore((s) => s.previousScreen);
   const enhanceCard = useGameStore((s) => s.enhanceCard);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -159,7 +160,7 @@ export function EnhanceScreen() {
   return (
     <div className="screen active enhance-screen">
       <div className="shop-header">
-        <button className="back-btn" onClick={() => setScreen('select')}>← 戻る</button>
+        <button className="back-btn" onClick={() => setScreen(previousScreen === 'deck' ? 'deck' : 'select')}>← 戻る</button>
         <h2>🔨 強化工房</h2>
         <span className="shop-money">💰 {money} 龍門幣</span>
       </div>

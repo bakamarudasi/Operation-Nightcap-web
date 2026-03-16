@@ -26,21 +26,17 @@ export function ShopScreen() {
       setClosureLine(randomPick([...SHOP_DATA.closureLines.insufficient]) ?? '');
       return;
     }
-    if (playerDeck.length >= 12) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.deckFull]) ?? '');
-      return;
-    }
-    const sameCount = playerDeck.filter(id => id === cardId).length;
-    if (sameCount >= 3) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.cardLimit]) ?? '');
-      return;
-    }
 
     const success = buyCard(cardId);
     if (success) {
       const category = getShopLineCategory(cardId);
       const lines = SHOP_DATA.closureLines[category];
-      setClosureLine(randomPick([...lines]) ?? '');
+      let line = randomPick([...lines]) ?? '';
+      // デッキ満杯の場合は追加メッセージ
+      if (playerDeck.length >= 12) {
+        line += '（デッキは満杯だからインベントリに追加したよ）';
+      }
+      setClosureLine(line);
     }
   };
 
@@ -61,6 +57,9 @@ export function ShopScreen() {
   const foodCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'food');
   const chugCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'chug');
   const harassCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'harassment');
+  const strategyCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'strategy');
+  const environmentCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'environment');
+  const statusCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'status');
 
   const renderShopItem = (cardId: string) => {
     const card = CARD_DATA[cardId];
@@ -103,6 +102,21 @@ export function ShopScreen() {
 
         <div className="shop-section-title">💋 セクハラ</div>
         {harassCards.map(renderShopItem)}
+
+        {strategyCards.length > 0 && <>
+          <div className="shop-section-title">🃏 戦略</div>
+          {strategyCards.map(renderShopItem)}
+        </>}
+
+        {environmentCards.length > 0 && <>
+          <div className="shop-section-title">🌐 環境</div>
+          {environmentCards.map(renderShopItem)}
+        </>}
+
+        {statusCards.length > 0 && <>
+          <div className="shop-section-title">💫 状態異常</div>
+          {statusCards.map(renderShopItem)}
+        </>}
       </div>
 
       <div className="deck-editor">

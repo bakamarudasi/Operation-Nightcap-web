@@ -38,6 +38,18 @@ export const SHOP_DATA = {
     cardLimit: [
       'そのカードもう3枚持ってるでしょ？バランスも大事だよ〜',
       '同じカードは3枚までだよ。他のも試してみなよ♪'
+    ],
+    buyStrategy: [
+      '戦略カード！頭脳派だね〜。力だけじゃ勝てないもんね',
+      'おっ、策士だねぇ。相手を翻弄してやりな♪'
+    ],
+    buyEnvironment: [
+      '場の空気を変える…いいね、ムード作りは大事だよ♪',
+      '環境カード！雰囲気操作ってやつ？やるじゃん〜'
+    ],
+    buyStatus: [
+      '状態異常カード…えげつないね〜。でも嫌いじゃないよ♪',
+      'デバフ戦術！じわじわ追い詰めるタイプ？'
     ]
   },
 
@@ -63,6 +75,9 @@ export function getShopLineCategory(cardId: string): keyof typeof SHOP_DATA.clos
     case 'food': return 'buyFood';
     case 'chug': return 'buyChug';
     case 'harassment': return 'buyHarassment';
+    case 'strategy': return 'buyStrategy';
+    case 'environment': return 'buyEnvironment';
+    case 'status': return 'buyStatus';
     default: return 'buyDrink';
   }
 }

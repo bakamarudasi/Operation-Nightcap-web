@@ -812,15 +812,19 @@ export const useGameStore = create<GameStore>()(
         const card = CARD_DATA[cardId];
         if (!card) return false;
         if (state.money < card.price) return false;
-        if (state.playerDeck.length >= 12) return false;
-        // 同じカードは最大3枚まで
-        const sameCount = state.playerDeck.filter(id => id === cardId).length;
-        if (sameCount >= 3) return false;
+
+        const newInventory = [...state.inventory, cardId];
+        const newDeck = [...state.playerDeck];
+        // デッキに空きがあり、同一カード3枚未満ならデッキにも追加
+        const sameCount = newDeck.filter(id => id === cardId).length;
+        if (newDeck.length < 12 && sameCount < 3) {
+          newDeck.push(cardId);
+        }
 
         set({
           money: state.money - card.price,
-          inventory: [...state.inventory, cardId],
-          playerDeck: [...state.playerDeck, cardId],
+          inventory: newInventory,
+          playerDeck: newDeck,
         });
         return true;
       },
