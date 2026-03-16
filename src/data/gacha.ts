@@ -29,11 +29,12 @@ export const GACHA_MULTI_COST = 2700;
 /** 同一カードの所持上限 */
 export const CARD_COPY_LIMIT = 3;
 
-/** レアリティ別のカードIDリストを生成 */
+/** レアリティ別のカードIDリストを生成（トークンカード rarity 0 は除外） */
 export function getCardsByRarity(): Record<number, string[]> {
   const map: Record<number, string[]> = {};
   for (const [id, card] of Object.entries(CARD_DATA)) {
     const r = card.rarity;
+    if (r <= 0) continue; // トークンカード（mon3tr_strike, paint_dummy等）を除外
     if (!map[r]) map[r] = [];
     map[r].push(id);
   }

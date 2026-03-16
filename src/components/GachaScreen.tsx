@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
+import { buildCardCountMap } from '../data/constants.ts';
 import type { GachaResult } from '../data/types.ts';
 
 import { playPourSound, playGlowSound, playRevealSound, playResultSound } from '../engine/gachaAudio.ts';
@@ -16,11 +17,7 @@ export function GachaScreen() {
   const pullGacha = useGameStore(s => s.pullGacha);
   const setScreen = useGameStore(s => s.setScreen);
 
-  const inventoryMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const id of inventory) { map[id] = (map[id] ?? 0) + 1; }
-    return map;
-  }, [inventory]);
+  const inventoryMap = useMemo(() => buildCardCountMap(inventory), [inventory]);
 
   const [animPhase, setAnimPhase] = useState<'idle' | 'pour' | 'glow' | 'reveal' | 'result'>('idle');
   const [results, setResults] = useState<GachaResult[]>([]);
