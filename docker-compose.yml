@@ -3,4 +3,24 @@ services:
     build: .
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      # Let's Encrypt 証明書をマウント (HTTPS有効化時に使用)
+      - certbot-etc:/etc/letsencrypt:ro
+      - certbot-var:/var/lib/letsencrypt
     restart: unless-stopped
+
+  # --- HTTPS証明書の自動更新 ---
+  # 初回取得: docker compose run --rm certbot certonly --webroot -w /var/lib/letsencrypt -d your-domain.com
+  # 手動更新: docker compose run --rm certbot renew
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+    profiles:
+      - https
+
+volumes:
+  certbot-etc:
+  certbot-var:
