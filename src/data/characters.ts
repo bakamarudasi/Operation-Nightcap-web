@@ -302,19 +302,6 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
       },
       {
-        id: 'lap_pillow_cg',
-        triggerCard: 'lap_pillow',
-        requiredDrunkLevel: 3,
-        cgColor: '#e85d3a',
-        dialogue: [
-          { speaker: 'ドクター', text: '（ブレイズの頭をそっと膝に導き、髪を指に絡める）' },
-          { speaker: 'ブレイズ', text: 'え、ちょ……膝枕とか……んっ、髪、触んないでよ……くすぐったい……' },
-          { speaker: 'ブレイズ', text: 'ドクターの太もも……あったかい……すごい、心臓の音聞こえる……' },
-          { speaker: 'ブレイズ', text: '……ねぇ、このまま寝ちゃったら……何する気？ ……してもいいよ、今なら……' },
-          { speaker: 'ブレイズ', text: '……ん……もう動けない……ドクターの匂い……好き……zzZ' },
-        ],
-      },
-      {
         id: 'kiss_cg',
         triggerCard: 'kiss',
         requiredDrunkLevel: 3,
