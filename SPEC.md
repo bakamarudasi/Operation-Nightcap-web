@@ -91,7 +91,7 @@ export type CardId =
   | 'beer' | 'wine' | 'whiskey' | 'baijiu' | 'cocktail'
   | 'nuts' | 'yakitori' | 'ramen' | 'ukon'
   | 'chug' | 'toast' | 'spill'
-  | 'shoulder_lean' | 'headpat' | 'lap_pillow' | 'kiss';
+  | 'shoulder_lean' | 'headpat' | 'kiss';
 
 /** カード共通フィールド */
 interface CardBase {
@@ -1019,7 +1019,6 @@ export const App = () => {
 |----|------|--------|------|------|--------|------|
 | `shoulder_lean` | 肩を寄せる | 💋 | 酔Lv≧1 | 酔い+1 + CG | ★★★★ | 1500 |
 | `headpat` | 頭ポンポン | 🫳 | 酔Lv≧2 | 酔い+1 + CG | ★★★★ | 1500 |
-| `lap_pillow` | 膝枕する | 💕 | 酔Lv≧3 | 酔い+2 + CG | ★★★★★ | 3000 |
 | `kiss` | キス | 💋 | 酔Lv≧3 | 即勝利 + CG | ★★★★★★ | 5000 |
 
 ---
@@ -1067,10 +1066,6 @@ CG が解放され、プレイヤーの「もっと酔わせたい」欲求を�
 頭ポンポン（headpat）:
   酔Lv2（条件ギリギリ）→ CG-A: 「子ども扱いすんな」と怒るが耳赤い
   酔Lv3（べろべろ）    → CG-B: 目を閉じて受け入れる、甘え声
-
-膝枕する（lap_pillow）:
-  酔Lv3（条件ギリギリ）→ CG-A: 恥ずかしがりながら乗る
-  ※段階1つのみ（条件Lv3なので上はない）
 
 キス（kiss）:
   酔Lv3（条件ギリギリ）→ CG-A: 即勝利。最高潮のCG

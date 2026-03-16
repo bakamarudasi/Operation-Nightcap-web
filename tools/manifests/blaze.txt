@@ -22,7 +22,6 @@ hip_touch.webp        | お尻をなでる       | Lv.2 | 単一フレーム
 ear_bite_1.webp       | 耳を甘噛み(1)      | Lv.3 | フレーム1: 耳に顔を近づける
 ear_bite_2.webp       | 耳を甘噛み(2)      | Lv.3 | フレーム2: 耳たぶを噛む
 ear_bite_3.webp       | 耳を甘噛み(3)      | Lv.3 | フレーム3: 蕩けた表情
-lap_pillow.webp       | 太ももに誘う       | Lv.3 | 単一フレーム
 kiss_1.webp           | ディープキス(1)     | Lv.3 | フレーム1: 腰を引き寄せる
 kiss_2.webp           | ディープキス(2)     | Lv.3 | フレーム2: 唇が近づく
 kiss_3.webp           | ディープキス(3)     | Lv.3 | フレーム3: キス
