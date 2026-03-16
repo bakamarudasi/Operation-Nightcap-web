@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+assets
+tools
+scripts
+*.md
+*.sh
+*.bat
