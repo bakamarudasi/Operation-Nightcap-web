@@ -360,11 +360,14 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         requiredDrunkLevel: 2,
         cgColor: '#ff5577',
         dialogue: [
-          { speaker: '', text: '――テーブルの下で、何かが足に触れた。' },
-          { speaker: 'ブレイズ', text: '……ん？ どうしたのドクター、顔赤いよ？ お酒のせい？' },
+          { speaker: '', text: '――テーブルの下。熱を持った素足が、太ももの内側から、さらに奥の際どい場所へと潜り込んでくる。' },
+          { speaker: 'ブレイズ', text: '……ん？ どうしたのドクター。やけに汗かいてるじゃん。ここ、ちょっと暑い？' },
+          { speaker: '', text: '（とぼけた声とは裏腹に、彼女のつま先は明確な意思を持って、布越しに『そこ』を器用に弄っている……）' },
           { speaker: 'ブレイズ', text: '……ふふ、違うよね。……わかってるくせに' },
-          { speaker: 'ブレイズ', text: '（足先をゆっくり這わせながら）……ここ、弱いんだ？ ……知らなかったなぁ' },
-          { speaker: 'ブレイズ', text: '……逃げないでよ。……私が飽きるまで、ね？' },
+          { speaker: '', text: 'フェリーン特有のしなやかな足運びと、アーツを帯びたような微かな熱。その摩擦が、理性をじわじわと溶かしていく。' },
+          { speaker: 'ブレイズ', text: '（足の裏をさらに深く押し当てて）……ほーら、力抜いてよ。ドクターが熱くなってるの、足先から直に伝わってくるからさ' },
+          { speaker: 'ドクター', text: '豪快な普段の彼女からは想像もつかない、ねっとりとした声と、執拗な足先の感触に息が詰まる。' },
+          { speaker: 'ブレイズ', text: '……声、出さないでね。あたしがこれで満足するまで……大人しく、ドクターの全部預けてよ' },
         ],
         frames: [
           {
@@ -382,7 +385,13 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           {
             src: '/characters/blaze/cg/foot_tease_3.webp',
             label: '攻めるブレイズ',
-            dialogueStart: 3,
+            dialogueStart: 4,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/foot_tease_4.webp',
+            label: '',
+            dialogueStart: 7,
             transition: 'fade',
           },
         ],
