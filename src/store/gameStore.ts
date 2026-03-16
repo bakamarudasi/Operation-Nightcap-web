@@ -761,35 +761,27 @@ export const useGameStore = create<GameStore>()(
         const cost = getEnhanceCost(cardId, currentLevel);
         if (state.money < cost) return false;
 
-        // inventoryから2枚削除（デッキにない分を優先除去）
+        // inventoryから2枚削除（デッキに入っている分を残すよう、デッキ外の分を優先除去）
         const newInventory = [...state.inventory];
-        const deckSet = new Set<number>();
-        state.playerDeck.forEach((id, idx) => {
-          if (id === cardId) deckSet.add(idx);
-        });
+        const deckCount = state.playerDeck.filter(id => id === cardId).length;
+        // デッキにない「余剰」枚数を把握
+        const allIndices: number[] = [];
+        for (let i = newInventory.length - 1; i >= 0; i--) {
+          if (newInventory[i] === cardId) allIndices.push(i);
+        }
+        // 余剰分（デッキ枚数を超える分）を先に削除対象にする
+        const surplus = allIndices.slice(0, allIndices.length - deckCount);
+        const inDeck = allIndices.slice(allIndices.length - deckCount);
+        const removeOrder = [...surplus, ...inDeck]; // 余剰→デッキ内の順で削除
 
         let removed = 0;
-        // まずデッキにない分から削除
-        for (let i = newInventory.length - 1; i >= 0 && removed < 2; i--) {
-          if (newInventory[i] === cardId) {
-            // このインベントリのカードがデッキに入っているか確認
-            // 簡易チェック: デッキの枚数分は残す
-            const remainingInInv = newInventory.filter((id, idx) => id === cardId && idx >= i).length;
-            const deckCount = state.playerDeck.filter(id => id === cardId).length;
-            if (remainingInInv > deckCount - removed || removed > 0) {
-              newInventory.splice(i, 1);
-              removed++;
-            }
-          }
-        }
-
-        // 万が一2枚削除できなかった場合のフォールバック
-        while (removed < 2) {
-          const idx = newInventory.lastIndexOf(cardId);
-          if (idx < 0) return false;
+        for (const idx of removeOrder) {
+          if (removed >= 2) break;
           newInventory.splice(idx, 1);
           removed++;
         }
+
+        if (removed < 2) return false;
 
         // デッキからはみ出た分を調整
         const newDeck = [...state.playerDeck];
@@ -915,10 +907,11 @@ export const useGameStore = create<GameStore>()(
         const cgRate = unlockedCount / totalCGs;
 
         // 条件を満たす未解放の勝利後イベントを探す（最も条件が高いものを優先）
+        const charWins = state.winsByCharacter[char.id] ?? 0;
         const eligible = char.afterEvents
           .filter(ae =>
             cgRate >= ae.requiredCGRate &&
-            state.wins >= ae.requiredWins &&
+            charWins >= ae.requiredWins &&
             !state.unlockedAfterEvents.includes(ae.id)
           )
           .sort((a, b) => b.requiredCGRate - a.requiredCGRate);
