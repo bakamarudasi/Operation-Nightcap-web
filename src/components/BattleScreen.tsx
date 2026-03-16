@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA, getEnhancedCard } from '../data/cards.ts';
 import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
+import { gaugePercent } from '../data/constants.ts';
 import { randomPick, getDrunkLevel, BUFF_META, getKanryoku, canPlayCard, isFoodDisabled } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
+import { BuffDisplay } from './BuffDisplay.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
 
 // バフ表示は BUFF_META (utils.ts) から参照
@@ -512,7 +514,7 @@ export function BattleScreen() {
                   <div className="gauge-track">
                     <div
                       className="gauge-fill opp-fill"
-                      style={{ width: `${Math.min(battle.opponentDrunk / 10, 1) * 100}%` }}
+                      style={{ width: `${gaugePercent(battle.opponentDrunk, 10)}%` }}
                     />
                   </div>
                   <div className="gauge-lvl">
@@ -525,7 +527,7 @@ export function BattleScreen() {
                   <div className="gauge-track">
                     <div
                       className="gauge-fill sanity-fill"
-                      style={{ width: `${Math.min(battle.opponentSanity / (currentOpponent.sanityMax ?? 10), 1) * 100}%` }}
+                      style={{ width: `${gaugePercent(battle.opponentSanity, currentOpponent.sanityMax ?? 10)}%` }}
                     />
                   </div>
                   <div className={`gauge-lvl ${oppSanityStage.cls}`}>
@@ -533,23 +535,7 @@ export function BattleScreen() {
                     <span className="lvl-n">({battle.opponentSanity}/{currentOpponent.sanityMax ?? 10})</span>
                   </div>
                 </div>
-                {battle.opponentBuffs.length > 0 && (
-                  <div className="buff-icons">
-                    {battle.opponentBuffs.map((buff, i) => {
-                      const info = BUFF_META[buff.id];
-                      return (
-                        <div
-                          key={`ob-${buff.id}-${i}`}
-                          className={`buff-chip ${info.positive ? 'buff-positive' : 'buff-negative'}`}
-                          title={`${info.label}${buff.duration > 0 ? ` (${buff.duration}T)` : ''}`}
-                        >
-                          <span className="buff-chip-icon">{info.icon}</span>
-                          {buff.duration > 0 && <span className="buff-chip-dur">{buff.duration}</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                <BuffDisplay buffs={battle.opponentBuffs} keyPrefix="ob" />
               </div>
             </div>
 
@@ -619,7 +605,7 @@ export function BattleScreen() {
               <div className="gauge-track">
                 <div
                   className="gauge-fill player-fill"
-                  style={{ width: `${Math.min(battle.playerDrunk / 10, 1) * 100}%` }}
+                  style={{ width: `${gaugePercent(battle.playerDrunk, 10)}%` }}
                 />
               </div>
               <div className="gauge-lvl">
@@ -632,7 +618,7 @@ export function BattleScreen() {
               <div className="gauge-track">
                 <div
                   className="gauge-fill sanity-fill"
-                  style={{ width: `${Math.min(battle.playerSanity / 10, 1) * 100}%` }}
+                  style={{ width: `${gaugePercent(battle.playerSanity, 10)}%` }}
                 />
               </div>
               <div className="kanryoku-display">肝力: {getKanryoku(getDrunkLevel(battle.playerDrunk))}/4</div>
@@ -641,23 +627,7 @@ export function BattleScreen() {
                 <span className="lvl-n">({battle.playerSanity}/10)</span>
               </div>
             </div>
-            {battle.playerBuffs.length > 0 && (
-              <div className="buff-icons player-buff-icons">
-                {battle.playerBuffs.map((buff, i) => {
-                  const info = BUFF_META[buff.id];
-                  return (
-                    <div
-                      key={`pb-${buff.id}-${i}`}
-                      className={`buff-chip ${info.positive ? 'buff-positive' : 'buff-negative'}`}
-                      title={`${info.label}${buff.duration > 0 ? ` (${buff.duration}T)` : ''}`}
-                    >
-                      <span className="buff-chip-icon">{info.icon}</span>
-                      {buff.duration > 0 && <span className="buff-chip-dur">{buff.duration}</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <BuffDisplay buffs={battle.playerBuffs} keyPrefix="pb" className="player-buff-icons" />
           </div>
 
         </div>

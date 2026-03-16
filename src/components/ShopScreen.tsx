@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import { SHOP_DATA, getShopLineCategory } from '../data/shop.ts';
-import { Card } from './Card.tsx';
+import { CARD_TYPE_ICONS, CARD_TYPE_LABELS } from '../data/constants.ts';
 import { randomPick } from '../engine/utils.ts';
+import type { CardType } from '../data/types.ts';
 
 export function ShopScreen() {
   const money = useGameStore((s) => s.money);
@@ -52,14 +53,13 @@ export function ShopScreen() {
     }
   };
 
-  // カードをカテゴリ分け
-  const drinkCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'drink');
-  const foodCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'food');
-  const chugCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'chug');
-  const harassCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'harassment');
-  const strategyCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'strategy');
-  const environmentCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'environment');
-  const statusCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'status');
+  // カードをカテゴリ別にグループ化（1回のイテレーションで分類）
+  const SHOP_CATEGORIES: CardType[] = ['drink', 'food', 'chug', 'harassment', 'strategy', 'environment', 'status'];
+  const cardsByType: Partial<Record<CardType, string[]>> = {};
+  for (const id of SHOP_DATA.availableCards) {
+    const type = CARD_DATA[id]?.type;
+    if (type) (cardsByType[type] ??= []).push(id);
+  }
 
   const renderShopItem = (cardId: string) => {
     const card = CARD_DATA[cardId];
@@ -91,32 +91,16 @@ export function ShopScreen() {
       <div className="closure-dialogue">{closureLine}</div>
 
       <div className="shop-items">
-        <div className="shop-section-title">🍺 ドリンク</div>
-        {drinkCards.map(renderShopItem)}
-
-        <div className="shop-section-title">🥜 つまみ</div>
-        {foodCards.map(renderShopItem)}
-
-        <div className="shop-section-title">🍻 一気飲み</div>
-        {chugCards.map(renderShopItem)}
-
-        <div className="shop-section-title">💋 セクハラ</div>
-        {harassCards.map(renderShopItem)}
-
-        {strategyCards.length > 0 && <>
-          <div className="shop-section-title">🃏 戦略</div>
-          {strategyCards.map(renderShopItem)}
-        </>}
-
-        {environmentCards.length > 0 && <>
-          <div className="shop-section-title">🌐 環境</div>
-          {environmentCards.map(renderShopItem)}
-        </>}
-
-        {statusCards.length > 0 && <>
-          <div className="shop-section-title">💫 状態異常</div>
-          {statusCards.map(renderShopItem)}
-        </>}
+        {SHOP_CATEGORIES.map(type => {
+          const cards = cardsByType[type];
+          if (!cards || cards.length === 0) return null;
+          return (
+            <div key={type}>
+              <div className="shop-section-title">{CARD_TYPE_ICONS[type]} {CARD_TYPE_LABELS[type]}</div>
+              {cards.map(renderShopItem)}
+            </div>
+          );
+        })}
       </div>
 
       <div className="deck-editor">

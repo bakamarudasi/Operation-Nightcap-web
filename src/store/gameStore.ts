@@ -10,6 +10,42 @@ import { BattleAI } from '../engine/battleAI.ts';
 import { pullMulti } from '../engine/gachaEngine.ts';
 import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
 
+/** デバフをN個除去するヘルパー */
+function cleanseDebuffs(buffs: Buff[], count: number): Buff[] {
+  const result = [...buffs];
+  let remaining = count;
+  for (const debuffId of DEBUFF_IDS) {
+    if (remaining <= 0) break;
+    const idx = result.findIndex(bf => bf.id === debuffId);
+    if (idx >= 0) {
+      result.splice(idx, 1);
+      remaining--;
+    }
+  }
+  return result;
+}
+
+/** デッキ→手札を引く共通処理 */
+function drawFromDeck(
+  remaining: string[],
+  discard: string[],
+  handSize: number,
+): { hand: string[]; remaining: string[]; discard: string[] } {
+  let rem = [...remaining];
+  let disc = [...discard];
+  if (rem.length < handSize && disc.length > 0) {
+    shuffleArray(disc);
+    rem = [...rem, ...disc];
+    disc = [];
+  }
+  const hand: string[] = [];
+  const count = Math.min(handSize, rem.length);
+  for (let i = 0; i < count; i++) {
+    hand.push(rem.shift()!);
+  }
+  return { hand, remaining: rem, discard: disc };
+}
+
 interface GameStore {
   // 永続データ
   money: number;
@@ -200,35 +236,19 @@ export const useGameStore = create<GameStore>()(
           const handSize = b.playerReducedHand ? 3 : 4;
           b.playerReducedHand = false;
 
-          // プレイヤー手札（デッキが足りなければ捨て札をリシャッフルして補充）
-          let pRemaining = [...b.playerDeckRemaining];
-          let pDiscard = [...b.playerDiscardPile];
-          if (pRemaining.length < handSize && pDiscard.length > 0) {
-            shuffleArray(pDiscard);
-            pRemaining = [...pRemaining, ...pDiscard];
-            pDiscard = [];
-          }
-          const pHand: string[] = [];
-          const pCount = Math.min(handSize, pRemaining.length);
-          for (let i = 0; i < pCount; i++) {
-            pHand.push(pRemaining.shift()!);
-          }
+          // プレイヤー手札
+          const pDraw = drawFromDeck(b.playerDeckRemaining, b.playerDiscardPile, handSize);
+          const pHand = pDraw.hand;
+          let pRemaining = pDraw.remaining;
+          let pDiscard = pDraw.discard;
 
-          // 相手手札（デッキが足りなければ捨て札をリシャッフルして補充）
+          // 相手手札
           const oHandSize = b.opponentReducedHand ? 3 : 4;
           b.opponentReducedHand = false;
-          let oRemaining = [...b.opponentDeckRemaining];
-          let oDiscard = [...b.opponentDiscardPile];
-          if (oRemaining.length < oHandSize && oDiscard.length > 0) {
-            shuffleArray(oDiscard);
-            oRemaining = [...oRemaining, ...oDiscard];
-            oDiscard = [];
-          }
-          const oHand: string[] = [];
-          const oCount = Math.min(oHandSize, oRemaining.length);
-          for (let i = 0; i < oCount; i++) {
-            oHand.push(oRemaining.shift()!);
-          }
+          const oDraw = drawFromDeck(b.opponentDeckRemaining, b.opponentDiscardPile, oHandSize);
+          const oHand = oDraw.hand;
+          let oRemaining = oDraw.remaining;
+          let oDiscard = oDraw.discard;
 
           // 手札からランダムN枚を破棄して捨て札へ移す
           const discardRandom = (hand: string[], discard: string[], count: number) => {
@@ -497,35 +517,15 @@ export const useGameStore = create<GameStore>()(
 
         // デバフ除去（クロージャの錠剤等）
         if (extResult.playerCleanseSelf && extResult.playerCleanseSelf > 0) {
-          const debuffIds = DEBUFF_IDS;
-          let remaining = extResult.playerCleanseSelf;
-          for (const debuffId of debuffIds) {
-            if (remaining <= 0) break;
-            const idx = newPlayerBuffs.findIndex(bf => bf.id === debuffId);
-            if (idx >= 0) {
-              newPlayerBuffs.splice(idx, 1);
-              remaining--;
-            }
-          }
+          newPlayerBuffs = cleanseDebuffs(newPlayerBuffs, extResult.playerCleanseSelf);
         }
-
-        // dot除去（ガヴィルの薬草スープ等）
         if (extResult.playerCleanseDot) {
           newPlayerBuffs = newPlayerBuffs.filter(bf => bf.id !== 'dot');
         }
 
         // 相手側のデバフ除去
         if (extResult.opponentCleanseSelf && extResult.opponentCleanseSelf > 0) {
-          const debuffIds = DEBUFF_IDS;
-          let remaining = extResult.opponentCleanseSelf;
-          for (const debuffId of debuffIds) {
-            if (remaining <= 0) break;
-            const idx = newOpponentBuffs.findIndex(bf => bf.id === debuffId);
-            if (idx >= 0) {
-              newOpponentBuffs.splice(idx, 1);
-              remaining--;
-            }
-          }
+          newOpponentBuffs = cleanseDebuffs(newOpponentBuffs, extResult.opponentCleanseSelf);
         }
         if (extResult.opponentCleanseDot) {
           newOpponentBuffs = newOpponentBuffs.filter(bf => bf.id !== 'dot');

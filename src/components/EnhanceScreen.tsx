@@ -1,27 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA, getEnhancedCard, getEnhanceCost, MAX_CARD_LEVEL } from '../data/cards.ts';
-import type { CardType } from '../data/types.ts';
-
-const TYPE_LABELS: Record<string, string> = {
-  all: '全て',
-  drink: '酒',
-  food: '食事',
-  chug: '一気',
-  harassment: 'ハラスメント',
-  strategy: '策略',
-  environment: '環境',
-  status: '状態',
-};
-
-const RARITY_CLASS: Record<number, string> = {
-  1: 'rarity-common',
-  2: 'rarity-uncommon',
-  3: 'rarity-rare',
-  4: 'rarity-epic',
-  5: 'rarity-legendary',
-  6: 'rarity-mythic',
-};
+import { CARD_TYPE_LABELS, RARITY_CLASS, buildCardCountMap } from '../data/constants.ts';
 
 export function EnhanceScreen() {
   const money = useGameStore((s) => s.money);
@@ -42,20 +22,17 @@ export function EnhanceScreen() {
   const detailRef = useRef<HTMLDivElement>(null);
 
   // インベントリからユニークカード一覧を作成（枚数付き）
-  const cardCounts = new Map<string, number>();
-  for (const id of inventory) {
-    cardCounts.set(id, (cardCounts.get(id) ?? 0) + 1);
-  }
+  const cardCounts = buildCardCountMap(inventory);
 
   // カードタイプ一覧を収集
   const availableTypes = new Set<string>();
-  for (const [id] of cardCounts) {
+  for (const id of Object.keys(cardCounts)) {
     const card = CARD_DATA[id];
     if (card && card.rarity > 0) availableTypes.add(card.type);
   }
 
   // トークンカード（rarity 0）は除外 + フィルタ適用
-  const uniqueCards = [...cardCounts.entries()]
+  const uniqueCards = Object.entries(cardCounts)
     .filter(([id]) => {
       const card = CARD_DATA[id];
       if (!card || card.rarity <= 0) return false;
@@ -73,7 +50,7 @@ export function EnhanceScreen() {
 
   const selectedCard = selectedId ? CARD_DATA[selectedId] : null;
   const selectedLevel = selectedId ? (cardLevels[selectedId] ?? 1) : 1;
-  const selectedCount = selectedId ? (cardCounts.get(selectedId) ?? 0) : 0;
+  const selectedCount = selectedId ? (cardCounts[selectedId] ?? 0) : 0;
   const isMaxLevel = selectedLevel >= MAX_CARD_LEVEL;
   const enhanceCost = selectedId ? getEnhanceCost(selectedId, selectedLevel) : 0;
   const needCards = 3;
@@ -168,13 +145,13 @@ export function EnhanceScreen() {
       {/* フィルタバー */}
       <div className="enhance-filters">
         <div className="enhance-type-tabs">
-          {['all', ...Object.keys(TYPE_LABELS).filter(k => k !== 'all' && availableTypes.has(k))].map(type => (
+          {['all', ...Object.keys(CARD_TYPE_LABELS).filter(k => k !== 'all' && availableTypes.has(k))].map(type => (
             <button
               key={type}
               className={`enhance-tab ${typeFilter === type ? 'active' : ''}`}
               onClick={() => setTypeFilter(type)}
             >
-              {TYPE_LABELS[type] ?? type}
+              {CARD_TYPE_LABELS[type] ?? type}
             </button>
           ))}
         </div>
@@ -216,7 +193,7 @@ export function EnhanceScreen() {
           })}
           {uniqueCards.length === 0 && (
             <div style={{ color: 'var(--text-dim)', padding: 24 }}>
-              {typeFilter !== 'all' ? `${TYPE_LABELS[typeFilter]}カードがありません` : 'カードがありません'}
+              {typeFilter !== 'all' ? `${CARD_TYPE_LABELS[typeFilter]}カードがありません` : 'カードがありません'}
             </div>
           )}
         </div>
