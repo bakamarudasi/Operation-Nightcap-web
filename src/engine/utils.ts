@@ -61,7 +61,7 @@ export const POSITIVE_BUFF_IDS: readonly Buff['id'][] = [
 /** デバフとして扱うID一覧（クロージャの錠剤等で除去対象） */
 export const DEBUFF_IDS: readonly Buff['id'][] = [
   'dot', 'tipsy', 'blush', 'atk_down', 'stun', 'no_food', 'corrupted_hand',
-  'afterglow', 'frustration',
+  'afterglow', 'frustration', 'dimlight', 'alone',
 ];
 
 // ============================================

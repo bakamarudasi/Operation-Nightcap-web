@@ -766,24 +766,23 @@ export const BattleEngine = {
     const opponentDamageBefore = result.opponentDamage;
 
     // reflect_all: 受けたダメージを全て相手に跳ね返す（DoT除外）
+    // 両者同時判定: 反射前のダメージをスナップショットして同時処理
     const playerDoT = calcDoTDamage(battle.playerBuffs);
     const opponentDoT = calcDoTDamage(battle.opponentBuffs);
+    const playerReflectable = hasBuff(battle.playerBuffs, 'reflect_all')
+      ? Math.max(0, result.playerDamage - playerDoT) : 0;
+    const opponentReflectable = hasBuff(battle.opponentBuffs, 'reflect_all')
+      ? Math.max(0, result.opponentDamage - opponentDoT) : 0;
 
-    if (hasBuff(battle.playerBuffs, 'reflect_all')) {
-      const reflectable = result.playerDamage - playerDoT;
-      if (reflectable > 0) {
-        result.opponentDamage += reflectable;
-        result.playerDamage -= reflectable;
-        result.messages.push(`🛡️ 般若の酒壁！${reflectable}ダメージが全て跳ね返った！`);
-      }
+    if (playerReflectable > 0) {
+      result.opponentDamage += playerReflectable;
+      result.playerDamage -= playerReflectable;
+      result.messages.push(`🛡️ 般若の酒壁！${playerReflectable}ダメージが全て跳ね返った！`);
     }
-    if (hasBuff(battle.opponentBuffs, 'reflect_all')) {
-      const reflectable = result.opponentDamage - opponentDoT;
-      if (reflectable > 0) {
-        result.playerDamage += reflectable;
-        result.opponentDamage -= reflectable;
-        result.messages.push(`🛡️ 相手の酒壁！${reflectable}ダメージが跳ね返された！`);
-      }
+    if (opponentReflectable > 0) {
+      result.playerDamage += opponentReflectable;
+      result.opponentDamage -= opponentReflectable;
+      result.messages.push(`🛡️ 相手の酒壁！${opponentReflectable}ダメージが跳ね返された！`);
     }
 
     // thorns: ダメージを受けたら固定値を反射（reflect前のダメージで判定）
@@ -1142,9 +1141,9 @@ export const BattleEngine = {
         let heal = activeCard.heal === 99 ? Math.max(0, drunkVal) : (activeCard.heal ?? 0);
         heal = applyFoodBuffs(heal, userBuffs);
         if (isPlayer) {
-          result.playerHeal = heal;
+          result.playerHeal += heal;
         } else {
-          result.opponentHeal = heal;
+          result.opponentHeal += heal;
         }
         result.messages.push(`${activeCard.emoji} ${activeCard.name}で${heal}回復！`);
         applyCardExtras(activeCard, result, user);

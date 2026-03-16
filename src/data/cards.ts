@@ -893,7 +893,7 @@ export function getEnhancedCard(cardId: string, level: number): CardDef {
   const card = { ...base };
 
   if (card.type === 'food') {
-    if (card.heal && card.heal > 0) card.heal += bonus;
+    if (card.heal && card.heal > 0 && card.heal !== 99) card.heal += bonus;
   } else if (card.type === 'environment') {
     // 環境カードはバフ持続ターン数を延長
     if (card.applyBothBuffs) {
