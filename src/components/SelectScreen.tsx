@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
-import { CHARACTER_DATA } from '../data/characters.ts';
+import { getLocalizedCharacterData } from '../data/characters.ts';
 import type { CharacterDef } from '../data/types.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { getAffinityLevel, AFFINITY_LEVELS } from '../data/affinity.ts';
@@ -85,7 +85,8 @@ export function SelectScreen() {
   const winsByCharacter = useGameStore((s) => s.winsByCharacter);
 
   // Fix #3: useMemo でキャラ配列を安定化
-  const characters = useMemo(() => Object.values(CHARACTER_DATA), []);
+  const CHARACTER_DATA = useMemo(() => getLocalizedCharacterData(t), [t]);
+  const characters = useMemo(() => Object.values(CHARACTER_DATA), [CHARACTER_DATA]);
   const charCount = characters.length;
 
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -190,7 +191,7 @@ export function SelectScreen() {
             addTimer(() => {
               setPhase('noren-final');
               addTimer(() => {
-                initBattle(char.id);
+                initBattle(char.id, CHARACTER_DATA);
               }, 600);
             }, 6000);
 

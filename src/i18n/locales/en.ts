@@ -591,6 +591,264 @@ const en = {
       heal: 'Heal',
       price: 'Price',
     },
+
+    // ── Character Data ──
+    char: {
+      blaze: {
+        name: 'Blaze',
+        subtitle: 'The Blazing Sun',
+        costume: {
+          0: { label: 'Normal', desc: 'Rhodes Island uniform worn properly' },
+          1: { label: 'Loosened', desc: 'Top button undone, shoulders slightly exposed' },
+          2: { label: 'Unbuttoned', desc: '"It\'s hot..." — Front unbuttoned, collarbone and cleavage peeking through' },
+          3: { label: 'Disheveled', desc: 'Clothes slipping off shoulders, bra straps visible. Thighs exposed' },
+          4: { label: 'Nearly Off', desc: 'Clothes completely open, practically in underwear. Flushed and dozing off' },
+        },
+        drunk: {
+          0: {
+            name: 'Sober',
+            lines: [
+              "C'mon, let's drink! Keep up with me, Doctor!",
+              "We're just getting started — I haven't even tried yet.",
+              "Doctor, can you hold your liquor? ...Hmm, wanna find out?",
+            ],
+          },
+          1: {
+            name: 'Tipsy',
+            lines: [
+              'Ahaha! Starting to feel pretty good~',
+              "Hey Doctor, one more round. ...Want me to pour for you?",
+              "This stuff's good! Closure really knows her suppliers.",
+            ],
+          },
+          2: {
+            name: 'Drunk',
+            lines: [
+              "Mm... isn't it hot in here? Mind if I... unbutton a little...?",
+              "Doctor... your face is kinda close today, y'know? ...Not that I mind.",
+              "Phew... starting to feel it a bit. ...Just kidding, I can keep going.",
+            ],
+          },
+          3: {
+            name: 'Wasted',
+            lines: [
+              "Doctoooor... come closer... I'm cold...",
+              "Y'know... I don't... mm... I don't hate you, Doctor...",
+              "Mm... Doctor, you smell really nice... can I just... stay like this a bit longer?",
+            ],
+          },
+          4: {
+            name: 'Blacked Out',
+            lines: [
+              '...zzZ',
+              '...Doctor... warm... just like this... zzZ',
+            ],
+          },
+        },
+        battle: {
+          playDrink: ["Oh, nice one!", "Good match!"],
+          playFood: ["Snacking? ...I won't let you escape.", "Ooh, that looks tasty."],
+          playChug: ["Bottoms up!! Keep up!", "Ahaha! Drink, drink!"],
+          takeDamage: ["Kh... that hits hard...", "Not bad...!"],
+          dealDamage: ["C'mon, drink more!", "I'm not done yet!"],
+          harassmentSuccess: [
+            "Nn...!? S-stop... not here... idiot...",
+            "...! That's playing dirty... my body just flinched...",
+          ],
+          harassmentFail: [
+            "Huh? You're trying that sober? Pervert.",
+            "...Doing that when you're not even drunk? Bold, I'll give you that.",
+          ],
+          winLine: "Ahaha! I win! You're so weak, Doctor. ...Well, I'll think of a punishment later~",
+          loseLine: "...zzZ... Doctor... idiot... stop making me drink...",
+        },
+        cg: {
+          hand_hold: {
+            frames: [
+              'Fingers brush under the table',
+              'Blaze startled',
+              'Fingers intertwine',
+              'She squeezes back',
+            ],
+            dialogue: [
+              { s: '', t: "— Beneath the table, the Doctor's fingers gently brush against Blaze's hand." },
+              { s: 'char.blaze.name', t: '...Huh? ...Doctor, your hand...' },
+              { s: '', t: "She draws a sharp breath but doesn't pull away. Her eyes lock onto yours." },
+              { s: 'char.blaze.name', t: "...What's this, all of a sudden? ...You're drunk, aren't you, Doctor? ...Not that I mind." },
+              { s: '', t: 'As your fingers intertwine, a delicate trembling travels through her hand — nothing like the warrior who charges into battle.' },
+              { s: 'char.blaze.name', t: "...Your hand is cold, Doctor. ...Want me to warm it with my Arts? ...Heh, just kidding." },
+              { s: '', t: "She says it's a joke, but her hand squeezes yours tighter. She has no intention of letting go." },
+              { s: 'char.blaze.name', t: '...Hey. ...Can we stay like this... just a little longer...?' },
+            ],
+          },
+          shoulder_lean: {
+            frames: [
+              'Leaning close to her ear',
+              'First-person view',
+              'Blushing',
+              'Comfortable',
+            ],
+            dialogue: [
+              { s: 'common.doctor', t: '(Gently leaning in, bringing your face close to her ear)' },
+              { s: 'char.blaze.name', t: "Hyah...! H-hey, too close... I can feel your breath..." },
+              { s: 'common.doctor', t: "(So warm. Like burying your face in a large cat — a sense of security mixed with intense heat. Even through the Rhodes Island uniform, her softness is impossible to ignore.)" },
+              { s: 'char.blaze.name', t: '...Wha— are you sniffing me up close? Pervert...' },
+              { s: 'char.blaze.name', t: "Fine, call me a pervert. Your scent calms me down, Blaze... let me stay like this a bit longer." },
+              { s: 'common.doctor', t: "(But her body has been tense this whole time. Maybe I went too far...?)" },
+              { s: 'common.doctor', t: "...Sorry. You didn't like that, right? I'll back off." },
+              { s: 'char.blaze.name', t: "...I-I didn't say I didn't like it. ...You can stay close... just a little longer." },
+            ],
+          },
+          headpat: {
+            frames: ['Gazing', 'Stroking', 'Smirking'],
+            dialogue: [
+              { s: 'common.doctor', t: '(Brushing her hair aside, your fingertips trace gently along the nape of her neck)' },
+              { s: 'common.doctor', t: "(The alcohol has stripped away her usual guarded composure. The exposed nape of her neck looks impossibly alluring... before you know it, you've reached out.)" },
+              { s: 'char.blaze.name', t: "Hii...! N-not there... you know my nape is sensitive...!" },
+              { s: 'common.doctor', t: "(The way her shoulders tremble is unbearably cute. Wanting to see her lose composure even more, you deliberately cool your fingertips and trace them slowly.)" },
+              { s: 'char.blaze.name', t: "...Nn, your fingers... they're cold... it's making me shiver... stop..." },
+              { s: 'char.blaze.name', t: "...I said stop, but... go deeper... idiot." },
+              { s: 'common.doctor', t: "(Her words say no, but her body is radiating heat and leaning into your touch. Her sanity is clearly melting away...)" },
+            ],
+          },
+          breast_touch: {
+            frames: ['Hand reaching', 'Touching her chest', 'Her expression'],
+            dialogue: [
+              { s: 'common.doctor', t: "(Pretending to be drunk, you gently place your hand on Blaze's chest)" },
+              { s: 'char.blaze.name', t: "Hyah...!! W-where are you touching...!!" },
+              { s: 'common.doctor', t: "(Despite her startled reaction, your palm feels her generous softness and her heart pounding — thump, thump — rapidly.)" },
+              { s: 'char.blaze.name', t: "...Idiot... you think being drunk makes this okay...?" },
+              { s: 'common.doctor', t: "(Her glaring eyes are glistening — she clearly has no real intention of refusing. Just a little more, like this...)" },
+              { s: 'char.blaze.name', t: "...You're not moving your hand...? ...I guess you don't have to... just this once..." },
+              { s: 'common.doctor', t: "— Once more. A little firmer than before. Through her tank top, the heat and the sensation of yielding softness. You've long since lost track of when to let go." },
+              { s: 'char.blaze.name', t: "...Nn... Doctor, your hand is warm... you can feel it, right... my heart, pounding like crazy..." },
+            ],
+          },
+          hip_touch: {
+            frames: ['From behind', 'Side view', 'Squeezing', 'Kneading'],
+            dialogue: [
+              { s: 'common.doctor', t: "(Still seated beside her, you let your hand slide onto Blaze's rear)" },
+              { s: 'char.blaze.name', t: "Nn...! W-wait... that's my... butt...!!" },
+              { s: 'common.doctor', t: "(The bounce and warmth exceed your imagination. Even through her uniform, her softness is unmistakable.)" },
+              { s: 'char.blaze.name', t: "...Unbelievable... what are you doing here, Doctor... pervert..." },
+              { s: 'common.doctor', t: "(Seizing her lack of real resistance, you cup her flesh firmly with your whole palm and squeeze.)" },
+              { s: 'char.blaze.name', t: "...Don't squeeze... okay, maybe just a little more... ah... no, I'll make a sound..." },
+              { s: 'common.doctor', t: "(With every squeeze her temperature rises... until a sweet, unmistakable sigh escapes right by your ear.)" },
+            ],
+          },
+          thigh_touch: {
+            frames: ['Hand on knee', 'Stroking her thigh', 'Tension fading', 'Resigned expression'],
+            dialogue: [
+              { s: '', t: "— Beneath the table, the Doctor's hand settles gently on Blaze's knee." },
+              { s: 'char.blaze.name', t: "...Doctor? ...Your hand is on my knee, you know." },
+              { s: '', t: 'Instead of an answer, your fingertips slowly trace upward along her inner thigh.' },
+              { s: 'char.blaze.name', t: "...! W-wait... not that way..." },
+              { s: '', t: "Her battle-hardened thigh trembles faintly beneath your fingers. Arts heat or body heat — the skin you touch feels feverishly warm." },
+              { s: 'char.blaze.name', t: "...Nn... Doctor, your fingers are cold... it's making me shiver... I said stop..." },
+              { s: '', t: "Despite her protests, the tension in her thigh eases — her legs part just slightly, as if accepting your touch." },
+              { s: 'char.blaze.name', t: "...You knew. You knew exactly what you were doing... idiot. ...Lucky for you it's under the table..." },
+            ],
+          },
+          ear_bite: {
+            frames: ['Moving close to her ear', 'Nibbling her earlobe', 'Melting expression'],
+            dialogue: [
+              { s: 'common.doctor', t: "(You gently catch Blaze's earlobe between your lips)" },
+              { s: 'char.blaze.name', t: "Hyaa...!! N-not the ear... I can feel it...!" },
+              { s: 'char.blaze.name', t: "...Nn, your tongue... no, it's making me shiver... stop..." },
+              { s: 'char.blaze.name', t: "...Doctor, you're the worst... this is... do more..." },
+              { s: 'char.blaze.name', t: "...You're not going home tonight... brace yourself..." },
+            ],
+          },
+          kiss: {
+            frames: ['Pulling her close', 'Lips drawing near', 'The kiss', 'Afterglow'],
+            dialogue: [
+              { s: 'common.doctor', t: "(You pull Blaze close by the waist and brush a finger against her lips)" },
+              { s: 'char.blaze.name', t: "...Wait, really...? Don't stare at me from this close..." },
+              { s: 'char.blaze.name', t: "...My heart's about to stop... your breath is sweet, Doctor..." },
+              { s: 'char.blaze.name', t: "...Mm..." },
+              { s: 'char.blaze.name', t: "...Idiot. It's too late now. ...I'm not letting you go until morning." },
+            ],
+          },
+          foot_tease: {
+            frames: ['Something under the table', 'Provocative smile', 'Blaze on the offensive', ''],
+            dialogue: [
+              { s: '', t: "— Beneath the table. A heated bare foot slides along your inner thigh, pressing toward somewhere even more dangerous." },
+              { s: 'char.blaze.name', t: "...Hm? What's wrong, Doctor? You're sweating a lot. Is it hot in here?" },
+              { s: '', t: "(Despite her innocent tone, her toes move with clear intent, skillfully teasing through the fabric...)" },
+              { s: 'char.blaze.name', t: '...Hehe, that\'s not it, is it? ...You know exactly what\'s going on.' },
+              { s: '', t: "The Feline grace in her footwork, the faint heat of her Arts — the friction dissolves your sanity bit by bit." },
+              { s: 'char.blaze.name', t: "(Pressing the sole of her foot deeper) ...C'mon, relax. I can feel how hot you're getting right through my toes, y'know~" },
+              { s: 'common.doctor', t: "The gap between her usual bold demeanor and this cloying voice, combined with the relentless sensation — it's suffocating." },
+              { s: 'char.blaze.name', t: "...Don't make a sound, okay? Until I'm satisfied with this... just be a good Doctor and surrender everything to me." },
+            ],
+          },
+          dirty_talk: {
+            frames: ['Leaning to your ear', 'Whispering expression', 'Satisfied smile'],
+            dialogue: [
+              { s: 'char.blaze.name', t: "(Lips at your ear) ...Hey, Doctor." },
+              { s: 'char.blaze.name', t: "...Think you're going home tonight? ...How naive." },
+              { s: 'char.blaze.name', t: "...You have no idea how long I've been holding back..." },
+              { s: 'char.blaze.name', t: "...I'm taking you home with me. ...Brace yourself, okay?" },
+              { s: 'char.blaze.name', t: "...Ahaha, your ears are bright red. ...You're so cute, Doctor~" },
+            ],
+          },
+        },
+        after: {
+          tipsy: {
+            title: 'Tipsy Takeaway',
+            dialogue: [
+              { s: '', t: "— Stepping outside the bar, the night breeze brushes against both your cheeks." },
+              { s: 'char.blaze.name', t: "Mm... it's cool out... Doctor, lend me your shoulder... just for a bit." },
+              { s: 'common.doctor', t: "(You wrap an arm around Blaze's shoulder)" },
+              { s: 'char.blaze.name', t: "...Ehehe. Your shoulder is just the right height, Doctor..." },
+              { s: 'char.blaze.name', t: "...Hey, are we just going home? ...I want to stay like this a little longer." },
+              { s: 'char.blaze.name', t: "...I like your scent, Doctor... mixed with the booze... it's unfairly nice..." },
+            ],
+          },
+          drunk: {
+            title: "In the Doctor's Room",
+            dialogue: [
+              { s: '', t: "— The Doctor's room. You set Blaze down on the bed." },
+              { s: 'char.blaze.name', t: "Mm... your room smells nice, Doctor... it's kinda comforting..." },
+              { s: 'char.blaze.name', t: "Hey... water, please... and sit next to me... I'm cold..." },
+              { s: 'common.doctor', t: "(You hand her the water and sit down beside her)" },
+              { s: 'char.blaze.name', t: "...Doctor. I think... even if I weren't drunk... I'd have wanted this." },
+              { s: 'char.blaze.name', t: "...I'm not lying. ...Believe me." },
+              { s: 'char.blaze.name', t: "...Come closer... there's room here... okay?" },
+              { s: 'char.blaze.name', t: "(Blaze grabs the Doctor's arm and pulls them onto the bed)" },
+              { s: 'char.blaze.name', t: "...I said I wouldn't let you go... didn't I? ...Idiot." },
+            ],
+          },
+          morning: {
+            title: 'The Morning After',
+            dialogue: [
+              { s: '', t: "— Morning light slips through the curtain gap. A lingering warmth beside you." },
+              { s: 'char.blaze.name', t: "...Mm... nng... too bright..." },
+              { s: 'char.blaze.name', t: "...Huh... this is the Doctor's room...? Wait, why am I..." },
+              { s: 'char.blaze.name', t: "...!! W-why am I dressed like this...! Doctor, don't look!!" },
+              { s: 'char.blaze.name', t: "...No way, I remember last night... all of it..." },
+              { s: 'char.blaze.name', t: "...Idiot... everything I said... that was your fault, Doctor..." },
+              { s: 'char.blaze.name', t: '...But.' },
+              { s: 'char.blaze.name', t: "...I don't regret it. ...Let's go to Closure's place again. ...Just the two of us." },
+            ],
+          },
+          complete: {
+            title: "You're Not Going Home Tonight",
+            dialogue: [
+              { s: '', t: "— At the usual bar. Closure, ever perceptive, has arranged a private room." },
+              { s: 'char.blaze.name', t: "Doctor. ...Tonight, let's skip the drinking games." },
+              { s: 'char.blaze.name', t: "...I just want to drink together. ...With you, Doctor." },
+              { s: 'common.doctor', t: "(You clink glasses. A clear, crystalline ring fills the air.)" },
+              { s: 'char.blaze.name', t: "...Hey. What do you think of me? ...I'm not drunk right now, just so you know." },
+              { s: 'char.blaze.name', t: "...I see. ...Ehehe, you really are unfair, Doctor." },
+              { s: 'char.blaze.name', t: "...Tonight... you're not going home. Brace yourself, okay?" },
+              { s: 'char.blaze.name', t: "...I'm not lying. ...Being beside you like this... it makes me... really happy." },
+              { s: 'char.blaze.name', t: "...I want to stay like this forever. ...With you, Doctor." },
+            ],
+          },
+        },
+      },
+    },
   },
 };
 
