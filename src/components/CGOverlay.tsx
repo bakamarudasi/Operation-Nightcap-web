@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import { CGSequencePlayer } from './CGSequencePlayer.tsx';
 
 export function CGOverlay() {
+  const { t } = useTranslation();
   const activeCG = useGameStore((s) => s.activeCG);
   const cgDialogueIndex = useGameStore((s) => s.cgDialogueIndex);
   const advanceCG = useGameStore((s) => s.advanceCG);
@@ -95,7 +97,7 @@ export function CGOverlay() {
       <div className="cg-textbox">
         <div className="cg-speaker">{currentLine.speaker}</div>
         <div className="cg-text">{displayText}</div>
-        <div className="cg-next">▶ クリックで次へ</div>
+        <div className="cg-next">{t('event.clickNext')}</div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CGSequenceFrame } from '../data/types.ts';
+import { assetUrl } from '../config.ts';
 
 interface Props {
   frames: CGSequenceFrame[];
@@ -22,6 +23,7 @@ export function CGSequencePlayer({ frames, cgColor, dialogueIndex, fallbackEmoji
       if (f.src && imageCache.current[f.src] === undefined) {
         imageCache.current[f.src] = false; // 読み込み中
         const img = new Image();
+        const resolvedSrc = assetUrl(f.src);
         img.onload = () => {
           imageCache.current[f.src!] = true;
           forceUpdate(n => n + 1);
@@ -30,7 +32,7 @@ export function CGSequencePlayer({ frames, cgColor, dialogueIndex, fallbackEmoji
           imageCache.current[f.src!] = false;
           forceUpdate(n => n + 1);
         };
-        img.src = f.src;
+        img.src = resolvedSrc;
       }
     }
   }, [frames]);
@@ -71,7 +73,7 @@ export function CGSequencePlayer({ frames, cgColor, dialogueIndex, fallbackEmoji
         className={`cg-seq-frame ${transitionClass}`}
         style={{
           background: imageLoaded
-            ? `url(${frame.src}) center/cover no-repeat`
+            ? `url(${assetUrl(frame.src!)}) center/cover no-repeat`
             : `linear-gradient(135deg, ${cgColor}44, ${cgColor}88)`,
         }}
       >

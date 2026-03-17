@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { CharacterTheme, CostumeState } from '../data/types.ts';
+import { assetUrl } from '../config.ts';
 
 interface PortraitProps {
   theme: CharacterTheme;
@@ -19,9 +20,10 @@ interface PortraitProps {
  */
 export function CharacterPortrait({ theme, variant, className = '', style, drunkLevel = 0, costumeStates }: PortraitProps) {
   // 酔いレベル別立ち絵があればそちらを優先、なければ通常portraitImgにフォールバック
-  const imgSrc = variant === 'portrait'
+  const rawSrc = variant === 'portrait'
     ? (theme.portraitDrunkImgs?.[drunkLevel] ?? theme.portraitImg)
     : theme.iconImg;
+  const imgSrc = rawSrc ? assetUrl(rawSrc) : undefined;
   const [imgError, setImgError] = useState(false);
 
   // 画像ソースが変わったらエラー状態をリセット

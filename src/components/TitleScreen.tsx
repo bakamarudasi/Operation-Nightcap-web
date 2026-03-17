@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import '../styles/title.css';
 
@@ -9,12 +10,12 @@ function getTimeOfDay(hour: number) {
   return 'night';
 }
 
-function getTimeStatus(hour: number) {
-  if (hour >= 6 && hour < 11) return '仕込み中';
-  if (hour >= 11 && hour < 17) return '昼営業中';
-  if (hour >= 17 && hour < 21) return '営業中';
-  if (hour >= 21) return '深夜営業中';
-  return '閉店中';
+function getTimeStatusKey(hour: number): string {
+  if (hour >= 6 && hour < 11) return 'title.timeStatus.prep';
+  if (hour >= 11 && hour < 17) return 'title.timeStatus.afternoon';
+  if (hour >= 17 && hour < 21) return 'title.timeStatus.evening';
+  if (hour >= 21) return 'title.timeStatus.lateNight';
+  return 'title.timeStatus.closed';
 }
 
 interface AudioNodes {
@@ -23,11 +24,12 @@ interface AudioNodes {
 }
 
 export function TitleScreen() {
+  const { t } = useTranslation();
   const money = useGameStore((s) => s.money);
   const setScreen = useGameStore((s) => s.setScreen);
 
   const [timeLabel, setTimeLabel] = useState('--:--');
-  const [timeStatus, setTimeStatus] = useState('営業中');
+  const [timeStatusKey, setTimeStatusKey] = useState('title.timeStatus.evening');
   const [timeClass, setTimeClass] = useState('');
   const [currencyDisplay, setCurrencyDisplay] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -45,7 +47,7 @@ export function TitleScreen() {
       const hour = now.getHours();
       const min = String(now.getMinutes()).padStart(2, '0');
       setTimeLabel(`${hour}:${min}`);
-      setTimeStatus(getTimeStatus(hour));
+      setTimeStatusKey(getTimeStatusKey(hour));
       setTimeClass(`time-${getTimeOfDay(hour)}`);
     }
     update();
@@ -113,9 +115,8 @@ export function TitleScreen() {
 
   const chimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Ambient audio - 共有AudioContextを使用してメモリリーク防止
+  // Ambient audio
   const createAmbientAudio = useCallback(() => {
-    // 既に作成済みなら再利用（resume で対応）
     if (audioCtxRef.current && audioNodesRef.current) {
       audioCtxRef.current.resume();
       audioNodesRef.current.masterGain.gain.linearRampToValueAtTime(1, audioCtxRef.current.currentTime + 0.5);
@@ -195,7 +196,7 @@ export function TitleScreen() {
     drone.start();
     sources.push(drone, droneLfo);
 
-    // Wind chime (furin) - isPlayingRef でアンマウント時に再帰を停止
+    // Wind chime (furin)
     function playChime() {
       if (!isPlayingRef.current) return;
       const osc = ctx.createOscillator();
@@ -239,13 +240,12 @@ export function TitleScreen() {
     }
   }, [isPlaying, createAmbientAudio]);
 
-  // Cleanup audio on unmount - 全ソースを停止しコンテキストを閉じる
+  // Cleanup audio on unmount
   useEffect(() => {
     return () => {
       isPlayingRef.current = false;
       if (chimeTimerRef.current) clearTimeout(chimeTimerRef.current);
       if (audioNodesRef.current) {
-        // 全てのオーディオソースを安全に停止
         for (const source of audioNodesRef.current.sources) {
           try { source.stop(); } catch { /* already stopped */ }
           try { source.disconnect(); } catch { /* already disconnected */ }
@@ -284,7 +284,7 @@ export function TitleScreen() {
       <div className="ts-time-indicator">
         <div className="ts-time-dot" />
         <span className="ts-time-label">{timeLabel}</span>
-        <span className="ts-time-status">{timeStatus}</span>
+        <span className="ts-time-status">{t(timeStatusKey)}</span>
       </div>
 
       {/* Decorations */}
@@ -295,14 +295,14 @@ export function TitleScreen() {
       <div className="ts-container">
         {/* Noren */}
         <div className="ts-noren-wrapper">
-          <div className="ts-noren-panel"><span className="ts-noren-text">酒</span></div>
-          <div className="ts-noren-panel"><span className="ts-noren-text">呑</span></div>
-          <div className="ts-noren-panel"><span className="ts-noren-text">処</span></div>
+          <div className="ts-noren-panel"><span className="ts-noren-text">{t('title.noren.sake')}</span></div>
+          <div className="ts-noren-panel"><span className="ts-noren-text">{t('title.noren.nomu')}</span></div>
+          <div className="ts-noren-panel"><span className="ts-noren-text">{t('title.noren.dokoro')}</span></div>
         </div>
 
         {/* Lanterns */}
         <div className="ts-lanterns">
-          {(['ロ', 'ド', 'ス'] as const).map((kanji, i) => (
+          {([t('title.lantern.ro'), t('title.lantern.do'), t('title.lantern.su')]).map((kanji, i) => (
             <div className="ts-lantern" key={i} onClick={handleLanternClick}>
               <div className="ts-lantern-string" />
               <div className="ts-lantern-cap" />
@@ -317,7 +317,7 @@ export function TitleScreen() {
 
         {/* Subtitle */}
         <div className="ts-title-area">
-          <p className="ts-title-sub">～今夜は帰さない～</p>
+          <p className="ts-title-sub">{t('title.subtitle')}</p>
         </div>
 
         <div className="ts-deco-line" />
@@ -326,36 +326,30 @@ export function TitleScreen() {
         <nav className="ts-menu">
           <button className="ts-menu-btn ts-primary ts-menu-wide" onClick={() => setScreen('select')}>
             <span className="ts-btn-icon">🍶</span>
-            <span className="ts-btn-label">対戦する</span>
+            <span className="ts-btn-label">{t('title.play')}</span>
           </button>
-          {/* ショップボタン (非表示・コード保持)
-          <button className="ts-menu-btn" onClick={() => setScreen('shop')}>
-            <span className="ts-btn-icon">🏮</span>
-            <span className="ts-btn-label">ショップ</span>
-          </button>
-          */}
           <button className="ts-menu-btn" onClick={() => setScreen('gacha')}>
             <span className="ts-btn-icon">🎰</span>
-            <span className="ts-btn-label">ガチャ</span>
+            <span className="ts-btn-label">{t('title.gacha')}</span>
           </button>
           <button className="ts-menu-btn" onClick={() => setScreen('deck')}>
             <span className="ts-btn-icon">🃏</span>
-            <span className="ts-btn-label">デッキ編集</span>
+            <span className="ts-btn-label">{t('title.deckEdit')}</span>
           </button>
           <button className="ts-menu-btn" onClick={() => setScreen('gallery')}>
             <span className="ts-btn-icon">🎨</span>
-            <span className="ts-btn-label">ギャラリー</span>
+            <span className="ts-btn-label">{t('title.gallery')}</span>
           </button>
           <button className="ts-menu-btn" onClick={() => setScreen('settings')}>
             <span className="ts-btn-icon">⚙️</span>
-            <span className="ts-btn-label">設定</span>
+            <span className="ts-btn-label">{t('title.settings')}</span>
           </button>
         </nav>
 
         {/* Currency */}
         <div className="ts-currency">
-          <div className="ts-currency-icon">龍</div>
-          <span className="ts-currency-amount">{currencyDisplay.toLocaleString()} 龍門幣</span>
+          <div className="ts-currency-icon">{t('common.currencyIcon')}</div>
+          <span className="ts-currency-amount">{t('common.currencyAmount', { amount: currencyDisplay.toLocaleString() })}</span>
         </div>
       </div>
 

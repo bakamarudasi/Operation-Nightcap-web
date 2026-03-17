@@ -94,14 +94,6 @@ const EMBEDDED_CHARACTERS_SRC = `
           { label: '耳たぶを噛む', dialogueStart: 1, transition: 'zoom' },
           { label: '蕩けた表情', dialogueStart: 3, transition: 'fade' },
         ] },
-      { id: 'lap_pillow_cg', triggerCard: 'lap_pillow', requiredDrunkLevel: 3, cgColor: '#e85d3a',
-        dialogue: [
-          { speaker: 'ドクター', text: '（ブレイズの頭をそっと膝に導き、髪を指に絡める）' },
-          { speaker: 'ブレイズ', text: 'え、ちょ……膝枕とか……んっ、髪、触んないでよ……くすぐったい……' },
-          { speaker: 'ブレイズ', text: 'ドクターの太もも……あったかい……すごい、心臓の音聞こえる……' },
-          { speaker: 'ブレイズ', text: '……ねぇ、このまま寝ちゃったら……何する気？ ……してもいいよ、今なら……' },
-          { speaker: 'ブレイズ', text: '……ん……もう動けない……ドクターの匂い……好き……zzZ' }
-        ] },
       { id: 'kiss_cg', triggerCard: 'kiss', requiredDrunkLevel: 3, cgColor: '#ff4466',
         dialogue: [
           { speaker: 'ドクター', text: '（ブレイズの腰を引き寄せ、唇に指を添える）' },
@@ -220,7 +212,6 @@ const EMBEDDED_CARDS_SRC = `
   hip_touch: { id: 'hip_touch', name: 'お尻をなでる', emoji: '🍑', type: 'harassment', requiredDrunkLevel: 2, drunkDamage: 2 },
   ear_bite: { id: 'ear_bite', name: '耳を甘噛み', emoji: '👅', type: 'harassment', requiredDrunkLevel: 3, drunkDamage: 3 },
   kiss: { id: 'kiss', name: 'ディープキス', emoji: '💋', type: 'harassment', requiredDrunkLevel: 3, instantWin: true },
-  lap_pillow: { id: 'lap_pillow', name: '膝枕', emoji: '🛌', type: 'harassment', requiredDrunkLevel: 3, drunkDamage: 2 },
   fix_collar: { id: 'fix_collar', name: '襟を直してあげる', emoji: '👔', type: 'harassment', requiredDrunkLevel: 1, drunkDamage: 1 },
   check_pulse: { id: 'check_pulse', name: '脈を測る', emoji: '💓', type: 'harassment', requiredDrunkLevel: 1, drunkDamage: 1 },
   foot_tease: { id: 'foot_tease', name: 'テーブルの下の足首', emoji: '🦶', type: 'harassment', requiredDrunkLevel: 2, sanityDamage: 3 },

@@ -1,21 +1,25 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA, getEnhancedCard } from '../data/cards.ts';
 import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
+import { useLocalizedCharacterData } from '../hooks/useLocalizedCharacterData.ts';
+import { gaugePercent } from '../data/constants.ts';
 import { randomPick, getDrunkLevel, BUFF_META, getKanryoku, canPlayCard, isFoodDisabled } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
+import { BuffDisplay } from './BuffDisplay.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
 
 // バフ表示は BUFF_META (utils.ts) から参照
 
 // 酔い段階
 const DRUNK_STAGES = [
-  { max: 0, text: 'シラフ',   cls: 'drunk-sober' },
-  { max: 1, text: 'ほろ酔い', cls: 'drunk-tipsy' },
-  { max: 3, text: '酔い',     cls: 'drunk-good' },
-  { max: 6, text: 'べろべろ', cls: 'drunk-done' },
-  { max: 9, text: '泥酔',     cls: 'drunk-wasted' },
-  { max: 10, text: '潰れ',    cls: 'drunk-gone' },
+  { max: 0, textKey: 'battle.drunkStages.sober',   cls: 'drunk-sober' },
+  { max: 1, textKey: 'battle.drunkStages.tipsy', cls: 'drunk-tipsy' },
+  { max: 3, textKey: 'battle.drunkStages.drunk',     cls: 'drunk-good' },
+  { max: 6, textKey: 'battle.drunkStages.wasted', cls: 'drunk-done' },
+  { max: 9, textKey: 'battle.drunkStages.hammered',     cls: 'drunk-wasted' },
+  { max: 10, textKey: 'battle.drunkStages.passed',    cls: 'drunk-gone' },
 ];
 
 function getDrunkStage(value: number) {
@@ -27,10 +31,10 @@ function getDrunkStage(value: number) {
 
 // 理性段階
 const SANITY_STAGES = [
-  { min: 8, text: '冷静',       cls: 'sanity-calm' },
-  { min: 5, text: '動揺',       cls: 'sanity-shaken' },
-  { min: 2, text: '理性崩壊寸前', cls: 'sanity-breaking' },
-  { min: 0, text: '理性ゼロ',    cls: 'sanity-gone' },
+  { min: 8, textKey: 'battle.sanityStages.calm',       cls: 'sanity-calm' },
+  { min: 5, textKey: 'battle.sanityStages.shaken',       cls: 'sanity-shaken' },
+  { min: 2, textKey: 'battle.sanityStages.breaking', cls: 'sanity-breaking' },
+  { min: 0, textKey: 'battle.sanityStages.gone',    cls: 'sanity-gone' },
 ];
 
 function getSanityStage(value: number) {
@@ -78,6 +82,7 @@ function playSound(type: 'slam' | 'flip') {
 }
 
 export function BattleScreen() {
+  const { t } = useTranslation();
   const battle = useGameStore((s) => s.battle);
   const currentOpponent = useGameStore((s) => s.currentOpponent);
   const money = useGameStore((s) => s.money);
@@ -92,6 +97,7 @@ export function BattleScreen() {
   const showCG = useGameStore((s) => s.showCG);
   const checkAfterEvent = useGameStore((s) => s.checkAfterEvent);
   const showAfterEvent = useGameStore((s) => s.showAfterEvent);
+  const updateCurrentOpponent = useGameStore((s) => s.updateCurrentOpponent);
   const activeAfterEvent = useGameStore((s) => s.activeAfterEvent);
   const winsByCharacter = useGameStore((s) => s.winsByCharacter);
 
@@ -145,6 +151,25 @@ export function BattleScreen() {
       timersRef.current = [];
     };
   }, []);
+
+  // 言語切替時に currentOpponent + activeCG/afterEvent を再ローカライズ
+  const characterData = useLocalizedCharacterData();
+  const activeCG = useGameStore((s) => s.activeCG);
+  useEffect(() => {
+    if (!currentOpponent) return;
+    const fresh = characterData[currentOpponent.id];
+    if (!fresh || fresh.name === currentOpponent.name) return;
+    updateCurrentOpponent(fresh);
+    // 表示中のCG/AfterEventも再ローカライズ
+    if (activeCG) {
+      const freshCG = fresh.cgEvents.find((e) => e.id === activeCG.id);
+      if (freshCG) showCG(freshCG);
+    }
+    if (activeAfterEvent) {
+      const freshAE = fresh.afterEvents.find((e) => e.id === activeAfterEvent.id);
+      if (freshAE) showAfterEvent(freshAE);
+    }
+  }, [characterData, currentOpponent, updateCurrentOpponent, activeCG, activeAfterEvent, showCG, showAfterEvent]);
 
   // 最初の手札を配る
   useEffect(() => {
@@ -260,7 +285,7 @@ export function BattleScreen() {
                   '';
       setTableCards(prev => ({
         ...prev,
-        player: { id: result.playerCardId, emoji: resolvedCard.emoji, name: resolvedCard.name, val }
+        player: { id: result.playerCardId, emoji: resolvedCard.emoji, name: t(`cards.${resolvedCard.id}.name`, resolvedCard.name), val }
       }));
       setPlayerFlipped(true);
       setSlamPlayer(true);
@@ -277,9 +302,9 @@ export function BattleScreen() {
       if (oppCard) {
         const v = oppCard.type === 'food' ? (oppCard.heal === 99 ? '+MAX' : `+${oppCard.heal ?? 0}`) :
                   oppCard.type === 'drink' ? `${oppCard.damage === -1 ? '?' : oppCard.damage}` :
-                  oppCard.type === 'chug' ? '特殊' :
-                  oppCard.type === 'harassment' ? '特殊' : '';
-        oppCardInfo = { emoji: oppCard.emoji, name: oppCard.name, val: v };
+                  oppCard.type === 'chug' ? t('battle.special') :
+                  oppCard.type === 'harassment' ? t('battle.special') : '';
+        oppCardInfo = { emoji: oppCard.emoji, name: t(`cards.${oppCard.id}.name`, oppCard.name), val: v };
       }
 
       if (oppCardInfo) {
@@ -318,17 +343,17 @@ export function BattleScreen() {
             setMisplayFlash(true);
             safeTimeout(() => setMisplayFlash(false), 900);
           }
-          if (result.playerMatchup === 'advantage') setMatchupBadge('🔺 相性有利！');
-          else if (result.playerMatchup === 'disadvantage') setMatchupBadge('🔻 相性不利…');
+          if (result.playerMatchup === 'advantage') setMatchupBadge(t('battle.advantageBadge'));
+          else if (result.playerMatchup === 'disadvantage') setMatchupBadge(t('battle.disadvantageBadge'));
           else setMatchupBadge(null);
 
           // ラウンド結果ポップアップ
           if (oppNetDamage > plNetDamage) {
-            setRoundPopup({ text: '勝ち！', cls: 'result-win' });
+            setRoundPopup({ text: t('battle.roundWin'), cls: 'result-win' });
           } else if (plNetDamage > oppNetDamage) {
-            setRoundPopup({ text: '負け…', cls: 'result-lose' });
+            setRoundPopup({ text: t('battle.roundLose'), cls: 'result-lose' });
           } else {
-            setRoundPopup({ text: '引分', cls: 'result-draw' });
+            setRoundPopup({ text: t('battle.roundDraw'), cls: 'result-draw' });
           }
           safeTimeout(() => setRoundPopup(null), 1800);
 
@@ -387,10 +412,10 @@ export function BattleScreen() {
               if (pc && oppCardInfo) {
                 const netOpp = result.opponentDamage - result.opponentHeal;
                 const netPl = result.playerDamage - result.playerHeal;
-                const roundRes = netOpp > netPl ? '勝ち' : netPl > netOpp ? '負け' : '引分';
+                const roundRes = netOpp > netPl ? t('battle.lastRoundWin') : netPl > netOpp ? t('battle.lastRoundLose') : t('battle.lastRoundDraw');
                 const roundColor = netOpp > netPl ? '#8bc98b' : netPl > netOpp ? '#c98b8b' : 'var(--gold)';
                 setLastRound({
-                  pl: `${pc.emoji} ${pc.name}`,
+                  pl: `${pc.emoji} ${t(`cards.${pc.id}.name`, pc.name)}`,
                   op: `${oppCardInfo.emoji} ${oppCardInfo.name}`,
                   res: roundRes,
                   resColor: roundColor
@@ -460,7 +485,7 @@ export function BattleScreen() {
       <div className="battle-tilt-wrapper" ref={tiltRef}>
         {/* ヘッダー */}
         <div className="battle-header">
-          <div className="battle-bar-name">ロドスバー</div>
+          <div className="battle-bar-name">{t('battle.barName')}</div>
           <div className="battle-header-center">
             <div className="round-display">R.{Math.min(battle.round + 1, battle.maxRounds)}/{battle.maxRounds}</div>
           </div>
@@ -490,7 +515,7 @@ export function BattleScreen() {
               <div className="char-name">{currentOpponent.name}</div>
               <div className="char-subtitle">{currentOpponent.subtitle}</div>
               <div className={`char-drunk-label ${oppDrunkStage.cls}`}>
-                {oppDrunkStage.text}
+                {t(oppDrunkStage.textKey)}
               </div>
             </div>
           </div>
@@ -508,48 +533,32 @@ export function BattleScreen() {
                   <div className="opp-title">{currentOpponent.subtitle}</div>
                 </div>
                 <div className="gauge-row">
-                  <div className="gauge-label-sm">酔い</div>
+                  <div className="gauge-label-sm">{t('battle.drunkLabel')}</div>
                   <div className="gauge-track">
                     <div
                       className="gauge-fill opp-fill"
-                      style={{ width: `${Math.min(battle.opponentDrunk / 10, 1) * 100}%` }}
+                      style={{ width: `${gaugePercent(battle.opponentDrunk, 10)}%` }}
                     />
                   </div>
                   <div className="gauge-lvl">
-                    <span className="lvl-t">{oppDrunkStage.text}</span>
+                    <span className="lvl-t">{t(oppDrunkStage.textKey)}</span>
                     <span className="lvl-n">({battle.opponentDrunk}/10)</span>
                   </div>
                 </div>
                 <div className="gauge-row">
-                  <div className="gauge-label-sm">理性</div>
+                  <div className="gauge-label-sm">{t('battle.sanityLabel')}</div>
                   <div className="gauge-track">
                     <div
                       className="gauge-fill sanity-fill"
-                      style={{ width: `${Math.min(battle.opponentSanity / (currentOpponent.sanityMax ?? 10), 1) * 100}%` }}
+                      style={{ width: `${gaugePercent(battle.opponentSanity, currentOpponent.sanityMax ?? 10)}%` }}
                     />
                   </div>
                   <div className={`gauge-lvl ${oppSanityStage.cls}`}>
-                    <span className="lvl-t">{oppSanityStage.text}</span>
+                    <span className="lvl-t">{t(oppSanityStage.textKey)}</span>
                     <span className="lvl-n">({battle.opponentSanity}/{currentOpponent.sanityMax ?? 10})</span>
                   </div>
                 </div>
-                {battle.opponentBuffs.length > 0 && (
-                  <div className="buff-icons">
-                    {battle.opponentBuffs.map((buff, i) => {
-                      const info = BUFF_META[buff.id];
-                      return (
-                        <div
-                          key={`ob-${buff.id}-${i}`}
-                          className={`buff-chip ${info.positive ? 'buff-positive' : 'buff-negative'}`}
-                          title={`${info.label}${buff.duration > 0 ? ` (${buff.duration}T)` : ''}`}
-                        >
-                          <span className="buff-chip-icon">{info.icon}</span>
-                          {buff.duration > 0 && <span className="buff-chip-dur">{buff.duration}</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                <BuffDisplay buffs={battle.opponentBuffs} keyPrefix="ob" />
               </div>
             </div>
 
@@ -615,49 +624,33 @@ export function BattleScreen() {
 
             {/* プレイヤーゲージ */}
             <div className="player-gauge-row gauge-row">
-              <div className="gauge-label-sm">ドクターの酔い</div>
+              <div className="gauge-label-sm">{t('battle.playerDrunk')}</div>
               <div className="gauge-track">
                 <div
                   className="gauge-fill player-fill"
-                  style={{ width: `${Math.min(battle.playerDrunk / 10, 1) * 100}%` }}
+                  style={{ width: `${gaugePercent(battle.playerDrunk, 10)}%` }}
                 />
               </div>
               <div className="gauge-lvl">
-                <span className="lvl-t">{plDrunkStage.text}</span>
+                <span className="lvl-t">{t(plDrunkStage.textKey)}</span>
                 <span className="lvl-n">({battle.playerDrunk}/10)</span>
               </div>
             </div>
             <div className="player-gauge-row gauge-row">
-              <div className="gauge-label-sm">ドクターの理性</div>
+              <div className="gauge-label-sm">{t('battle.playerSanity')}</div>
               <div className="gauge-track">
                 <div
                   className="gauge-fill sanity-fill"
-                  style={{ width: `${Math.min(battle.playerSanity / 10, 1) * 100}%` }}
+                  style={{ width: `${gaugePercent(battle.playerSanity, 10)}%` }}
                 />
               </div>
-              <div className="kanryoku-display">肝力: {getKanryoku(getDrunkLevel(battle.playerDrunk))}/4</div>
+              <div className="kanryoku-display">{t('battle.kanryoku', { value: getKanryoku(getDrunkLevel(battle.playerDrunk)) })}</div>
               <div className={`gauge-lvl ${plSanityStage.cls}`}>
-                <span className="lvl-t">{plSanityStage.text}</span>
+                <span className="lvl-t">{t(plSanityStage.textKey)}</span>
                 <span className="lvl-n">({battle.playerSanity}/10)</span>
               </div>
             </div>
-            {battle.playerBuffs.length > 0 && (
-              <div className="buff-icons player-buff-icons">
-                {battle.playerBuffs.map((buff, i) => {
-                  const info = BUFF_META[buff.id];
-                  return (
-                    <div
-                      key={`pb-${buff.id}-${i}`}
-                      className={`buff-chip ${info.positive ? 'buff-positive' : 'buff-negative'}`}
-                      title={`${info.label}${buff.duration > 0 ? ` (${buff.duration}T)` : ''}`}
-                    >
-                      <span className="buff-chip-icon">{info.icon}</span>
-                      {buff.duration > 0 && <span className="buff-chip-dur">{buff.duration}</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <BuffDisplay buffs={battle.playerBuffs} keyPrefix="pb" className="player-buff-icons" />
           </div>
 
         </div>
@@ -678,10 +671,10 @@ export function BattleScreen() {
             const isBlurred = i === battle.playerBlurredSlot && !isHidden;
             const cardLevel = battle.playerCardLevels?.[cardId] ?? 1;
             const levelClass = cardLevel >= 3 ? 'card-lv3' : cardLevel >= 2 ? 'card-lv2' : '';
-            const valText = isHidden ? '???' : card.type === 'food' ? (card.heal === 99 ? 'MAX回復' : `回復 ${card.heal}`) :
+            const valText = isHidden ? '???' : card.type === 'food' ? (card.heal === 99 ? t('battle.maxHeal') : t('battle.heal', { value: card.heal })) :
                             card.type === 'drink' ? (card.damage === -1 ? '1~3' : `${card.damage}`) :
-                            card.type === 'chug' ? '特殊' :
-                            card.type === 'harassment' ? '特殊' : '';
+                            card.type === 'chug' ? t('battle.special') :
+                            card.type === 'harassment' ? t('battle.special') : '';
 
             return (
               <div
@@ -694,12 +687,12 @@ export function BattleScreen() {
                   <div className="card-level-badge">{'★'.repeat(cardLevel)}</div>
                 )}
                 <div className="hand-tooltip">
-                  <div className="tooltip-name">{isHidden ? '???' : card.name}</div>
-                  <div className="tooltip-desc">{costLocked ? '肝力不足' : foodLocked ? '暴走中はfood使用不可' : (isHidden ? '隠されたカード' : card.description)}</div>
+                  <div className="tooltip-name">{isHidden ? '???' : t(`cards.${card.id}.name`, card.name)}</div>
+                  <div className="tooltip-desc">{costLocked ? t('battle.costLocked') : foodLocked ? t('battle.foodLocked') : (isHidden ? t('battle.hiddenCard') : t(`cards.${card.id}.desc`, card.description))}</div>
                 </div>
                 <div className="hand-cost">{card.cost}</div>
                 <div className="hand-icon">{isHidden ? '❓' : card.emoji}</div>
-                <div className="hand-name">{isHidden ? '???' : card.name}</div>
+                <div className="hand-name">{isHidden ? '???' : t(`cards.${card.id}.name`, card.name)}</div>
                 <div className="hand-val">{valText}</div>
               </div>
             );
@@ -707,31 +700,31 @@ export function BattleScreen() {
         </div>
 
         {matchupBadge && <div className="matchup-badge">{matchupBadge}</div>}
-        {misplayFlash && <div className="matchup-badge misplay-shake">⚠️ 暴走！</div>}
+        {misplayFlash && <div className="matchup-badge misplay-shake">{t('battle.rampage')}</div>}
 
         {/* 下部ステータスバー */}
         <div className="battle-status-bar">
           <div className="status-bar-item">
-            <span className="status-bar-label">戦績</span>
+            <span className="status-bar-label">{t('battle.recordLabel')}</span>
             <span className="status-bar-val">
-              <span className="win-c">{wins}勝</span>
+              <span className="win-c">{t('battle.winsShort', { count: wins })}</span>
               <span className="status-bar-sep">/</span>
-              <span className="lose-c">{losses}敗</span>
+              <span className="lose-c">{t('battle.lossesShort', { count: losses })}</span>
             </span>
           </div>
           <div className="status-bar-divider" />
           <div className="status-bar-item">
-            <span className="status-bar-label">🃏 デッキ</span>
+            <span className="status-bar-label">{t('battle.deck')}</span>
             <span className="status-bar-val">{battle.playerDeckRemaining.length}</span>
           </div>
           <div className="status-bar-divider" />
           <div className="status-bar-item">
-            <span className="status-bar-label">🎴 相手</span>
+            <span className="status-bar-label">{t('battle.opponentDeck')}</span>
             <span className="status-bar-val">{battle.opponentDeckRemaining.length}</span>
           </div>
           <div className="status-bar-divider" />
           <div className="status-bar-item status-bar-lastround">
-            <span className="status-bar-label">前R</span>
+            <span className="status-bar-label">{t('battle.prevRound')}</span>
             <span className="status-bar-val" style={{ color: lastRound.resColor }}>{lastRound.res}</span>
             <span className="status-bar-detail">{lastRound.pl} vs {lastRound.op}</span>
           </div>
@@ -741,7 +734,7 @@ export function BattleScreen() {
       {/* distract: 相手の手札公開 */}
       {revealedCards && (
         <div className="revealed-hand-overlay">
-          <div className="revealed-hand-title">👁️ 相手の手札が見えた！</div>
+          <div className="revealed-hand-title">{t('battle.revealedHand')}</div>
           <div className="revealed-hand-cards">
             {revealedCards.map((cardId, i) => {
               const card = CARD_DATA[cardId];
@@ -749,14 +742,14 @@ export function BattleScreen() {
               return (
                 <div key={`reveal-${i}`} className={`revealed-card type-${card.type}`}>
                   <div className="revealed-card-emoji">{card.emoji}</div>
-                  <div className="revealed-card-name">{card.name}</div>
+                  <div className="revealed-card-name">{t(`cards.${card.id}.name`, card.name)}</div>
                   <div className="revealed-card-type">
-                    {card.type === 'drink' ? `攻撃 ${card.damage === -1 ? '1~3' : card.damage}` :
-                     card.type === 'food' ? `回復 ${card.heal}` :
-                     card.type === 'chug' ? '一気飲み' :
-                     card.type === 'harassment' ? 'セクハラ' :
-                     card.type === 'strategy' ? '戦略' :
-                     card.type === 'environment' ? '環境' : '状態異常'}
+                    {card.type === 'drink' ? t('battle.cardTypeAttack', { value: card.damage === -1 ? '1~3' : card.damage }) :
+                     card.type === 'food' ? t('battle.cardTypeHeal', { value: card.heal }) :
+                     card.type === 'chug' ? t('battle.cardTypeChug') :
+                     card.type === 'harassment' ? t('battle.cardTypeHarassment') :
+                     card.type === 'strategy' ? t('battle.cardTypeStrategy') :
+                     card.type === 'environment' ? t('battle.cardTypeEnvironment') : t('battle.cardTypeStatus')}
                   </div>
                 </div>
               );
@@ -771,27 +764,27 @@ export function BattleScreen() {
           <div className="result-content">
             <h2>
               {gameResult === 'player_win'
-                ? (battle.opponentSanity <= 0 ? '理性崩壊…勝利！' : '勝利！')
+                ? (battle.opponentSanity <= 0 ? t('battle.resultSanityWin') : t('battle.resultWin'))
                 : gameResult === 'opponent_win'
-                ? (battle.playerSanity <= 0 ? '理性が持たなかった…' : '敗北…')
-                : '引き分け'}
+                ? (battle.playerSanity <= 0 ? t('battle.resultSanityLose') : t('battle.resultLose'))
+                : t('battle.resultDraw')}
             </h2>
             <p>
               {gameResult === 'player_win'
                 ? currentOpponent.battleLines.loseLine
                 : gameResult === 'opponent_win'
                 ? currentOpponent.battleLines.winLine
-                : 'いい勝負だった…'}
+                : t('battle.goodMatch')}
             </p>
-            <div className="result-reward">+{resultReward} 龍門幣</div>
+            <div className="result-reward">{t('battle.reward', { amount: resultReward })}</div>
             {gameResult === 'player_win' && currentOpponent && (() => {
               const charWins = winsByCharacter[currentOpponent.id] ?? 0;
               const affLv = getAffinityLevel(charWins);
               const bonus = getAffinityBonus(charWins);
               return affLv > 0 ? (
                 <div className="result-affinity">
-                  {'❤'.repeat(affLv)} 好感度 Lv.{affLv}
-                  {bonus > 0 && <span className="affinity-bonus"> (報酬+{bonus})</span>}
+                  {'❤'.repeat(affLv)} {t('battle.affinityLevel', { level: affLv })}
+                  {bonus > 0 && <span className="affinity-bonus"> ({t('battle.affinityBonus', { bonus })})</span>}
                 </div>
               ) : null;
             })()}
@@ -808,7 +801,7 @@ export function BattleScreen() {
               </button>
             )}
             <button className="menu-btn" onClick={() => setScreen('title')}>
-              店に戻る
+              {t('battle.returnToBar')}
             </button>
           </div>
         </div>

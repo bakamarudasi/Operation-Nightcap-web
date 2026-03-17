@@ -1,33 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA, getEnhancedCard, getEnhanceCost, MAX_CARD_LEVEL } from '../data/cards.ts';
-import type { CardType } from '../data/types.ts';
-
-const TYPE_LABELS: Record<string, string> = {
-  all: '全て',
-  drink: '酒',
-  food: '食事',
-  chug: '一気',
-  harassment: 'ハラスメント',
-  strategy: '策略',
-  environment: '環境',
-  status: '状態',
-};
-
-const RARITY_CLASS: Record<number, string> = {
-  1: 'rarity-common',
-  2: 'rarity-uncommon',
-  3: 'rarity-rare',
-  4: 'rarity-epic',
-  5: 'rarity-legendary',
-  6: 'rarity-mythic',
-};
+import { CARD_TYPE_LABELS, RARITY_CLASS, buildCardCountMap } from '../data/constants.ts';
 
 export function EnhanceScreen() {
+  const { t } = useTranslation();
   const money = useGameStore((s) => s.money);
   const inventory = useGameStore((s) => s.inventory);
   const cardLevels = useGameStore((s) => s.cardLevels);
   const setScreen = useGameStore((s) => s.setScreen);
+  const previousScreen = useGameStore((s) => s.previousScreen);
   const enhanceCard = useGameStore((s) => s.enhanceCard);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -41,20 +24,17 @@ export function EnhanceScreen() {
   const detailRef = useRef<HTMLDivElement>(null);
 
   // インベントリからユニークカード一覧を作成（枚数付き）
-  const cardCounts = new Map<string, number>();
-  for (const id of inventory) {
-    cardCounts.set(id, (cardCounts.get(id) ?? 0) + 1);
-  }
+  const cardCounts = buildCardCountMap(inventory);
 
   // カードタイプ一覧を収集
   const availableTypes = new Set<string>();
-  for (const [id] of cardCounts) {
+  for (const id of Object.keys(cardCounts)) {
     const card = CARD_DATA[id];
     if (card && card.rarity > 0) availableTypes.add(card.type);
   }
 
   // トークンカード（rarity 0）は除外 + フィルタ適用
-  const uniqueCards = [...cardCounts.entries()]
+  const uniqueCards = Object.entries(cardCounts)
     .filter(([id]) => {
       const card = CARD_DATA[id];
       if (!card || card.rarity <= 0) return false;
@@ -72,7 +52,7 @@ export function EnhanceScreen() {
 
   const selectedCard = selectedId ? CARD_DATA[selectedId] : null;
   const selectedLevel = selectedId ? (cardLevels[selectedId] ?? 1) : 1;
-  const selectedCount = selectedId ? (cardCounts.get(selectedId) ?? 0) : 0;
+  const selectedCount = selectedId ? (cardCounts[selectedId] ?? 0) : 0;
   const isMaxLevel = selectedLevel >= MAX_CARD_LEVEL;
   const enhanceCost = selectedId ? getEnhanceCost(selectedId, selectedLevel) : 0;
   const needCards = 3;
@@ -139,12 +119,12 @@ export function EnhanceScreen() {
     if (card.damage !== undefined && card.damage > 0) stats.push({ label: 'DMG', value: card.damage });
     if (card.damage === -1) stats.push({ label: 'DMG', value: '1~3' });
     if (card.heal !== undefined && card.heal > 0) stats.push({ label: 'HEAL', value: card.heal });
-    if (card.drunkDamage !== undefined && card.drunkDamage > 0) stats.push({ label: '酔いDMG', value: card.drunkDamage });
-    if (card.sanityDamage !== undefined && card.sanityDamage > 0) stats.push({ label: '理性DMG', value: card.sanityDamage });
-    if (card.enemyDamage !== undefined && card.enemyDamage > 0) stats.push({ label: '相手DMG', value: card.enemyDamage });
+    if (card.drunkDamage !== undefined && card.drunkDamage > 0) stats.push({ label: t('enhance.drunkDmg'), value: card.drunkDamage });
+    if (card.sanityDamage !== undefined && card.sanityDamage > 0) stats.push({ label: t('enhance.sanityDmg'), value: card.sanityDamage });
+    if (card.enemyDamage !== undefined && card.enemyDamage > 0) stats.push({ label: t('enhance.enemyDmg'), value: card.enemyDamage });
     if (card.type === 'environment' && card.applyBothBuffs) {
       const dur = card.applyBothBuffs[0]?.duration;
-      if (dur && dur > 0) stats.push({ label: '持続', value: `${dur}T` });
+      if (dur && dur > 0) stats.push({ label: t('enhance.durationLabel'), value: `${dur}T` });
     }
     return stats;
   };
@@ -159,21 +139,21 @@ export function EnhanceScreen() {
   return (
     <div className="screen active enhance-screen">
       <div className="shop-header">
-        <button className="back-btn" onClick={() => setScreen('select')}>← 戻る</button>
-        <h2>🔨 強化工房</h2>
-        <span className="shop-money">💰 {money} 龍門幣</span>
+        <button className="back-btn" onClick={() => setScreen(previousScreen === 'deck' ? 'deck' : 'select')}>{t('common.back')}</button>
+        <h2>{t('enhance.title')}</h2>
+        <span className="shop-money">{t('shop.moneyDisplay', { amount: money })}</span>
       </div>
 
       {/* フィルタバー */}
       <div className="enhance-filters">
         <div className="enhance-type-tabs">
-          {['all', ...Object.keys(TYPE_LABELS).filter(k => k !== 'all' && availableTypes.has(k))].map(type => (
+          {['all', ...Object.keys(CARD_TYPE_LABELS).filter(k => k !== 'all' && availableTypes.has(k))].map(type => (
             <button
               key={type}
               className={`enhance-tab ${typeFilter === type ? 'active' : ''}`}
               onClick={() => setTypeFilter(type)}
             >
-              {TYPE_LABELS[type] ?? type}
+              {t(CARD_TYPE_LABELS[type as keyof typeof CARD_TYPE_LABELS] ?? type)}
             </button>
           ))}
         </div>
@@ -183,7 +163,7 @@ export function EnhanceScreen() {
             checked={hideMax}
             onChange={(e) => setHideMax(e.target.checked)}
           />
-          MAX非表示
+          {t('enhance.hideMax')}
         </label>
       </div>
 
@@ -204,18 +184,18 @@ export function EnhanceScreen() {
                 onClick={() => setSelectedId(cardId)}
               >
                 <span className={`item-emoji ${glowClass}`}>{card.emoji}</span>
-                <span className="item-name">{card.name}</span>
+                <span className="item-name">{t(`cards.${card.id}.name`, card.name)}</span>
                 <span className="item-level">{'★'.repeat(level)}{'☆'.repeat(MAX_CARD_LEVEL - level)}</span>
                 <span className="item-count">x{count}</span>
                 {count < needCards && !atMax && (
-                  <span className="item-short">あと{needCards - count}枚</span>
+                  <span className="item-short">{t('enhance.remaining', { count: needCards - count })}</span>
                 )}
               </div>
             );
           })}
           {uniqueCards.length === 0 && (
             <div style={{ color: 'var(--text-dim)', padding: 24 }}>
-              {typeFilter !== 'all' ? `${TYPE_LABELS[typeFilter]}カードがありません` : 'カードがありません'}
+              {typeFilter !== 'all' ? t('enhance.noTypeCards', { type: t(CARD_TYPE_LABELS[typeFilter as keyof typeof CARD_TYPE_LABELS]) }) : t('enhance.noCards')}
             </div>
           )}
         </div>
@@ -223,7 +203,7 @@ export function EnhanceScreen() {
         {/* 右: 強化詳細パネル */}
         <div className="enhance-detail" ref={detailRef}>
           {!selectedCard ? (
-            <div className="enhance-detail-empty">カードを選択してください</div>
+            <div className="enhance-detail-empty">{t('enhance.selectCard')}</div>
           ) : (
             <>
               {/* 拡大カードビュー */}
@@ -231,7 +211,7 @@ export function EnhanceScreen() {
                 <span className="preview-emoji">{selectedCard.emoji}</span>
               </div>
 
-              <h3>{selectedCard.name}</h3>
+              <h3>{t(`cards.${selectedCard.id}.name`, selectedCard.name)}</h3>
               <div className="enhance-stat-row" style={{ justifyContent: 'center' }}>
                 <span className="item-level" style={{ fontSize: 16 }}>
                   {'★'.repeat(selectedLevel)}{'☆'.repeat(MAX_CARD_LEVEL - selectedLevel)}
@@ -260,16 +240,16 @@ export function EnhanceScreen() {
                   })}
 
                   <div className="enhance-cost-row">
-                    <span className="cost-label">費用</span>
+                    <span className="cost-label">{t('enhance.costLabel')}</span>
                     <span className={`cost-value ${shortMoney > 0 ? 'insufficient' : ''}`}>
-                      {enhanceCost} 龍門幣
+                      {t('enhance.costValue', { cost: enhanceCost })}
                     </span>
                   </div>
                   <div className="enhance-cost-row">
-                    <span className="cost-label">必要枚数</span>
+                    <span className="cost-label">{t('enhance.requiredCards')}</span>
                     <span className={`cost-value ${shortCards > 0 ? 'insufficient' : ''}`}>
-                      {selectedCount} / {needCards}枚
-                      {shortCards > 0 && <span className="short-hint"> (あと{shortCards}枚)</span>}
+                      {t('enhance.cardsCount', { current: selectedCount, needed: needCards })}
+                      {shortCards > 0 && <span className="short-hint"> ({t('enhance.cardsShort', { count: shortCards })})</span>}
                     </span>
                   </div>
                 </div>
@@ -284,21 +264,21 @@ export function EnhanceScreen() {
                     disabled={!canEnhance || hammerAnim}
                     onClick={handleEnhance}
                   >
-                    {hammerAnim ? '🔨 鍛錬中...' : '🔨 強化する'}
+                    {hammerAnim ? t('enhance.enhancing') : t('enhance.enhanceButton')}
                   </button>
                   {(shortCards > 0 || shortMoney > 0) && !isMaxLevel && (
                     <button
                       className="enhance-shop-link"
                       onClick={() => setScreen('shop')}
                     >
-                      🛒 ショップへ行く
+                      {t('enhance.goShop')}
                     </button>
                   )}
                 </div>
               )}
 
               <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
-                {selectedCard.description}
+                {t(`cards.${selectedCard.id}.desc`, selectedCard.description)}
               </div>
 
               {/* パーティクルエフェクト */}

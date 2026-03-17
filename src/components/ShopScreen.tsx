@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import { SHOP_DATA, getShopLineCategory } from '../data/shop.ts';
-import { Card } from './Card.tsx';
+import { CARD_TYPE_ICONS, CARD_TYPE_LABELS } from '../data/constants.ts';
 import { randomPick } from '../engine/utils.ts';
+import type { CardType } from '../data/types.ts';
 
 export function ShopScreen() {
+  const { t } = useTranslation();
   const money = useGameStore((s) => s.money);
   const playerDeck = useGameStore((s) => s.playerDeck);
   const setScreen = useGameStore((s) => s.setScreen);
@@ -15,24 +18,17 @@ export function ShopScreen() {
   const [closureLine, setClosureLine] = useState('');
 
   useEffect(() => {
-    setClosureLine(randomPick([...SHOP_DATA.closureLines.greeting]) ?? '');
-  }, []);
+    const key = randomPick([...SHOP_DATA.closureLines.greeting]) ?? '';
+    setClosureLine(key ? t(key) : '');
+  }, [t]);
 
   const handleBuy = (cardId: string) => {
     const card = CARD_DATA[cardId];
     if (!card) return;
 
     if (money < card.price) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.insufficient]) ?? '');
-      return;
-    }
-    if (playerDeck.length >= 12) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.deckFull]) ?? '');
-      return;
-    }
-    const sameCount = playerDeck.filter(id => id === cardId).length;
-    if (sameCount >= 3) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.cardLimit]) ?? '');
+      const key = randomPick([...SHOP_DATA.closureLines.insufficient]) ?? '';
+      setClosureLine(key ? t(key) : '');
       return;
     }
 
@@ -40,7 +36,11 @@ export function ShopScreen() {
     if (success) {
       const category = getShopLineCategory(cardId);
       const lines = SHOP_DATA.closureLines[category];
-      setClosureLine(randomPick([...lines]) ?? '');
+      const key = randomPick([...lines]) ?? '';
+      const line = key ? t(key) : '';
+      // デッキ満杯の場合は追加メッセージ
+      const suffix = playerDeck.length >= 12 ? t('shop.deckFullMessage') : '';
+      setClosureLine(line + suffix);
     }
   };
 
@@ -49,18 +49,21 @@ export function ShopScreen() {
     const card = CARD_DATA[cardId];
     if (!card) return;
     const refund = Math.floor(card.price / 2);
-    if (!window.confirm(`${card.name}を売却しますか？（${refund}龍門幣）`)) return;
+    if (!window.confirm(t('shop.sellConfirm', { name: t(`cards.${card.id}.name`, card.name), refund }))) return;
     const success = sellCard(index);
     if (success) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.sell]) ?? '');
+      const key = randomPick([...SHOP_DATA.closureLines.sell]) ?? '';
+      setClosureLine(key ? t(key) : '');
     }
   };
 
-  // カードをカテゴリ分け
-  const drinkCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'drink');
-  const foodCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'food');
-  const chugCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'chug');
-  const harassCards = SHOP_DATA.availableCards.filter(id => CARD_DATA[id]?.type === 'harassment');
+  // カードをカテゴリ別にグループ化（1回のイテレーションで分類）
+  const SHOP_CATEGORIES: CardType[] = ['drink', 'food', 'chug', 'harassment', 'strategy', 'environment', 'status'];
+  const cardsByType: Partial<Record<CardType, string[]>> = {};
+  for (const id of SHOP_DATA.availableCards) {
+    const type = CARD_DATA[id]?.type;
+    if (type) (cardsByType[type] ??= []).push(id);
+  }
 
   const renderShopItem = (cardId: string) => {
     const card = CARD_DATA[cardId];
@@ -75,8 +78,8 @@ export function ShopScreen() {
         onClick={() => handleBuy(cardId)}
       >
         <span className="item-emoji">{card.emoji}</span>
-        <span className="item-name">{card.name}</span>
-        <span className="item-price">{card.price}龍</span>
+        <span className="item-name">{t(`cards.${card.id}.name`, card.name)}</span>
+        <span className="item-price">{`${card.price}${t('common.currencyIcon')}`}</span>
       </div>
     );
   };
@@ -84,29 +87,28 @@ export function ShopScreen() {
   return (
     <div className="screen active">
       <div className="shop-header">
-        <button className="back-btn" onClick={() => setScreen('title')}>← 戻る</button>
-        <h2>🏮 ロドスバー商店</h2>
-        <span className="shop-money">💰 {money} 龍門幣</span>
+        <button className="back-btn" onClick={() => setScreen('title')}>{t('common.back')}</button>
+        <h2>{t('shop.title')}</h2>
+        <span className="shop-money">{t('shop.moneyDisplay', { amount: money })}</span>
       </div>
 
       <div className="closure-dialogue">{closureLine}</div>
 
       <div className="shop-items">
-        <div className="shop-section-title">🍺 ドリンク</div>
-        {drinkCards.map(renderShopItem)}
-
-        <div className="shop-section-title">🥜 つまみ</div>
-        {foodCards.map(renderShopItem)}
-
-        <div className="shop-section-title">🍻 一気飲み</div>
-        {chugCards.map(renderShopItem)}
-
-        <div className="shop-section-title">💋 セクハラ</div>
-        {harassCards.map(renderShopItem)}
+        {SHOP_CATEGORIES.map(type => {
+          const cards = cardsByType[type];
+          if (!cards || cards.length === 0) return null;
+          return (
+            <div key={type}>
+              <div className="shop-section-title">{CARD_TYPE_ICONS[type]} {t(CARD_TYPE_LABELS[type])}</div>
+              {cards.map(renderShopItem)}
+            </div>
+          );
+        })}
       </div>
 
       <div className="deck-editor">
-        <h3>現在のデッキ ({playerDeck.length}/12)</h3>
+        <h3>{t('shop.currentDeck', { count: playerDeck.length })}</h3>
         <div className="deck-display">
           {playerDeck.map((cardId, i) => {
             const card = CARD_DATA[cardId];
@@ -116,10 +118,10 @@ export function ShopScreen() {
                 key={`deck-${i}`}
                 className="deck-slot"
                 onClick={() => handleSell(i)}
-                title={`${card.name} (売却: ${Math.floor(card.price / 2)}龍)`}
+                title={`${t(`cards.${card.id}.name`, card.name)} (${t('shop.sellTitle', { amount: Math.floor(card.price / 2) })})`}
               >
                 {card.emoji}
-                <span className="slot-name">{card.name}</span>
+                <span className="slot-name">{t(`cards.${card.id}.name`, card.name)}</span>
               </div>
             );
           })}

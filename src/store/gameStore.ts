@@ -3,12 +3,47 @@ import { persist } from 'zustand/middleware';
 import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, GachaResult, CardType } from '../data/types.ts';
 import { DEFAULT_DECK, CARD_DATA, getEnhanceCost, MAX_CARD_LEVEL } from '../data/cards.ts';
 import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
-import { CHARACTER_DATA } from '../data/characters.ts';
 import { shuffleArray, randomPick, POSITIVE_BUFF_IDS, DEBUFF_IDS, findHighestValueCardIndex, getDrunkLevel, hasBuff, buildCorruptedSlots, getHiddenSlotCount, shouldMisplay, isFoodDisabled, canPlayCard } from '../engine/utils.ts';
 import { BattleEngine, tickBuffs, getAdjustedRequiredLevel, type ExtendedResult } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
 import { pullMulti } from '../engine/gachaEngine.ts';
 import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
+
+/** デバフをN個除去するヘルパー */
+function cleanseDebuffs(buffs: Buff[], count: number): Buff[] {
+  const result = [...buffs];
+  let remaining = count;
+  for (const debuffId of DEBUFF_IDS) {
+    if (remaining <= 0) break;
+    const idx = result.findIndex(bf => bf.id === debuffId);
+    if (idx >= 0) {
+      result.splice(idx, 1);
+      remaining--;
+    }
+  }
+  return result;
+}
+
+/** デッキ→手札を引く共通処理 */
+function drawFromDeck(
+  remaining: string[],
+  discard: string[],
+  handSize: number,
+): { hand: string[]; remaining: string[]; discard: string[] } {
+  let rem = [...remaining];
+  let disc = [...discard];
+  if (rem.length < handSize && disc.length > 0) {
+    shuffleArray(disc);
+    rem = [...rem, ...disc];
+    disc = [];
+  }
+  const hand: string[] = [];
+  const count = Math.min(handSize, rem.length);
+  for (let i = 0; i < count; i++) {
+    hand.push(rem.shift()!);
+  }
+  return { hand, remaining: rem, discard: disc };
+}
 
 interface GameStore {
   // 永続データ
@@ -44,7 +79,8 @@ interface GameStore {
   setScreen: (screen: ScreenId) => void;
 
   // バトル
-  initBattle: (opponentId: string) => void;
+  updateCurrentOpponent: (char: CharacterDef) => void;
+  initBattle: (opponentId: string, characterData: Record<string, CharacterDef>) => void;
   drawHands: () => void;
   selectCard: (cardId: string) => void;
   playRound: () => { messages: string[]; cgEvent: CGEvent | null; opponentCgEvent: CGEvent | null; instantWin: boolean; opponentCardId: string; playerCardId: string; playerDamage: number; opponentDamage: number; playerHeal: number; opponentHeal: number; revealedHand?: string[]; rumorActive?: boolean; playerMisplay: boolean; opponentMisplay: boolean; playerMatchup?: 'advantage' | 'disadvantage' | 'neutral' } | null;
@@ -168,8 +204,10 @@ export const useGameStore = create<GameStore>()(
         previousScreen: state.currentScreen,
       })),
 
-      initBattle: (opponentId) => {
-        const char = CHARACTER_DATA[opponentId];
+      updateCurrentOpponent: (char) => set({ currentOpponent: char }),
+
+      initBattle: (opponentId, characterData) => {
+        const char = characterData[opponentId];
         if (!char) return;
         const state = get();
         if (state.money < 500) return;
@@ -200,35 +238,19 @@ export const useGameStore = create<GameStore>()(
           const handSize = b.playerReducedHand ? 3 : 4;
           b.playerReducedHand = false;
 
-          // プレイヤー手札（デッキが足りなければ捨て札をリシャッフルして補充）
-          let pRemaining = [...b.playerDeckRemaining];
-          let pDiscard = [...b.playerDiscardPile];
-          if (pRemaining.length < handSize && pDiscard.length > 0) {
-            shuffleArray(pDiscard);
-            pRemaining = [...pRemaining, ...pDiscard];
-            pDiscard = [];
-          }
-          const pHand: string[] = [];
-          const pCount = Math.min(handSize, pRemaining.length);
-          for (let i = 0; i < pCount; i++) {
-            pHand.push(pRemaining.shift()!);
-          }
+          // プレイヤー手札
+          const pDraw = drawFromDeck(b.playerDeckRemaining, b.playerDiscardPile, handSize);
+          const pHand = pDraw.hand;
+          let pRemaining = pDraw.remaining;
+          let pDiscard = pDraw.discard;
 
-          // 相手手札（デッキが足りなければ捨て札をリシャッフルして補充）
+          // 相手手札
           const oHandSize = b.opponentReducedHand ? 3 : 4;
           b.opponentReducedHand = false;
-          let oRemaining = [...b.opponentDeckRemaining];
-          let oDiscard = [...b.opponentDiscardPile];
-          if (oRemaining.length < oHandSize && oDiscard.length > 0) {
-            shuffleArray(oDiscard);
-            oRemaining = [...oRemaining, ...oDiscard];
-            oDiscard = [];
-          }
-          const oHand: string[] = [];
-          const oCount = Math.min(oHandSize, oRemaining.length);
-          for (let i = 0; i < oCount; i++) {
-            oHand.push(oRemaining.shift()!);
-          }
+          const oDraw = drawFromDeck(b.opponentDeckRemaining, b.opponentDiscardPile, oHandSize);
+          const oHand = oDraw.hand;
+          let oRemaining = oDraw.remaining;
+          let oDiscard = oDraw.discard;
 
           // 手札からランダムN枚を破棄して捨て札へ移す
           const discardRandom = (hand: string[], discard: string[], count: number) => {
@@ -497,35 +519,15 @@ export const useGameStore = create<GameStore>()(
 
         // デバフ除去（クロージャの錠剤等）
         if (extResult.playerCleanseSelf && extResult.playerCleanseSelf > 0) {
-          const debuffIds = DEBUFF_IDS;
-          let remaining = extResult.playerCleanseSelf;
-          for (const debuffId of debuffIds) {
-            if (remaining <= 0) break;
-            const idx = newPlayerBuffs.findIndex(bf => bf.id === debuffId);
-            if (idx >= 0) {
-              newPlayerBuffs.splice(idx, 1);
-              remaining--;
-            }
-          }
+          newPlayerBuffs = cleanseDebuffs(newPlayerBuffs, extResult.playerCleanseSelf);
         }
-
-        // dot除去（ガヴィルの薬草スープ等）
         if (extResult.playerCleanseDot) {
           newPlayerBuffs = newPlayerBuffs.filter(bf => bf.id !== 'dot');
         }
 
         // 相手側のデバフ除去
         if (extResult.opponentCleanseSelf && extResult.opponentCleanseSelf > 0) {
-          const debuffIds = DEBUFF_IDS;
-          let remaining = extResult.opponentCleanseSelf;
-          for (const debuffId of debuffIds) {
-            if (remaining <= 0) break;
-            const idx = newOpponentBuffs.findIndex(bf => bf.id === debuffId);
-            if (idx >= 0) {
-              newOpponentBuffs.splice(idx, 1);
-              remaining--;
-            }
-          }
+          newOpponentBuffs = cleanseDebuffs(newOpponentBuffs, extResult.opponentCleanseSelf);
         }
         if (extResult.opponentCleanseDot) {
           newOpponentBuffs = newOpponentBuffs.filter(bf => bf.id !== 'dot');
@@ -761,35 +763,27 @@ export const useGameStore = create<GameStore>()(
         const cost = getEnhanceCost(cardId, currentLevel);
         if (state.money < cost) return false;
 
-        // inventoryから2枚削除（デッキにない分を優先除去）
+        // inventoryから2枚削除（デッキに入っている分を残すよう、デッキ外の分を優先除去）
         const newInventory = [...state.inventory];
-        const deckSet = new Set<number>();
-        state.playerDeck.forEach((id, idx) => {
-          if (id === cardId) deckSet.add(idx);
-        });
+        const deckCount = state.playerDeck.filter(id => id === cardId).length;
+        // デッキにない「余剰」枚数を把握
+        const allIndices: number[] = [];
+        for (let i = newInventory.length - 1; i >= 0; i--) {
+          if (newInventory[i] === cardId) allIndices.push(i);
+        }
+        // 余剰分（デッキ枚数を超える分）を先に削除対象にする
+        const surplus = allIndices.slice(0, allIndices.length - deckCount);
+        const inDeck = allIndices.slice(allIndices.length - deckCount);
+        const removeOrder = [...surplus, ...inDeck]; // 余剰→デッキ内の順で削除
 
         let removed = 0;
-        // まずデッキにない分から削除
-        for (let i = newInventory.length - 1; i >= 0 && removed < 2; i--) {
-          if (newInventory[i] === cardId) {
-            // このインベントリのカードがデッキに入っているか確認
-            // 簡易チェック: デッキの枚数分は残す
-            const remainingInInv = newInventory.filter((id, idx) => id === cardId && idx >= i).length;
-            const deckCount = state.playerDeck.filter(id => id === cardId).length;
-            if (remainingInInv > deckCount - removed || removed > 0) {
-              newInventory.splice(i, 1);
-              removed++;
-            }
-          }
-        }
-
-        // 万が一2枚削除できなかった場合のフォールバック
-        while (removed < 2) {
-          const idx = newInventory.lastIndexOf(cardId);
-          if (idx < 0) return false;
+        for (const idx of removeOrder) {
+          if (removed >= 2) break;
           newInventory.splice(idx, 1);
           removed++;
         }
+
+        if (removed < 2) return false;
 
         // デッキからはみ出た分を調整
         const newDeck = [...state.playerDeck];
@@ -820,15 +814,19 @@ export const useGameStore = create<GameStore>()(
         const card = CARD_DATA[cardId];
         if (!card) return false;
         if (state.money < card.price) return false;
-        if (state.playerDeck.length >= 12) return false;
-        // 同じカードは最大3枚まで
-        const sameCount = state.playerDeck.filter(id => id === cardId).length;
-        if (sameCount >= 3) return false;
+
+        const newInventory = [...state.inventory, cardId];
+        const newDeck = [...state.playerDeck];
+        // デッキに空きがあり、同一カード3枚未満ならデッキにも追加
+        const sameCount = newDeck.filter(id => id === cardId).length;
+        if (newDeck.length < 12 && sameCount < 3) {
+          newDeck.push(cardId);
+        }
 
         set({
           money: state.money - card.price,
-          inventory: [...state.inventory, cardId],
-          playerDeck: [...state.playerDeck, cardId],
+          inventory: newInventory,
+          playerDeck: newDeck,
         });
         return true;
       },
@@ -915,10 +913,11 @@ export const useGameStore = create<GameStore>()(
         const cgRate = unlockedCount / totalCGs;
 
         // 条件を満たす未解放の勝利後イベントを探す（最も条件が高いものを優先）
+        const charWins = state.winsByCharacter[char.id] ?? 0;
         const eligible = char.afterEvents
           .filter(ae =>
             cgRate >= ae.requiredCGRate &&
-            state.wins >= ae.requiredWins &&
+            charWins >= ae.requiredWins &&
             !state.unlockedAfterEvents.includes(ae.id)
           )
           .sort((a, b) => b.requiredCGRate - a.requiredCGRate);

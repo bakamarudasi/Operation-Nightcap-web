@@ -191,7 +191,6 @@ export interface AfterEvent {
 export interface CharacterDef {
   id: string;
   name: string;
-  nameEn: string;
   subtitle: string;
   theme: CharacterTheme;
   drunkType: string;
