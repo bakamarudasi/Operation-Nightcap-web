@@ -17,41 +17,71 @@ const EMBEDDED_CHARACTERS_SRC = `
       { level: 4, label: 'ほぼ脱げ', emoji: '💋', description: '服が完全にはだけて下着姿同然。赤い頬で寝落ちしている', dishevelAmount: 1.0 },
     ],
     cgEvents: [
-      { id: 'blaze_shoulder', triggerCard: 'shoulder_lean', requiredDrunkLevel: 1, cgColor: '#e85d3a',
+      { id: 'shoulder_lean_cg', triggerCard: 'shoulder_lean', requiredDrunkLevel: 1, cgColor: '#e85d3a',
         dialogue: [
           { speaker: 'ドクター', text: '（そっと肩を寄せ、耳元に顔を近づける）' },
           { speaker: 'ブレイズ', text: 'ひゃっ……！ ちょ、近い近い……息、当たってるんだけど……' },
+          { speaker: 'ドクター', text: '（……あったかい。大型の猫に顔を埋めているような、安心感と強い熱。 ロドスの制服越しでも伝わってくる柔らかさに、どうしようもなく惹きつけられる）' },
           { speaker: 'ブレイズ', text: '……っ、なに、そんな近くで匂い嗅いでんの……変態じゃん……' },
+          { speaker: 'ブレイズ', text: '変態でいいよ。ブレイズの匂い、落ち着くんだ……もう少しこのままでいさせて' },
+          { speaker: 'ドクター', text: '（だけど、さっきから彼女の体がずっと強張っている。さすがにやりすぎたか……？）' },
+          { speaker: 'ドクター', text: '……ごめん。やっぱり嫌だったよな。離れるよ' },
           { speaker: 'ブレイズ', text: '………べ、別に嫌とは言ってないし。……もうちょっとだけ、くっついてていいよ' }
+        ],
+        frames: [
+          { label: '耳元に顔を近づけた感じ', dialogueStart: 0, transition: 'fade' },
+          { label: '１人称視点', dialogueStart: 1, transition: 'fade' },
+          { label: '照れる感じ', dialogueStart: 4, transition: 'fade' },
+          { label: 'いい感じ', dialogueStart: 6, transition: 'fade' },
         ] },
-      { id: 'blaze_headpat', triggerCard: 'headpat', requiredDrunkLevel: 2, cgColor: '#e85d3a',
+      { id: 'headpat_cg', triggerCard: 'headpat', requiredDrunkLevel: 2, cgColor: '#e85d3a',
         dialogue: [
           { speaker: 'ドクター', text: '（髪をかき上げ、うなじに指先をそっと這わせる）' },
+          { speaker: 'ドクター', text: '（アルコールが回って、普段の隙のない姿が嘘のように無防備だ。無防備に晒されたうなじがやけに色っぽく見えて……つい手を伸ばしていた）' },
           { speaker: 'ブレイズ', text: 'ひっ……！ そこ、だめ……うなじ弱いの知ってるでしょ……っ' },
+          { speaker: 'ドクター', text: '（ビクッと肩を震わせる反応がたまらなく可愛い。もっと乱れた顔が見たくて、わざと冷たくした指先をゆっくりと這わせる）' },
           { speaker: 'ブレイズ', text: '……ん、指……冷たい……ぞくぞくする……やめてよ……' },
-          { speaker: 'ブレイズ', text: '……やめてって言ってるのに……もっと奥まで触って……ばか' }
+          { speaker: 'ブレイズ', text: '……やめてって言ってるのに……もっと奥まで触って……ばか' },
+          { speaker: 'ドクター', text: '（口では抵抗しながらも、体は熱を帯びて俺の手にすり寄ってきている。完全に理性が溶けかかっているな……）' }
+        ],
+        frames: [
+          { label: '見る', dialogueStart: 0, transition: 'fade' },
+          { label: 'なでる', dialogueStart: 1, transition: 'fade' },
+          { label: 'にやついてる', dialogueStart: 4, transition: 'fade' },
         ] },
-      { id: 'blaze_breast', triggerCard: 'breast_touch', requiredDrunkLevel: 2, cgColor: '#ff6b8a',
+      { id: 'breast_touch_cg', triggerCard: 'breast_touch', requiredDrunkLevel: 2, cgColor: '#ff6b8a',
         dialogue: [
           { speaker: 'ドクター', text: '（酔ったふりをして、ブレイズの胸にそっと手を当てる）' },
           { speaker: 'ブレイズ', text: 'ひゃっ……！！ ちょ、ど、どこ触って……っ！' },
+          { speaker: 'ドクター', text: '（驚いて跳ねるような反応とは裏腹に、手のひらには彼女の豊かな柔らかさと、ドクン、ドクンという早い鼓動が伝わってくる）' },
           { speaker: 'ブレイズ', text: '……っ、ばか……酔ってるからって許されると思ってんの……？' },
+          { speaker: 'ドクター', text: '（睨みつけてくる瞳は潤んでいて、本気で拒絶する気がないのは明白だった。もう少しだけ、このまま……）' },
           { speaker: 'ブレイズ', text: '……手、どけないの……？ ……どけなくて、いいけど……今だけだからね……っ' },
+          { speaker: 'ドクター', text: '――もう一度。さっきより、少しだけ強く。   タンクトップ越しに伝わる熱と、指が沈んでいく感触。離すタイミングを、とっくに見失っていた。' },
           { speaker: 'ブレイズ', text: '……ん……ドクターの手、あったかい……心臓、ばくばくしてるの……わかるでしょ……' }
         ],
         frames: [
           { label: '手が伸びる', dialogueStart: 0, transition: 'fade' },
-          { label: '胸に触れる', dialogueStart: 1, transition: 'zoom' },
-          { label: '感じてる表情', dialogueStart: 3, transition: 'fade' },
+          { label: '胸に触れる', dialogueStart: 4, transition: 'zoom' },
+          { label: '感じてる表情', dialogueStart: 6, transition: 'fade' },
         ] },
-      { id: 'blaze_hip', triggerCard: 'hip_touch', requiredDrunkLevel: 2, cgColor: '#ff7b6b',
+      { id: 'hip_touch_cg', triggerCard: 'hip_touch', requiredDrunkLevel: 2, cgColor: '#ff7b6b',
         dialogue: [
           { speaker: 'ドクター', text: '（隣に座ったまま、ブレイズのお尻にそっと手を滑らせる）' },
           { speaker: 'ブレイズ', text: 'んっ……！ ちょ、待っ……そこ、お尻……っ！！' },
+          { speaker: 'ドクター', text: '（指先から伝わる、想像以上の弾力と熱。ロドスの制服越しでも、彼女の肉の柔らかさがはっきりと伝わってくる）' },
           { speaker: 'ブレイズ', text: '……信じらんない……こんなとこで何してんのドクター……変態……っ' },
-          { speaker: 'ブレイズ', text: '……揉まないでよ……嘘、もうちょっとだけ……ぁ……だめ、声出ちゃう……' }
+          { speaker: 'ドクター', text: '（抵抗らしい抵抗をしない彼女に付け入り、手のひら全体でその肉を思い切り掴み、揉みしだく）' },
+          { speaker: 'ブレイズ', text: '……揉まないでよ……嘘、もうちょっとだけ……ぁ……だめ、声出ちゃう……' },
+          { speaker: 'ドクター', text: '（揉むたびに彼女の体温が上がっていく。……もう、隠しきれない甘い吐息が耳元で跳ねた）' }
+        ],
+        frames: [
+          { label: 'でかいけつ', dialogueStart: 0, transition: 'fade' },
+          { label: 'よこ', dialogueStart: 1, transition: 'fade' },
+          { label: 'もみけつ', dialogueStart: 3, transition: 'fade' },
+          { label: '揉みケツ', dialogueStart: 4, transition: 'fade' },
         ] },
-      { id: 'blaze_ear', triggerCard: 'ear_bite', requiredDrunkLevel: 3, cgColor: '#ff5577',
+      { id: 'ear_bite_cg', triggerCard: 'ear_bite', requiredDrunkLevel: 3, cgColor: '#ff5577',
         dialogue: [
           { speaker: 'ドクター', text: '（ブレイズの耳たぶを唇でそっと挟む）' },
           { speaker: 'ブレイズ', text: 'ひぁっ……！！ み、耳はだめっ……感じる……っ！' },
@@ -64,7 +94,7 @@ const EMBEDDED_CHARACTERS_SRC = `
           { label: '耳たぶを噛む', dialogueStart: 1, transition: 'zoom' },
           { label: '蕩けた表情', dialogueStart: 3, transition: 'fade' },
         ] },
-      { id: 'blaze_lap', triggerCard: 'lap_pillow', requiredDrunkLevel: 3, cgColor: '#e85d3a',
+      { id: 'lap_pillow_cg', triggerCard: 'lap_pillow', requiredDrunkLevel: 3, cgColor: '#e85d3a',
         dialogue: [
           { speaker: 'ドクター', text: '（ブレイズの頭をそっと膝に導き、髪を指に絡める）' },
           { speaker: 'ブレイズ', text: 'え、ちょ……膝枕とか……んっ、髪、触んないでよ……くすぐったい……' },
@@ -72,7 +102,7 @@ const EMBEDDED_CHARACTERS_SRC = `
           { speaker: 'ブレイズ', text: '……ねぇ、このまま寝ちゃったら……何する気？ ……してもいいよ、今なら……' },
           { speaker: 'ブレイズ', text: '……ん……もう動けない……ドクターの匂い……好き……zzZ' }
         ] },
-      { id: 'blaze_kiss', triggerCard: 'kiss', requiredDrunkLevel: 3, cgColor: '#ff4466', instantWin: true,
+      { id: 'kiss_cg', triggerCard: 'kiss', requiredDrunkLevel: 3, cgColor: '#ff4466',
         dialogue: [
           { speaker: 'ドクター', text: '（ブレイズの腰を引き寄せ、唇に指を添える）' },
           { speaker: 'ブレイズ', text: '……え、うそ……マジで……？ こんな近くで見つめないでよ……' },
@@ -86,7 +116,7 @@ const EMBEDDED_CHARACTERS_SRC = `
           { label: 'キス', dialogueStart: 3, transition: 'fade' },
           { label: '余韻', dialogueStart: 4, transition: 'fade' },
         ] },
-      { id: 'blaze_foot_tease', triggerCard: 'foot_tease', requiredDrunkLevel: 2, cgColor: '#ff5577',
+      { id: 'foot_tease_cg', triggerCard: 'foot_tease', requiredDrunkLevel: 2, cgColor: '#ff5577',
         dialogue: [
           { speaker: '', text: '――テーブルの下で、何かが足に触れた。' },
           { speaker: 'ブレイズ', text: '……ん？ どうしたのドクター、顔赤いよ？ お酒のせい？' },
@@ -99,7 +129,7 @@ const EMBEDDED_CHARACTERS_SRC = `
           { label: '挑発する笑み', dialogueStart: 2, transition: 'zoom' },
           { label: '攻めるブレイズ', dialogueStart: 3, transition: 'fade' },
         ] },
-      { id: 'blaze_dirty_talk', triggerCard: 'dirty_talk', requiredDrunkLevel: 2, cgColor: '#ff4488',
+      { id: 'dirty_talk_cg', triggerCard: 'dirty_talk', requiredDrunkLevel: 2, cgColor: '#ff4488',
         dialogue: [
           { speaker: 'ブレイズ', text: '（耳元に唇を寄せて）……ねぇ、ドクター' },
           { speaker: 'ブレイズ', text: '……今夜さ、帰れると思ってる？ ……甘いよ' },

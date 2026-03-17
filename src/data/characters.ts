@@ -136,29 +136,10 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
             dialogueStart: 0,
             transition: 'fade',
           },
-          {
-            src: '/characters/blaze/cg/shoulder_lean_2.webp',
-            label: '１人称視点',
-            dialogueStart: 1,
-            transition: 'fade',
-          },
-          {
-            src: '/characters/blaze/cg/shoulder_lean_3.webp',
-            label: '照れる感じ',
-            dialogueStart: 4,
-            transition: 'fade',
-          },
-          {
-            src: '/characters/blaze/cg/shoulder_lean_4.webp',
-            label: 'いい感じ',
-            dialogueStart: 6,
-            transition: 'fade',
-          },
         ],
       },
-
       {
-        id: 'headpat_cg',
+        id: 'blaze_headpat',
         triggerCard: 'headpat',
         requiredDrunkLevel: 2,
         cgColor: '#e85d3a',
@@ -173,9 +154,21 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
         frames: [
           {
-            src: '/characters/blaze/cg/headpat.webp',
+            src: '/characters/blaze/cg/headpat_frame1.webp',
             label: 'うなじを撫でる',
             dialogueStart: 0,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/headpat_frame2.webp',
+            label: 'うなじを撫でる',
+            dialogueStart: 1,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/headpat_frame3.webp',
+            label: 'うなじを撫でる',
+            dialogueStart: 2,
             transition: 'fade',
           },
         ],
@@ -197,19 +190,19 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
         frames: [
           {
-            src: '/characters/blaze/cg/breast_touch_frame1.webp',
+            src: '/characters/blaze/cg/breast_touch_1.webp',
             label: '手が伸びる',
             dialogueStart: 0,
             transition: 'fade',
           },
           {
-            src: '/characters/blaze/cg/breast_touch_frame2.webp',
+            src: '/characters/blaze/cg/breast_touch_2.webp',
             label: '胸に触れる',
             dialogueStart: 4,
             transition: 'zoom',
           },
           {
-            src: '/characters/blaze/cg/breast_touch_frame3.webp',
+            src: '/characters/blaze/cg/breast_touch_3.webp',
             label: '感じてる表情',
             dialogueStart: 6,
             transition: 'fade',
@@ -217,27 +210,48 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
       },
       {
-        id: 'blaze_hip',
+        id: 'hip_touch_cg',
         triggerCard: 'hip_touch',
         requiredDrunkLevel: 2,
         cgColor: '#ff7b6b',
         dialogue: [
           { speaker: 'ドクター', text: '（隣に座ったまま、ブレイズのお尻にそっと手を滑らせる）' },
           { speaker: 'ブレイズ', text: 'んっ……！ ちょ、待っ……そこ、お尻……っ！！' },
+          { speaker: 'ドクター', text: '（指先から伝わる、想像以上の弾力と熱。ロドスの制服越しでも、彼女の肉の柔らかさがはっきりと伝わってくる）' },
           { speaker: 'ブレイズ', text: '……信じらんない……こんなとこで何してんのドクター……変態……っ' },
-          { speaker: 'ブレイズ', text: '……揉まないでよ……嘘、もうちょっとだけ……ぁ……だめ、声出ちゃう……' }
+          { speaker: 'ドクター', text: '（抵抗らしい抵抗をしない彼女に付け入り、手のひら全体でその肉を思い切り掴み、揉みしだく）' },
+          { speaker: 'ブレイズ', text: '……揉まないでよ……嘘、もうちょっとだけ……ぁ……だめ、声出ちゃう……' },
+          { speaker: 'ドクター', text: '（揉むたびに彼女の体温が上がっていく。……もう、隠しきれない甘い吐息が耳元で跳ねた）' },
         ],
         frames: [
           {
-            src: '/characters/blaze/cg/hip_touch.webp',
-            label: 'お尻をなでる',
+            src: '/characters/blaze/cg/hip_touch_1.webp',
+            label: 'でかいけつ',
             dialogueStart: 0,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/hip_touch_2.webp',
+            label: 'よこ',
+            dialogueStart: 1,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/hip_touch_3.webp',
+            label: 'もみけつ',
+            dialogueStart: 3,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/hip_touch_4.webp',
+            label: '揉みケツ',
+            dialogueStart: 4,
             transition: 'fade',
           },
         ],
       },
       {
-        id: 'blaze_ear',
+        id: 'ear_bite_cg',
         triggerCard: 'ear_bite',
         requiredDrunkLevel: 3,
         cgColor: '#ff5577',
@@ -246,23 +260,23 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: 'ひぁっ……！！ み、耳はだめっ……感じる……っ！' },
           { speaker: 'ブレイズ', text: '……んっ、舌……やだ、ぞくぞくする……もう、だめ……' },
           { speaker: 'ブレイズ', text: '……ドクター、最低……こんなの……もっと、して……' },
-          { speaker: 'ブレイズ', text: '……もう帰さないから……今夜は覚悟してよね……' }
+          { speaker: 'ブレイズ', text: '……もう帰さないから……今夜は覚悟してよね……' },
         ],
         frames: [
           {
-            src: '/characters/blaze/cg/ear_bite_frame1.webp',
+            src: '/characters/blaze/cg/ear_bite_1.webp',
             label: '耳に顔を近づける',
             dialogueStart: 0,
             transition: 'slide-left',
           },
           {
-            src: '/characters/blaze/cg/ear_bite_frame2.webp',
+            src: '/characters/blaze/cg/ear_bite_2.webp',
             label: '耳たぶを噛む',
             dialogueStart: 1,
             transition: 'zoom',
           },
           {
-            src: '/characters/blaze/cg/ear_bite_frame3.webp',
+            src: '/characters/blaze/cg/ear_bite_3.webp',
             label: '蕩けた表情',
             dialogueStart: 3,
             transition: 'fade',
@@ -270,7 +284,7 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
       },
       {
-        id: 'blaze_lap',
+        id: 'lap_pillow_cg',
         triggerCard: 'lap_pillow',
         requiredDrunkLevel: 3,
         cgColor: '#e85d3a',
@@ -279,51 +293,42 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: 'え、ちょ……膝枕とか……んっ、髪、触んないでよ……くすぐったい……' },
           { speaker: 'ブレイズ', text: 'ドクターの太もも……あったかい……すごい、心臓の音聞こえる……' },
           { speaker: 'ブレイズ', text: '……ねぇ、このまま寝ちゃったら……何する気？ ……してもいいよ、今なら……' },
-          { speaker: 'ブレイズ', text: '……ん……もう動けない……ドクターの匂い……好き……zzZ' }
-        ],
-        frames: [
-          {
-            src: '/characters/blaze/cg/lap_pillow.webp',
-            label: '太ももに誘う',
-            dialogueStart: 0,
-            transition: 'fade',
-          },
+          { speaker: 'ブレイズ', text: '……ん……もう動けない……ドクターの匂い……好き……zzZ' },
         ],
       },
       {
-        id: 'blaze_kiss',
+        id: 'kiss_cg',
         triggerCard: 'kiss',
         requiredDrunkLevel: 3,
         cgColor: '#ff4466',
-        instantWin: true,
         dialogue: [
           { speaker: 'ドクター', text: '（ブレイズの腰を引き寄せ、唇に指を添える）' },
           { speaker: 'ブレイズ', text: '……え、うそ……マジで……？ こんな近くで見つめないでよ……' },
           { speaker: 'ブレイズ', text: '……心臓、止まりそう……ドクターの息、甘い……' },
           { speaker: 'ブレイズ', text: '………ん……っ' },
-          { speaker: 'ブレイズ', text: '……ばか。もう遅いよ。……朝まで、逃がさないから' }
+          { speaker: 'ブレイズ', text: '……ばか。もう遅いよ。……朝まで、逃がさないから' },
         ],
         frames: [
           {
-            src: '/characters/blaze/cg/kiss_frame1.webp',
+            src: '/characters/blaze/cg/kiss_1.webp',
             label: '腰を引き寄せる',
             dialogueStart: 0,
             transition: 'fade',
           },
           {
-            src: '/characters/blaze/cg/kiss_frame2.webp',
+            src: '/characters/blaze/cg/kiss_2.webp',
             label: '唇が近づく',
             dialogueStart: 2,
             transition: 'zoom',
           },
           {
-            src: '/characters/blaze/cg/kiss_frame3.webp',
+            src: '/characters/blaze/cg/kiss_3.webp',
             label: 'キス',
             dialogueStart: 3,
             transition: 'fade',
           },
           {
-            src: '/characters/blaze/cg/kiss_frame4.webp',
+            src: '/characters/blaze/cg/kiss_4.webp',
             label: '余韻',
             dialogueStart: 4,
             transition: 'fade',
@@ -332,7 +337,7 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
       },
       // 逆セクハラCG（相手→プレイヤー）
       {
-        id: 'blaze_foot_tease',
+        id: 'foot_tease_cg',
         triggerCard: 'foot_tease',
         requiredDrunkLevel: 2,
         cgColor: '#ff5577',
@@ -341,23 +346,23 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: '……ん？ どうしたのドクター、顔赤いよ？ お酒のせい？' },
           { speaker: 'ブレイズ', text: '……ふふ、違うよね。……わかってるくせに' },
           { speaker: 'ブレイズ', text: '（足先をゆっくり這わせながら）……ここ、弱いんだ？ ……知らなかったなぁ' },
-          { speaker: 'ブレイズ', text: '……逃げないでよ。……私が飽きるまで、ね？' }
+          { speaker: 'ブレイズ', text: '……逃げないでよ。……私が飽きるまで、ね？' },
         ],
         frames: [
           {
-            src: '/characters/blaze/cg/foot_tease_frame1.webp',
+            src: '/characters/blaze/cg/foot_tease_1.webp',
             label: 'テーブル下の気配',
             dialogueStart: 0,
             transition: 'fade',
           },
           {
-            src: '/characters/blaze/cg/foot_tease_frame2.webp',
+            src: '/characters/blaze/cg/foot_tease_2.webp',
             label: '挑発する笑み',
             dialogueStart: 2,
             transition: 'zoom',
           },
           {
-            src: '/characters/blaze/cg/foot_tease_frame3.webp',
+            src: '/characters/blaze/cg/foot_tease_3.webp',
             label: '攻めるブレイズ',
             dialogueStart: 3,
             transition: 'fade',
@@ -365,7 +370,7 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
       },
       {
-        id: 'blaze_dirty_talk',
+        id: 'dirty_talk_cg',
         triggerCard: 'dirty_talk',
         requiredDrunkLevel: 2,
         cgColor: '#ff4488',
@@ -374,29 +379,29 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           { speaker: 'ブレイズ', text: '……今夜さ、帰れると思ってる？ ……甘いよ' },
           { speaker: 'ブレイズ', text: '……私がどれだけ我慢してたか……わかんないでしょ……' },
           { speaker: 'ブレイズ', text: '……このまま連れて帰っちゃうから。……覚悟、してね？' },
-          { speaker: 'ブレイズ', text: '……あは、耳真っ赤。……可愛いなぁドクター' }
+          { speaker: 'ブレイズ', text: '……あは、耳真っ赤。……可愛いなぁドクター' },
         ],
         frames: [
           {
-            src: '/characters/blaze/cg/dirty_talk_frame1.webp',
+            src: '/characters/blaze/cg/dirty_talk_1.webp',
             label: '耳元に近づく',
             dialogueStart: 0,
             transition: 'slide-left',
           },
           {
-            src: '/characters/blaze/cg/dirty_talk_frame2.webp',
+            src: '/characters/blaze/cg/dirty_talk_2.webp',
             label: '囁く表情',
             dialogueStart: 2,
             transition: 'zoom',
           },
           {
-            src: '/characters/blaze/cg/dirty_talk_frame3.webp',
+            src: '/characters/blaze/cg/dirty_talk_3.webp',
             label: '満足げな笑み',
             dialogueStart: 4,
             transition: 'fade',
           },
         ],
-      }
+      },
     ],
     afterEvents: [
       {
