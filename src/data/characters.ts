@@ -267,18 +267,3 @@ export function getLocalizedCharacterData(t: TFunction): Record<string, Characte
     },
   };
 }
-
-/**
- * @deprecated Use getLocalizedCharacterData(t) for display.
- * Raw structural reference kept for store initialization (deck, thresholds, etc.).
- */
-export const CHARACTER_DATA_RAW = {
-  blaze: {
-    id: 'blaze',
-    theme: { ...BLAZE_THEME },
-    drunkType: 'aggressive' as const,
-    drunkMax: 10,
-    drunkThresholds: BLAZE_DRUNK_META.map((m) => m.threshold),
-    deck_ai: { ...BLAZE_DECK_AI },
-  },
-};

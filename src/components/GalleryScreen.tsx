@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
-import { getLocalizedCharacterData } from '../data/characters.ts';
+import { useLocalizedCharacterData } from '../hooks/useLocalizedCharacterData.ts';
 import { randomPick } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
@@ -17,7 +17,7 @@ export function GalleryScreen() {
   const losses = useGameStore((s) => s.losses);
 
   const [activeTab, setActiveTab] = useState<'cg' | 'portrait'>('cg');
-  const CHARACTER_DATA = useMemo(() => getLocalizedCharacterData(t), [t]);
+  const CHARACTER_DATA = useLocalizedCharacterData();
   const [selectedChar, setSelectedChar] = useState<string>('blaze');
   const [drunkLevel, setDrunkLevel] = useState(0);
   const [currentLine, setCurrentLine] = useState('');

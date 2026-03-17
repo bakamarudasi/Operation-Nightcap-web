@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA, getEnhancedCard } from '../data/cards.ts';
-import { getLocalizedCharacterData } from '../data/characters.ts';
 import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
+import { useLocalizedCharacterData } from '../hooks/useLocalizedCharacterData.ts';
 import { gaugePercent } from '../data/constants.ts';
 import { randomPick, getDrunkLevel, BUFF_META, getKanryoku, canPlayCard, isFoodDisabled } from '../engine/utils.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
@@ -153,10 +153,11 @@ export function BattleScreen() {
   }, []);
 
   // 言語切替時に currentOpponent + activeCG/afterEvent を再ローカライズ
+  const characterData = useLocalizedCharacterData();
   const activeCG = useGameStore((s) => s.activeCG);
   useEffect(() => {
     if (!currentOpponent) return;
-    const fresh = getLocalizedCharacterData(t)[currentOpponent.id];
+    const fresh = characterData[currentOpponent.id];
     if (!fresh || fresh.name === currentOpponent.name) return;
     updateCurrentOpponent(fresh);
     // 表示中のCG/AfterEventも再ローカライズ
@@ -168,7 +169,7 @@ export function BattleScreen() {
       const freshAE = fresh.afterEvents.find((e) => e.id === activeAfterEvent.id);
       if (freshAE) showAfterEvent(freshAE);
     }
-  }, [t, currentOpponent, updateCurrentOpponent, activeCG, activeAfterEvent, showCG, showAfterEvent]);
+  }, [characterData, currentOpponent, updateCurrentOpponent, activeCG, activeAfterEvent, showCG, showAfterEvent]);
 
   // 最初の手札を配る
   useEffect(() => {
