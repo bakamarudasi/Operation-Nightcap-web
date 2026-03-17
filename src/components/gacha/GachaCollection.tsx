@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CARD_DATA } from '../../data/cards.ts';
 import { RARITY_CONFIG } from './gachaConstants.ts';
 
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function GachaCollection({ inventoryMap }: Props) {
+  const { t } = useTranslation();
   const [collectionDetail, setCollectionDetail] = useState<string | null>(null);
   const [collectionFilter, setCollectionFilter] = useState<string>('all');
 
@@ -14,10 +16,11 @@ export function GachaCollection({ inventoryMap }: Props) {
     const grouped: Record<number, Array<{ id: string; name: string; emoji: string; count: number }>> = {};
     for (const [id, card] of Object.entries(CARD_DATA)) {
       if (!grouped[card.rarity]) grouped[card.rarity] = [];
-      grouped[card.rarity].push({ id, name: card.name, emoji: card.emoji, count: inventoryMap[id] ?? 0 });
+      grouped[card.rarity].push({ id, name: t(`cards.${id}.name`, card.name), emoji: card.emoji, count: inventoryMap[id] ?? 0 });
     }
     return grouped;
-  }, [inventoryMap]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inventoryMap, t]);
 
   return (
     <div style={{
@@ -32,14 +35,14 @@ export function GachaCollection({ inventoryMap }: Props) {
         padding: '8px 0', borderBottom: '1px solid rgba(255,180,80,.08)',
       }}>
         {[
-          { key: 'all', label: '全て', emoji: '📋' },
-          { key: 'drink', label: 'ドリンク', emoji: '🍺' },
-          { key: 'food', label: 'フード', emoji: '🍖' },
-          { key: 'chug', label: 'イッキ', emoji: '🍻' },
-          { key: 'harassment', label: 'セクハラ', emoji: '💋' },
-          { key: 'strategy', label: '戦略', emoji: '🧠' },
-          { key: 'environment', label: '環境', emoji: '🌙' },
-          { key: 'status', label: '状態', emoji: '💫' },
+          { key: 'all', labelKey: 'collection.filterAll', emoji: '📋' },
+          { key: 'drink', labelKey: 'collection.filterDrink', emoji: '🍺' },
+          { key: 'food', labelKey: 'collection.filterFood', emoji: '🍖' },
+          { key: 'chug', labelKey: 'collection.filterChug', emoji: '🍻' },
+          { key: 'harassment', labelKey: 'collection.filterHarassment', emoji: '💋' },
+          { key: 'strategy', labelKey: 'collection.filterStrategy', emoji: '🧠' },
+          { key: 'environment', labelKey: 'collection.filterEnvironment', emoji: '🌙' },
+          { key: 'status', labelKey: 'collection.filterStatus', emoji: '💫' },
         ].map(f => (
           <button key={f.key} className="gbtn" onClick={() => setCollectionFilter(f.key)} style={{
             background: collectionFilter === f.key ? 'rgba(255,180,80,.18)' : 'rgba(255,255,255,.03)',
@@ -48,7 +51,7 @@ export function GachaCollection({ inventoryMap }: Props) {
             color: collectionFilter === f.key ? '#fbbf24' : '#666',
             fontWeight: collectionFilter === f.key ? 700 : 400,
             transition: 'all 0.15s',
-          }}>{f.emoji} {f.label}</button>
+          }}>{f.emoji} {t(f.labelKey)}</button>
         ))}
       </div>
 
@@ -144,9 +147,9 @@ export function GachaCollection({ inventoryMap }: Props) {
         if (!card) return null;
         const cfg = RARITY_CONFIG[card.rarity];
         const ownedCount = inventoryMap[collectionDetail] ?? 0;
-        const typeLabels: Record<string, string> = {
-          drink: '🍺 ドリンク', food: '🍖 フード', chug: '🍻 イッキ',
-          harassment: '💋 セクハラ', strategy: '🧠 戦略', environment: '🌙 環境', status: '💫 状態',
+        const typeIcons: Record<string, string> = {
+          drink: '🍺', food: '🍖', chug: '🍻',
+          harassment: '💋', strategy: '🧠', environment: '🌙', status: '💫',
         };
         return (
           <div className="slide-up" style={{
@@ -177,20 +180,20 @@ export function GachaCollection({ inventoryMap }: Props) {
                   <span style={{
                     fontSize: 8, padding: '2px 6px', borderRadius: 4,
                     background: 'rgba(0,0,0,.3)', color: '#888',
-                  }}>{typeLabels[card.type] ?? card.type}</span>
+                  }}>{typeIcons[card.type] ?? ''} {t(`collection.type_${card.type}`, card.type)}</span>
                 </div>
                 <div style={{
                   fontSize: 11, color: '#aa8866', lineHeight: 1.8,
                   borderLeft: `2px solid ${cfg.border}44`, paddingLeft: 10,
                   marginBottom: 6,
-                }}>{card.description}</div>
+                }}>{t(`cards.${collectionDetail}.desc`, card.description)}</div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 10, color: '#5a3a18' }}>
-                    所持: <span style={{ color: cfg.menuColor, fontWeight: 700 }}>{ownedCount}</span>/3
+                    {t('collection.owned')}: <span style={{ color: cfg.menuColor, fontWeight: 700 }}>{ownedCount}</span>/3
                   </span>
                   {card.damage != null && <span style={{ fontSize: 9, color: '#cc6644' }}>DMG {card.damage}</span>}
-                  {card.heal != null && <span style={{ fontSize: 9, color: '#66aa66' }}>回復 {card.heal}</span>}
-                  <span style={{ fontSize: 9, color: '#777' }}>価格 🪙{card.price}</span>
+                  {card.heal != null && <span style={{ fontSize: 9, color: '#66aa66' }}>{t('collection.heal')} {card.heal}</span>}
+                  <span style={{ fontSize: 9, color: '#777' }}>{t('collection.price')} 🪙{card.price}</span>
                 </div>
               </div>
             </div>

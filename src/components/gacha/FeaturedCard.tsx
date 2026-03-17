@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { RARITY_CONFIG } from './gachaConstants.ts';
 
 interface Props {
@@ -5,6 +6,7 @@ interface Props {
 }
 
 export function FeaturedCard({ getCard }: Props) {
+  const { t } = useTranslation();
   const featuredCards = ['kiss', 'ear_bite', 'breast_touch', 'baijiu', 'ukon'];
   const fc = featuredCards[Math.floor(Date.now() / 60000) % featuredCards.length];
   const card = getCard(fc);
@@ -38,7 +40,7 @@ export function FeaturedCard({ getCard }: Props) {
       </div>
       <div style={{ flex: 1, minWidth: 0, marginTop: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: cfg.text }}>{card.name}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: cfg.text }}>{t(`cards.${fc}.name`, card.name)}</span>
           <span style={{
             fontSize: 8, padding: '1px 5px', borderRadius: 3,
             background: 'rgba(0,0,0,.5)', border: `1px solid ${cfg.border}`,
@@ -49,7 +51,7 @@ export function FeaturedCard({ getCard }: Props) {
           fontSize: 10, color: '#7a5a35', lineHeight: 1.6,
           overflow: 'hidden', textOverflow: 'ellipsis',
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-        }}>{card.description}</div>
+        }}>{t(`cards.${fc}.desc`, card.description)}</div>
       </div>
     </div>
   );

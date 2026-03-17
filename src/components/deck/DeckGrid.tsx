@@ -1,4 +1,5 @@
 import type React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CARD_DATA } from '../../data/cards.ts';
 import type { CardDef } from '../../data/types.ts';
 
@@ -35,6 +36,7 @@ export function DeckGrid({
   deckGridRef, onDeckClick, onMouseDown, onTouchStart, onCancelLongPress,
   onShowPreview, onHidePreview, onShowTouchPreview,
 }: DeckGridProps) {
+  const { t } = useTranslation();
   // 同一カードの枚数をカウント
   const cardCounts: Record<string, number> = {};
   for (const id of playerDeck) {
@@ -81,12 +83,12 @@ export function DeckGrid({
           >
             <div className="deck-slot-remove">×</div>
             <div className="deck-slot-emoji">{card.emoji}</div>
-            <div className="deck-slot-name">{card.name}</div>
+            <div className="deck-slot-name">{t(`cards.${card.id}.name`, card.name)}</div>
             <div className="deck-slot-info">
-              {card.type === 'drink' ? `攻${card.damage === -1 ? '1~3' : card.damage}` :
-               card.type === 'food' ? `回${card.heal === 99 ? 'MAX' : card.heal}` :
+              {card.type === 'drink' ? t('deckGrid.atkShort', { value: card.damage === -1 ? '1~3' : card.damage }) :
+               card.type === 'food' ? t('deckGrid.healShort', { value: card.heal === 99 ? 'MAX' : card.heal }) :
                card.type === 'harassment' ? `Lv${card.requiredDrunkLevel}` :
-               '特殊'}
+               t('deckGrid.special')}
             </div>
             {/* レアリティ星 */}
             <div className="deck-slot-stars">{'★'.repeat(card.rarity)}</div>
@@ -103,7 +105,7 @@ export function DeckGrid({
         }`}>
           <div className="deck-slot-emoji">＋</div>
           {i === 0 && playerDeck.length < 12 && (
-            <div className="deck-slot-hint">クリックか<br/>ドラッグで追加</div>
+            <div className="deck-slot-hint">{t('deckGrid.addHint')}</div>
           )}
         </div>
       ))}

@@ -3,7 +3,6 @@ import { persist } from 'zustand/middleware';
 import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, GachaResult, CardType } from '../data/types.ts';
 import { DEFAULT_DECK, CARD_DATA, getEnhanceCost, MAX_CARD_LEVEL } from '../data/cards.ts';
 import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
-import { CHARACTER_DATA } from '../data/characters.ts';
 import { shuffleArray, randomPick, POSITIVE_BUFF_IDS, DEBUFF_IDS, findHighestValueCardIndex, getDrunkLevel, hasBuff, buildCorruptedSlots, getHiddenSlotCount, shouldMisplay, isFoodDisabled, canPlayCard } from '../engine/utils.ts';
 import { BattleEngine, tickBuffs, getAdjustedRequiredLevel, type ExtendedResult } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
@@ -80,7 +79,8 @@ interface GameStore {
   setScreen: (screen: ScreenId) => void;
 
   // バトル
-  initBattle: (opponentId: string) => void;
+  updateCurrentOpponent: (char: CharacterDef) => void;
+  initBattle: (opponentId: string, characterData: Record<string, CharacterDef>) => void;
   drawHands: () => void;
   selectCard: (cardId: string) => void;
   playRound: () => { messages: string[]; cgEvent: CGEvent | null; opponentCgEvent: CGEvent | null; instantWin: boolean; opponentCardId: string; playerCardId: string; playerDamage: number; opponentDamage: number; playerHeal: number; opponentHeal: number; revealedHand?: string[]; rumorActive?: boolean; playerMisplay: boolean; opponentMisplay: boolean; playerMatchup?: 'advantage' | 'disadvantage' | 'neutral' } | null;
@@ -204,8 +204,10 @@ export const useGameStore = create<GameStore>()(
         previousScreen: state.currentScreen,
       })),
 
-      initBattle: (opponentId) => {
-        const char = CHARACTER_DATA[opponentId];
+      updateCurrentOpponent: (char) => set({ currentOpponent: char }),
+
+      initBattle: (opponentId, characterData) => {
+        const char = characterData[opponentId];
         if (!char) return;
         const state = get();
         if (state.money < 500) return;

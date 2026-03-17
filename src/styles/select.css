@@ -207,14 +207,6 @@
   z-index: 1;
 }
 
-.sel-card-nameEn {
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  color: var(--amber);
-  opacity: 0.6;
-  z-index: 1;
-}
-
 /* --- Dots --- */
 .sel-dots {
   display: flex;
