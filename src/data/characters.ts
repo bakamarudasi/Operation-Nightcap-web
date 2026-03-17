@@ -232,7 +232,6 @@ export function getLocalizedCharacterData(t: TFunction): Record<string, Characte
     blaze: {
       id: 'blaze',
       name: t(`${P}.name`),
-      nameEn: 'BLAZE',
       subtitle: t(`${P}.subtitle`),
       theme: { ...BLAZE_THEME },
       drunkType: 'aggressive',

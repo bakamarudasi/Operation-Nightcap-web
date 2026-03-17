@@ -267,6 +267,59 @@ const en = {
       deckFullMessage: ' (Deck full — added to inventory)',
     },
 
+    // ── Shop NPC Dialogue ──
+    shopNpc: {
+      greeting: {
+        0: "Welcome~♪ What'll you have today? ...Oh wait, you're buying, not drinking!",
+        1: "Hey, Doctor! Off to drink someone under the table again? I'm rooting for you~ but you're still paying♪",
+        2: "Oh my~ Doctor♪ Here to splurge again?",
+      },
+      buyDrink: {
+        0: 'Adding more drinks, nice taste~',
+        1: "Ooh, going on the offensive~",
+      },
+      buyFood: {
+        0: 'Snacks are important too. Smart, smart~',
+        1: "Going easy on the stomach, huh?",
+      },
+      buyChug: {
+        0: "Chugging!? Bold move~ don't blow yourself up!",
+        1: "High risk, high reward — I don't hate it~",
+      },
+      buyHarassment: {
+        0: "My my~♪ Doctor, you're full of surprises. I didn't see a thing~",
+        1: "These aren't cheap, you know? ...Well, worth every coin though♪",
+      },
+      insufficient: {
+        0: "Not enough cash~ Go earn some more!",
+        1: "Short on LMD~ Better luck next time♪",
+      },
+      deckFull: {
+        0: "Deck's already at 12. Remove something first!",
+        1: "12 cards MAX~ Drop one before adding more!",
+      },
+      sell: {
+        0: "Sure, I'll buy it back~ Half price though!",
+        1: "Recycling♪ How eco-friendly~",
+      },
+      cardLimit: {
+        0: "You already have 3 of those! Balance is key~",
+        1: "3 copies max per card. Try something different♪",
+      },
+      buyStrategy: {
+        0: "Strategy card! Big brain plays~ brawn alone won't cut it!",
+        1: "Ooh, a schemer! Go mess with their heads♪",
+      },
+      buyEnvironment: {
+        0: "Changing the atmosphere... nice, setting the mood matters♪",
+        1: "Environment card! Vibe manipulation? Not bad~",
+      },
+      buyStatus: {
+        0: "Status effect card... ruthless~ but I don't hate it♪",
+        1: "Debuff tactics! The slow-burn type?",
+      },
+    },
+
     // ── Enhance Screen ──
     enhance: {
       title: '🔨 Upgrade Workshop',

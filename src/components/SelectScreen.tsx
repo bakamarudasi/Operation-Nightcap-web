@@ -280,7 +280,6 @@ export function SelectScreen() {
                     </div>
                     <div className="sel-card-name">{char.name}</div>
                     <div className="sel-card-sub">{char.subtitle}</div>
-                    <div className="sel-card-nameEn">{char.nameEn}</div>
                   </div>
                 ))}
               </div>

@@ -18,15 +18,17 @@ export function ShopScreen() {
   const [closureLine, setClosureLine] = useState('');
 
   useEffect(() => {
-    setClosureLine(randomPick([...SHOP_DATA.closureLines.greeting]) ?? '');
-  }, []);
+    const key = randomPick([...SHOP_DATA.closureLines.greeting]) ?? '';
+    setClosureLine(key ? t(key) : '');
+  }, [t]);
 
   const handleBuy = (cardId: string) => {
     const card = CARD_DATA[cardId];
     if (!card) return;
 
     if (money < card.price) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.insufficient]) ?? '');
+      const key = randomPick([...SHOP_DATA.closureLines.insufficient]) ?? '';
+      setClosureLine(key ? t(key) : '');
       return;
     }
 
@@ -34,12 +36,11 @@ export function ShopScreen() {
     if (success) {
       const category = getShopLineCategory(cardId);
       const lines = SHOP_DATA.closureLines[category];
-      let line = randomPick([...lines]) ?? '';
+      const key = randomPick([...lines]) ?? '';
+      const line = key ? t(key) : '';
       // デッキ満杯の場合は追加メッセージ
-      if (playerDeck.length >= 12) {
-        line += t('shop.deckFullMessage');
-      }
-      setClosureLine(line);
+      const suffix = playerDeck.length >= 12 ? t('shop.deckFullMessage') : '';
+      setClosureLine(line + suffix);
     }
   };
 
@@ -51,7 +52,8 @@ export function ShopScreen() {
     if (!window.confirm(t('shop.sellConfirm', { name: t(`cards.${card.id}.name`, card.name), refund }))) return;
     const success = sellCard(index);
     if (success) {
-      setClosureLine(randomPick([...SHOP_DATA.closureLines.sell]) ?? '');
+      const key = randomPick([...SHOP_DATA.closureLines.sell]) ?? '';
+      setClosureLine(key ? t(key) : '');
     }
   };
 
