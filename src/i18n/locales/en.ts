@@ -360,6 +360,67 @@ const en = {
       all_dmg_up: 'All DMG Up',
     },
 
+    // ── Engine Messages ──
+    engine: {
+      matchup: {
+        advantage: '🔺 Type Advantage!',
+        disadvantage: '🔻 Type Disadvantage...',
+      },
+      drink: {
+        damage: '{{emoji}} {{name}} — Drunk +{{value}}!',
+      },
+      food: {
+        heal: '{{emoji}} {{name}} — Healed {{value}}!',
+        healOpponent: '{{emoji}} {{name}} — Opponent healed {{value}}!',
+        peacefulRound: 'A peaceful round... Both sides snacked',
+        blocked: {
+          self: '🚫 Food sealed! {{emoji}}{{name}} is unusable!',
+          opponent: '🚫 Opponent food sealed! {{emoji}}{{name}} is unusable!',
+          opponentAlso: '🚫 Opponent also food sealed! {{emoji}}{{name}} is unusable!',
+        },
+      },
+      atkDown: {
+        self: '⬇️ ATK Down... Damage halved!',
+        opponent: '⬇️ Opponent ATK Down... Damage halved!',
+      },
+      drinkVsDrink: {
+        playerWins: '{{pEmoji}} {{pName}}({{pDmg}}) vs {{oEmoji}} {{oName}}({{oDmg}}) — {{diff}} damage dealt!',
+        opponentWins: '{{oEmoji}} {{oName}}({{oDmg}}) vs {{pEmoji}} {{pName}}({{pDmg}}) — {{diff}} damage taken!',
+        tie: '{{pEmoji}} vs {{oEmoji}} — Tie! Cancelled out!',
+      },
+      harassment: {
+        nullified: {
+          player: '🍺 Washed away! Your harassment was nullified!',
+          opponent: '🍺 Washed away the harassment with booze!',
+        },
+      },
+      chug: {
+        player: '🍻 {{name}}! {{enemyDmg}} damage to opponent! {{selfDmg}} self-damage!',
+        opponent: "🍻 Opponent's {{name}}! Took {{value}} damage!",
+      },
+      toast: {
+        player: '🥂 Forced toast! {{value}} damage to opponent + discard 1 card next round!',
+        opponent: '🥂 Opponent forced a toast! {{value}} damage + discard 1 card next round!',
+      },
+      spill: {
+        player: "🫗 Spill! Opponent's card nullified! (3 cards next round)",
+        opponent: '🫗 Opponent spilled! Your card nullified! (Opponent gets 3 cards next round)',
+      },
+      roulette: {
+        hit: {
+          player: '🎰 {{name}}... Jackpot! {{value}} damage to opponent!',
+          opponent: "🎰 Opponent's {{name}}... Jackpot! Took {{value}} damage!",
+        },
+        miss: {
+          player: '🎰 {{name}}... Miss! {{value}} self-damage!',
+          opponent: "🎰 Opponent's {{name}}... Miss! {{value}} self-damage to them!",
+        },
+      },
+      utility: {
+        cardPlay: '{{emoji}} {{name}}!',
+      },
+    },
+
     // ── Deck Grid ──
     deckGrid: {
       atkShort: 'ATK {{value}}',

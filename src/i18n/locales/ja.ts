@@ -360,6 +360,67 @@ const ja = {
       all_dmg_up: '全ダメージ増加',
     },
 
+    // ── Engine Messages ──
+    engine: {
+      matchup: {
+        advantage: '🔺 相性有利！',
+        disadvantage: '🔻 相性不利…',
+      },
+      drink: {
+        damage: '{{emoji}} {{name}}で酔い{{value}}ダメージ！',
+      },
+      food: {
+        heal: '{{emoji}} {{name}}で{{value}}回復！',
+        healOpponent: '{{emoji}} {{name}}で相手も{{value}}回復！',
+        peacefulRound: '平和なラウンド…お互いつまみを食べた',
+        blocked: {
+          self: '🚫 つまみ封じ中！{{emoji}}{{name}}が使えない！',
+          opponent: '🚫 相手はつまみ封じ中！{{emoji}}{{name}}が使えない！',
+          opponentAlso: '🚫 相手もつまみ封じ中！{{emoji}}{{name}}が使えない！',
+        },
+      },
+      atkDown: {
+        self: '⬇️ 攻撃力低下中…ダメージ半減！',
+        opponent: '⬇️ 相手も攻撃力低下中…ダメージ半減！',
+      },
+      drinkVsDrink: {
+        playerWins: '{{pEmoji}} {{pName}}({{pDmg}}) vs {{oEmoji}} {{oName}}({{oDmg}}) → 差分{{diff}}ダメージ！',
+        opponentWins: '{{oEmoji}} {{oName}}({{oDmg}}) vs {{pEmoji}} {{pName}}({{pDmg}}) → 差分{{diff}}ダメージ！',
+        tie: '{{pEmoji}} vs {{oEmoji}} 同値！相殺！',
+      },
+      harassment: {
+        nullified: {
+          player: '🍺 勢いで流された！プレイヤーのセクハラは無効！',
+          opponent: '🍺 相手のセクハラを勢いで無効化！',
+        },
+      },
+      chug: {
+        player: '🍻 {{name}}！相手に{{enemyDmg}}ダメージ！自分にも{{selfDmg}}ダメージ！',
+        opponent: '🍻 相手の{{name}}！{{value}}ダメージを受けた！',
+      },
+      toast: {
+        player: '🥂 乾杯強制！相手に{{value}}ダメージ＋次のラウンド手札1枚破棄！',
+        opponent: '🥂 相手が乾杯強制！{{value}}ダメージ＋次のラウンド手札1枚破棄！',
+      },
+      spill: {
+        player: '🫗 こぼし！相手のカードを無効化！（次のラウンド手札3枚）',
+        opponent: '🫗 相手がこぼし！カードが無効化された！（相手の次ラウンド手札3枚）',
+      },
+      roulette: {
+        hit: {
+          player: '🎰 {{name}}…大当たり！相手に{{value}}ダメージ！',
+          opponent: '🎰 相手の{{name}}…大当たり！{{value}}ダメージを受けた！',
+        },
+        miss: {
+          player: '🎰 {{name}}…ハズレ！自分に{{value}}ダメージ！',
+          opponent: '🎰 相手の{{name}}…ハズレ！相手に{{value}}自爆ダメージ！',
+        },
+      },
+      utility: {
+        cardPlay: '{{emoji}} {{name}}！',
+      },
+    },
+
     // ── Deck Grid ──
     deckGrid: {
       atkShort: '攻{{value}}',
