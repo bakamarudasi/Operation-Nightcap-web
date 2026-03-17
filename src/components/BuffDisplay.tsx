@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Buff } from '../data/types.ts';
 import { BUFF_META } from '../engine/utils.ts';
 
@@ -8,6 +9,7 @@ interface BuffDisplayProps {
 }
 
 export function BuffDisplay({ buffs, keyPrefix, className }: BuffDisplayProps) {
+  const { t } = useTranslation();
   if (buffs.length === 0) return null;
   return (
     <div className={`buff-icons ${className ?? ''}`}>
@@ -17,7 +19,7 @@ export function BuffDisplay({ buffs, keyPrefix, className }: BuffDisplayProps) {
           <div
             key={`${keyPrefix}-${buff.id}-${i}`}
             className={`buff-chip ${info.positive ? 'buff-positive' : 'buff-negative'}`}
-            title={`${info.label}${buff.duration > 0 ? ` (${buff.duration}T)` : ''}`}
+            title={`${t(info.labelKey)}${buff.duration > 0 ? ` (${buff.duration}T)` : ''}`}
           >
             <span className="buff-chip-icon">{info.icon}</span>
             {buff.duration > 0 && <span className="buff-chip-dur">{buff.duration}</span>}

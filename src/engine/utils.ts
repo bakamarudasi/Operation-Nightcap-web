@@ -1,5 +1,6 @@
 import { CARD_DATA } from '../data/cards.ts';
 import type { Buff } from '../data/types.ts';
+import i18n from '../i18n/index.ts';
 
 // ============================================
 // === バフメタデータ（単一ソース） ===
@@ -7,37 +8,37 @@ import type { Buff } from '../data/types.ts';
 
 export interface BuffMeta {
   icon: string;
-  label: string;
+  labelKey: string;  // translation key like 'buff.stun'
   positive: boolean;
   /** バフ付与時のメッセージテンプレート（nullなら非表示） */
   message?: ((buff: Buff) => string) | null;
 }
 
 export const BUFF_META: Record<Buff['id'], BuffMeta> = {
-  stun:             { icon: '💫', label: 'スタン',       positive: false, message: () => '😵 スタン付与！次のターン行動不能…！' },
-  atk_down:         { icon: '⬇️', label: '攻撃力低下',   positive: false, message: () => '⬇️ 攻撃力低下！次のターン、酒のダメージが半減…' },
-  dot:              { icon: '🩸', label: '継続ダメージ', positive: false, message: (b) => `💔 持続ダメージ付与！毎ターン酔いが${b.value ?? 0}ずつ回る…` },
-  no_food:          { icon: '🚫', label: '食べ物封印',   positive: false, message: () => '🚫 つまみ封じ！防御カードが使用不可に…！' },
-  corrupted_hand:   { icon: '💋', label: '手札汚染',     positive: false },
-  tipsy:            { icon: '🍺', label: 'ほろ酔い',     positive: false, message: () => '😳 ほろ酔い状態！ドリンクダメージが1.5倍に…' },
-  blush:            { icon: '😳', label: '頬染め',       positive: false, message: () => '😶‍🌫️ 動揺状態！セクハラが効きやすくなった…' },
-  alone:            { icon: '🚷', label: '孤立',         positive: false, message: () => '🌙 二人きり…セクハラのダメージが2倍に…' },
-  karaoke:          { icon: '🎤', label: 'カラオケ',     positive: true,  message: () => '🎤 カラオケ突入！ドリンクダメージ+1！' },
-  dimlight:         { icon: '🕯️', label: '薄暗い照明',   positive: false, message: () => '🕯️ 照明が暗い…セクハラの条件が緩和…' },
-  excuse:           { icon: '🛡️', label: '言い訳',       positive: true,  message: () => '🙈 「酔ってるから」…次のセクハラの条件緩和！' },
-  drink_dmg_half:   { icon: '🛡️', label: 'ダメージ半減', positive: true,  message: () => '🫖 冷静…被ドリンクダメージ半減！' },
-  next_drink_boost: { icon: '⚔️', label: '次攻撃強化',   positive: true,  message: (b) => `🏆 勢いが止まらない！次のドリンクダメージ+${b.value ?? 0}！` },
-  next_food_boost:  { icon: '💚', label: '次回復強化',   positive: true,  message: (b) => `🍰 じんわり…次のフード回復+${b.value ?? 0}！` },
-  negate_next:      { icon: '🚫', label: '次ダメ無効',   positive: true,  message: () => '🃏 ポーカーフェイス…相手の次のカード効果を無効化！' },
-  stealth:          { icon: '👻', label: 'ステルス',     positive: true,  message: () => '👻 隠密状態…セクハラを回避！' },
-  self_atk_up:      { icon: '💪', label: '攻撃力UP',     positive: true,  message: (b) => `💉 攻撃バフ！ドリンクダメージ${b.value ?? 1}倍！` },
-  all_dmg_up:       { icon: '🔥', label: '全ダメUP',     positive: true,  message: (b) => `💮 全ダメージ+${b.value ?? 0}！場の空気が重い…` },
-  sanity_negate:    { icon: '🧠', label: '理性ガード',   positive: true,  message: () => '✨ 加護展開！理性ダメージを無効化！' },
-  thorns:           { icon: '🌵', label: '反撃',         positive: true,  message: (b) => `⚖️ 裁きの棘！ダメージを受けると${b.value ?? 0}反射！` },
-  reflect_all:      { icon: '🪞', label: '全反射',       positive: true,  message: () => '🛡️ 酒壁展開！全ダメージを跳ね返す！' },
-  afterglow:        { icon: '✨', label: '余韻',         positive: false, message: () => '✨ 余韻…次のセクハラが効きやすい' },
-  frustration:      { icon: '😤', label: '焦らし',       positive: false, message: null },
-  finger_technique: { icon: '🤌', label: '指先テク',     positive: true,  message: () => '🤌 指先のテクニック！セクハラダメージ1.5倍！' },
+  stun:             { icon: '💫', labelKey: 'buff.stun',             positive: false, message: () => i18n.t('buffMessage.stun') },
+  atk_down:         { icon: '⬇️', labelKey: 'buff.atk_down',         positive: false, message: () => i18n.t('buffMessage.atk_down') },
+  dot:              { icon: '🩸', labelKey: 'buff.dot',              positive: false, message: (b) => i18n.t('buffMessage.dot', { value: b.value ?? 0 }) },
+  no_food:          { icon: '🚫', labelKey: 'buff.no_food',          positive: false, message: () => i18n.t('buffMessage.no_food') },
+  corrupted_hand:   { icon: '💋', labelKey: 'buff.corrupted_hand',   positive: false },
+  tipsy:            { icon: '🍺', labelKey: 'buff.tipsy',            positive: false, message: () => i18n.t('buffMessage.tipsy') },
+  blush:            { icon: '😳', labelKey: 'buff.blush',            positive: false, message: () => i18n.t('buffMessage.blush') },
+  alone:            { icon: '🚷', labelKey: 'buff.alone',            positive: false, message: () => i18n.t('buffMessage.alone') },
+  karaoke:          { icon: '🎤', labelKey: 'buff.karaoke',          positive: true,  message: () => i18n.t('buffMessage.karaoke') },
+  dimlight:         { icon: '🕯️', labelKey: 'buff.dimlight',         positive: false, message: () => i18n.t('buffMessage.dimlight') },
+  excuse:           { icon: '🛡️', labelKey: 'buff.excuse',           positive: true,  message: () => i18n.t('buffMessage.excuse') },
+  drink_dmg_half:   { icon: '🛡️', labelKey: 'buff.drink_dmg_half',   positive: true,  message: () => i18n.t('buffMessage.drink_dmg_half') },
+  next_drink_boost: { icon: '⚔️', labelKey: 'buff.next_drink_boost', positive: true,  message: (b) => i18n.t('buffMessage.next_drink_boost', { value: b.value ?? 0 }) },
+  next_food_boost:  { icon: '💚', labelKey: 'buff.next_food_boost',  positive: true,  message: (b) => i18n.t('buffMessage.next_food_boost', { value: b.value ?? 0 }) },
+  negate_next:      { icon: '🚫', labelKey: 'buff.negate_next',      positive: true,  message: () => i18n.t('buffMessage.negate_next') },
+  stealth:          { icon: '👻', labelKey: 'buff.stealth',          positive: true,  message: () => i18n.t('buffMessage.stealth') },
+  self_atk_up:      { icon: '💪', labelKey: 'buff.self_atk_up',      positive: true,  message: (b) => i18n.t('buffMessage.self_atk_up', { value: b.value ?? 1 }) },
+  all_dmg_up:       { icon: '🔥', labelKey: 'buff.all_dmg_up',       positive: true,  message: (b) => i18n.t('buffMessage.all_dmg_up', { value: b.value ?? 0 }) },
+  sanity_negate:    { icon: '🧠', labelKey: 'buff.sanity_negate',    positive: true,  message: () => i18n.t('buffMessage.sanity_negate') },
+  thorns:           { icon: '🌵', labelKey: 'buff.thorns',           positive: true,  message: (b) => i18n.t('buffMessage.thorns', { value: b.value ?? 0 }) },
+  reflect_all:      { icon: '🪞', labelKey: 'buff.reflect_all',      positive: true,  message: () => i18n.t('buffMessage.reflect_all') },
+  afterglow:        { icon: '✨', labelKey: 'buff.afterglow',        positive: false, message: () => i18n.t('buffMessage.afterglow') },
+  frustration:      { icon: '😤', labelKey: 'buff.frustration',      positive: false, message: null },
+  finger_technique: { icon: '🤌', labelKey: 'buff.finger_technique', positive: true,  message: () => i18n.t('buffMessage.finger_technique') },
 };
 
 /** バフ付与時のメッセージを取得（nullなら非表示） */

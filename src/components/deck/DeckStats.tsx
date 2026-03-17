@@ -40,7 +40,7 @@ export function DeckStats({ playerDeck }: DeckStatsProps) {
               width: `${(count / total) * 100}%`,
               backgroundColor: CARD_TYPE_COLORS[type],
             }}
-            title={`${CARD_TYPE_LABELS[type]}: ${count}枚`}
+            title={`${t(CARD_TYPE_LABELS[type])}: ${count}`}
           >
             {count >= 2 && <span className="composition-label">{count}</span>}
           </div>
@@ -55,7 +55,7 @@ export function DeckStats({ playerDeck }: DeckStatsProps) {
           {barEntries.map(([type, count]) => (
             <span key={type} className="legend-item">
               <span className="legend-dot" style={{ backgroundColor: CARD_TYPE_COLORS[type] }} />
-              {CARD_TYPE_LABELS[type]} {count}
+              {t(CARD_TYPE_LABELS[type])} {count}
             </span>
           ))}
         </span>

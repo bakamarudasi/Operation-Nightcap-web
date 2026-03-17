@@ -1,6 +1,9 @@
 import { CARD_DATA, getCardDamage, getEnhancedCard } from '../data/cards.ts';
 import type { BattleState, RoundResult, CGEvent, CharacterDef, Buff, CardDef, EffectDef } from '../data/types.ts';
 import { randomPick, POSITIVE_BUFF_IDS, getDrunkLevel, hasBuff, getBuffMessage } from './utils.ts';
+import i18n from '../i18n/index.ts';
+
+const t = (key: string, opts?: Record<string, unknown>) => i18n.t(key, opts);
 
 export interface ExtendedResult extends RoundResult {
   opponentDiscardNext?: boolean;
@@ -218,7 +221,7 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.selfHeal) {
     if (isPlayer) {
       result.playerHeal += card.selfHeal;
-      result.messages.push(`💚 ${card.name}のドレイン効果！酔い${card.selfHeal}回復！`);
+      result.messages.push(t('engine.extras.selfHeal', { name: card.name, value: card.selfHeal }));
     } else {
       result.opponentHeal += card.selfHeal;
     }
@@ -228,7 +231,7 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.selfDamage) {
     if (isPlayer) {
       result.playerDamage += card.selfDamage;
-      result.messages.push(`💉 ${card.name}の副作用…自分に${card.selfDamage}ダメージ！`);
+      result.messages.push(t('engine.extras.selfDamage', { name: card.name, value: card.selfDamage }));
     } else {
       result.opponentDamage += card.selfDamage;
     }
@@ -238,10 +241,10 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.cleanseSelf) {
     if (isPlayer) {
       result.playerCleanseSelf = (result.playerCleanseSelf ?? 0) + card.cleanseSelf;
-      result.messages.push(`💊 ${card.name}の効果！デバフ${card.cleanseSelf}つ除去！`);
+      result.messages.push(t('engine.extras.cleanseSelf', { name: card.name, count: card.cleanseSelf }));
     } else {
       result.opponentCleanseSelf = (result.opponentCleanseSelf ?? 0) + card.cleanseSelf;
-      result.messages.push(`💊 相手の${card.name}でデバフ${card.cleanseSelf}つ除去！`);
+      result.messages.push(t('engine.extras.cleanseSelfOpponent', { name: card.name, count: card.cleanseSelf }));
     }
   }
 
@@ -249,10 +252,10 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.cleanseDot) {
     if (isPlayer) {
       result.playerCleanseDot = true;
-      result.messages.push(`🌿 ${card.name}の効果！持続ダメージを除去！`);
+      result.messages.push(t('engine.extras.cleanseDot', { name: card.name }));
     } else {
       result.opponentCleanseDot = true;
-      result.messages.push(`🌿 相手の${card.name}で持続ダメージ除去！`);
+      result.messages.push(t('engine.extras.cleanseDotOpponent', { name: card.name }));
     }
   }
 
@@ -260,10 +263,10 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.corruptHand) {
     if (isPlayer) {
       result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand;
-      result.messages.push(`🔥 ${card.name}の効果！相手の手札${card.corruptHand}枚が発情状態に！`);
+      result.messages.push(t('engine.extras.corruptHandPlayer', { name: card.name, count: card.corruptHand }));
     } else {
       result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
-      result.messages.push(`🔥 ${card.name}の効果！手札${card.corruptHand}枚が発情状態に…！`);
+      result.messages.push(t('engine.extras.corruptHandOpponent', { name: card.name, count: card.corruptHand }));
     }
   }
 
@@ -271,10 +274,10 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.discardEnemyHand) {
     if (isPlayer) {
       result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
-      result.messages.push(`🌌 ${card.name}の効果！相手の手札${card.discardEnemyHand}枚が記憶から消える…`);
+      result.messages.push(t('engine.extras.discardEnemyHandPlayer', { name: card.name, count: card.discardEnemyHand }));
     } else {
       result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand;
-      result.messages.push(`🌌 ${card.name}の効果！手札${card.discardEnemyHand}枚が記憶から消える…`);
+      result.messages.push(t('engine.extras.discardEnemyHandOpponent', { name: card.name, count: card.discardEnemyHand }));
     }
   }
 }
@@ -367,11 +370,11 @@ function processEffect(
         else result.opponentDamage += v;
       }
       if (fx.target === 'both') {
-        result.messages.push(`${cardEmoji} ${cardName}！全員に${v}ダメージ！`);
+        result.messages.push(t('engine.effect.damage.both', { emoji: cardEmoji, name: cardName, value: v }));
       } else if (fx.target === 'enemy') {
-        result.messages.push(`${cardEmoji} ${cardName}！${isPlayer ? '相手' : 'こちら'}に${v}ダメージ！`);
+        result.messages.push(t('engine.effect.damage.enemy', { emoji: cardEmoji, name: cardName, value: v, target: isPlayer ? t('engine.target.opponent') : t('engine.target.us') }));
       } else {
-        result.messages.push(`${cardEmoji} ${cardName}！自分に${v}ダメージ！`);
+        result.messages.push(t('engine.effect.damage.self', { emoji: cardEmoji, name: cardName, value: v }));
       }
       break;
     }
@@ -386,7 +389,7 @@ function processEffect(
         if (isPlayer) result.opponentHeal += v;
         else result.playerHeal += v;
       }
-      result.messages.push(`${cardEmoji} ${cardName}！${v}回復！`);
+      result.messages.push(t('engine.effect.heal', { emoji: cardEmoji, name: cardName, value: v }));
       break;
     }
 
@@ -421,9 +424,9 @@ function processEffect(
           result.clearAllPlayerBuffs = true;
           result.playerDamage += count;
         }
-        result.messages.push(`${cardEmoji} ${count}個のバフを剥がし、${count}ダメージ！`);
+        result.messages.push(t('engine.effect.cleanseEnemyBuffs.success', { emoji: cardEmoji, count }));
       } else {
-        result.messages.push(`${cardEmoji} …しかし相手にバフがなかった！`);
+        result.messages.push(t('engine.effect.cleanseEnemyBuffs.noBuff', { emoji: cardEmoji }));
       }
       break;
     }
@@ -435,7 +438,7 @@ function processEffect(
       } else {
         result.opponentCleanseSelf = (result.opponentCleanseSelf ?? 0) + fx.count;
       }
-      result.messages.push(`${cardEmoji} デバフを${fx.count}個除去！`);
+      result.messages.push(t('engine.effect.cleanseSelf', { emoji: cardEmoji, count: fx.count }));
       break;
     }
 
@@ -443,21 +446,21 @@ function processEffect(
     case 'cleanse_dot': {
       if (isPlayer) result.playerCleanseDot = true;
       else result.opponentCleanseDot = true;
-      result.messages.push(`${cardEmoji} 継続ダメージを除去！`);
+      result.messages.push(t('engine.effect.cleanseDot', { emoji: cardEmoji }));
       break;
     }
 
     // --- 手札入れ替え ---
     case 'swap_hands': {
       result.swapHandsNextRound = true;
-      result.messages.push(`${cardEmoji} ${cardName}！次ラウンドの手札が入れ替わる！`);
+      result.messages.push(t('engine.effect.swapHands', { emoji: cardEmoji, name: cardName }));
       break;
     }
 
     // --- 酔いLv入れ替え ---
     case 'swap_drunk': {
       result.swapDrunk = true;
-      result.messages.push(`${cardEmoji} ${cardName}！酔いレベルが入れ替わった！`);
+      result.messages.push(t('engine.effect.swapDrunk', { emoji: cardEmoji, name: cardName }));
       break;
     }
 
@@ -465,10 +468,10 @@ function processEffect(
     case 'transform_card': {
       if (isPlayer) {
         result.transformEnemyCard = fx.cardId;
-        result.messages.push(`${cardEmoji} ${cardName}…相手の手札が変えられる…！`);
+        result.messages.push(t('engine.effect.transformCard.player', { emoji: cardEmoji, name: cardName }));
       } else {
         result.transformPlayerCard = fx.cardId;
-        result.messages.push(`${cardEmoji} ${cardName}…手札の一枚が変えられた…！`);
+        result.messages.push(t('engine.effect.transformCard.opponent', { emoji: cardEmoji, name: cardName }));
       }
       break;
     }
@@ -483,7 +486,7 @@ function processEffect(
       }
       const tokenCard = CARD_DATA[fx.cardId];
       const tokenName = tokenCard?.name ?? fx.cardId;
-      result.messages.push(`${cardEmoji} ${cardName}…${tokenName}が次ラウンドに参戦！`);
+      result.messages.push(t('engine.effect.grantCard', { emoji: cardEmoji, name: cardName, tokenName }));
       break;
     }
 
@@ -494,7 +497,7 @@ function processEffect(
       } else {
         result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + fx.count;
       }
-      result.messages.push(`${cardEmoji} 相手の手札を${fx.count}枚破棄！`);
+      result.messages.push(t('engine.effect.discardHand', { emoji: cardEmoji, count: fx.count }));
       break;
     }
 
@@ -502,7 +505,7 @@ function processEffect(
     case 'discard_highest': {
       if (isPlayer) result.discardHighest = true;
       else result.discardPlayerHighest = true;
-      result.messages.push(`${cardEmoji} 相手の最強カードを破棄！`);
+      result.messages.push(t('engine.effect.discardHighest', { emoji: cardEmoji }));
       break;
     }
 
@@ -510,9 +513,9 @@ function processEffect(
     case 'reveal_hand': {
       if (isPlayer) {
         result.revealedHand = [...battle.opponentHand];
-        result.messages.push(`${cardEmoji} 相手の手札が見えた！`);
+        result.messages.push(t('engine.effect.revealHand.player', { emoji: cardEmoji }));
       } else {
-        result.messages.push(`${cardEmoji} 手の内が見られている…！`);
+        result.messages.push(t('engine.effect.revealHand.opponent', { emoji: cardEmoji }));
       }
       break;
     }
@@ -521,10 +524,10 @@ function processEffect(
     case 'rumor': {
       if (isPlayer) {
         result.rumorActive = true;
-        result.messages.push(`${cardEmoji} 相手の次の手札が乱される！`);
+        result.messages.push(t('engine.effect.rumor.player', { emoji: cardEmoji }));
       } else {
         result.playerRumorActive = true;
-        result.messages.push(`${cardEmoji} 次の手札が乱された！`);
+        result.messages.push(t('engine.effect.rumor.opponent', { emoji: cardEmoji }));
       }
       break;
     }
@@ -532,7 +535,7 @@ function processEffect(
     // --- maxRounds減少 ---
     case 'reduce_max_rounds': {
       result.reduceMaxRounds = (result.reduceMaxRounds ?? 0) + fx.value;
-      result.messages.push(`${cardEmoji} 残りラウンドが${fx.value}減少！`);
+      result.messages.push(t('engine.effect.reduceMaxRounds', { emoji: cardEmoji, value: fx.value }));
       break;
     }
 
@@ -543,7 +546,7 @@ function processEffect(
       } else {
         result.corruptCount = (result.corruptCount ?? 0) + fx.count;
       }
-      result.messages.push(`${cardEmoji} 相手の手札を${fx.count}枚汚染！`);
+      result.messages.push(t('engine.effect.corruptHand', { emoji: cardEmoji, count: fx.count }));
       break;
     }
 
@@ -556,7 +559,7 @@ function processEffect(
         if (isPlayer) result.opponentReducedHand = true;
         else result.playerReducedHand = true;
       }
-      result.messages.push(`${cardEmoji} 次ラウンドの手札が減る！`);
+      result.messages.push(t('engine.effect.reduceHand', { emoji: cardEmoji }));
       break;
     }
 
@@ -564,10 +567,10 @@ function processEffect(
     case 'instant_win': {
       if (isPlayer) {
         result.instantWin = true;
-        result.messages.push(`${cardEmoji} ${cardName}…奇跡！即勝利！！`);
+        result.messages.push(t('engine.effect.instantWin.player', { emoji: cardEmoji, name: cardName }));
       } else {
         result.playerDamage += 99;
-        result.messages.push(`${cardEmoji} ${cardName}…一撃で沈められた…！`);
+        result.messages.push(t('engine.effect.instantWin.opponent', { emoji: cardEmoji, name: cardName }));
       }
       break;
     }
@@ -576,10 +579,10 @@ function processEffect(
     case 'roulette': {
       const roll = Math.random();
       if (roll < fx.chance) {
-        result.messages.push(`🎲 ${cardName}…当たり！`);
+        result.messages.push(t('engine.effect.roulette.hit', { name: cardName }));
         processEffects(fx.success, cardName, cardEmoji, isPlayer, result, battle);
       } else {
-        result.messages.push(`🎲 ${cardName}…ハズレ！`);
+        result.messages.push(t('engine.effect.roulette.miss', { name: cardName }));
         processEffects(fx.failure, cardName, cardEmoji, isPlayer, result, battle);
       }
       break;
@@ -607,9 +610,9 @@ const UTILITY_FLAG_HANDLERS: Array<{
     handle: ({ isPlayer, result, battle }) => {
       if (isPlayer) {
         result.revealedHand = [...battle.opponentHand];
-        result.messages.push(`相手の手札が見えた！`);
+        result.messages.push(t('engine.utility.revealHand.player'));
       } else {
-        result.messages.push(`手の内が見られている…！`);
+        result.messages.push(t('engine.utility.revealHand.opponent'));
       }
     },
   },
@@ -618,10 +621,10 @@ const UTILITY_FLAG_HANDLERS: Array<{
     handle: ({ isPlayer, result }) => {
       if (isPlayer) {
         result.rumorActive = true;
-        result.messages.push(`相手の次の手札が乱される！`);
+        result.messages.push(t('engine.utility.rumor.player'));
       } else {
         result.playerRumorActive = true;
-        result.messages.push(`次の手札が乱された！`);
+        result.messages.push(t('engine.utility.rumor.opponent'));
       }
     },
   },
@@ -629,7 +632,7 @@ const UTILITY_FLAG_HANDLERS: Array<{
     key: 'swapDrunk',
     handle: ({ result }) => {
       result.swapDrunk = true;
-      result.messages.push(`酔いレベルが入れ替わった！`);
+      result.messages.push(t('engine.utility.swapDrunk'));
     },
   },
   {
@@ -637,10 +640,10 @@ const UTILITY_FLAG_HANDLERS: Array<{
     handle: ({ isPlayer, result }) => {
       if (isPlayer) {
         result.discardHighest = true;
-        result.messages.push(`相手の最強カードが没収された！`);
+        result.messages.push(t('engine.utility.discardHighest.player'));
       } else {
         result.discardPlayerHighest = true;
-        result.messages.push(`最強のカードが奪われた！`);
+        result.messages.push(t('engine.utility.discardHighest.opponent'));
       }
     },
   },
@@ -652,14 +655,14 @@ const UTILITY_FLAG_HANDLERS: Array<{
       } else {
         result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand!;
       }
-      result.messages.push(isPlayer ? `相手の手札${card.discardEnemyHand}枚が消える…` : `手札${card.discardEnemyHand}枚が消された…`);
+      result.messages.push(isPlayer ? t('engine.utility.discardEnemyHand.player', { count: card.discardEnemyHand }) : t('engine.utility.discardEnemyHand.opponent', { count: card.discardEnemyHand }));
     },
   },
   {
     key: 'reduceMaxRounds',
     handle: ({ card, result }) => {
       result.reduceMaxRounds = card.reduceMaxRounds;
-      result.messages.push(`残りラウンドが${card.reduceMaxRounds}減少！決着を急げ！`);
+      result.messages.push(t('engine.utility.reduceMaxRounds', { value: card.reduceMaxRounds }));
     },
   },
   {
@@ -701,7 +704,7 @@ const UTILITY_FLAG_HANDLERS: Array<{
       } else {
         result.opponentHeal += card.selfHeal!;
       }
-      result.messages.push(`💚 ドレイン効果！${card.selfHeal}回復！`);
+      result.messages.push(t('engine.utility.selfHeal', { value: card.selfHeal }));
     },
   },
   {
@@ -712,7 +715,7 @@ const UTILITY_FLAG_HANDLERS: Array<{
       } else {
         result.opponentDamage += card.selfDamage!;
       }
-      result.messages.push(`💉 副作用…${card.selfDamage}ダメージ！`);
+      result.messages.push(t('engine.utility.selfDamage', { value: card.selfDamage }));
     },
   },
   {
@@ -720,10 +723,10 @@ const UTILITY_FLAG_HANDLERS: Array<{
     handle: ({ card, isPlayer, result }) => {
       if (isPlayer) {
         result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand!;
-        result.messages.push(`🔥 相手の手札${card.corruptHand}枚が発情状態に！`);
+        result.messages.push(t('engine.utility.corruptHand.player', { count: card.corruptHand }));
       } else {
         result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand!;
-        result.messages.push(`🔥 手札${card.corruptHand}枚が発情状態に…！`);
+        result.messages.push(t('engine.utility.corruptHand.opponent', { count: card.corruptHand }));
       }
     },
   },
@@ -732,10 +735,10 @@ const UTILITY_FLAG_HANDLERS: Array<{
     handle: ({ card, isPlayer, result }) => {
       if (isPlayer) {
         result.playerCleanseSelf = (result.playerCleanseSelf ?? 0) + card.cleanseSelf!;
-        result.messages.push(`💊 ${card.name}の効果！デバフ${card.cleanseSelf}つ除去！`);
+        result.messages.push(t('engine.utility.cleanseSelf.player', { name: card.name, count: card.cleanseSelf }));
       } else {
         result.opponentCleanseSelf = (result.opponentCleanseSelf ?? 0) + card.cleanseSelf!;
-        result.messages.push(`💊 相手の${card.name}でデバフ${card.cleanseSelf}つ除去！`);
+        result.messages.push(t('engine.utility.cleanseSelf.opponent', { name: card.name, count: card.cleanseSelf }));
       }
     },
   },
@@ -744,10 +747,10 @@ const UTILITY_FLAG_HANDLERS: Array<{
     handle: ({ card, isPlayer, result }) => {
       if (isPlayer) {
         result.playerCleanseDot = true;
-        result.messages.push(`🌿 ${card.name}の効果！持続ダメージを除去！`);
+        result.messages.push(t('engine.utility.cleanseDot.player', { name: card.name }));
       } else {
         result.opponentCleanseDot = true;
-        result.messages.push(`🌿 相手の${card.name}で持続ダメージ除去！`);
+        result.messages.push(t('engine.utility.cleanseDot.opponent', { name: card.name }));
       }
     },
   },
@@ -777,12 +780,12 @@ export const BattleEngine = {
     if (playerReflectable > 0) {
       result.opponentDamage += playerReflectable;
       result.playerDamage -= playerReflectable;
-      result.messages.push(`🛡️ 般若の酒壁！${playerReflectable}ダメージが全て跳ね返った！`);
+      result.messages.push(t('engine.post.reflectAll.player', { value: playerReflectable }));
     }
     if (opponentReflectable > 0) {
       result.playerDamage += opponentReflectable;
       result.opponentDamage -= opponentReflectable;
-      result.messages.push(`🛡️ 相手の酒壁！${opponentReflectable}ダメージが跳ね返された！`);
+      result.messages.push(t('engine.post.reflectAll.opponent', { value: opponentReflectable }));
     }
 
     // thorns: ダメージを受けたら固定値を反射（reflect前のダメージで判定）
@@ -790,14 +793,14 @@ export const BattleEngine = {
       const thornsVal = getBuffValue(battle.playerBuffs, 'thorns', 0);
       if (thornsVal > 0) {
         result.opponentDamage += thornsVal;
-        result.messages.push(`⚖️ 裁きの反射！相手に${thornsVal}ダメージ！`);
+        result.messages.push(t('engine.post.thorns.player', { value: thornsVal }));
       }
     }
     if (opponentDamageBefore > 0 && hasBuff(battle.opponentBuffs, 'thorns')) {
       const thornsVal = getBuffValue(battle.opponentBuffs, 'thorns', 0);
       if (thornsVal > 0) {
         result.playerDamage += thornsVal;
-        result.messages.push(`⚖️ 相手の裁き反射！${thornsVal}ダメージ！`);
+        result.messages.push(t('engine.post.thorns.opponent', { value: thornsVal }));
       }
     }
 
@@ -842,19 +845,19 @@ export const BattleEngine = {
     const playerHalvesFood = pCard.type === 'harassment' && oCard.type === 'food';
     const opponentHalvesFood = oCard.type === 'harassment' && pCard.type === 'food';
 
-    if (playerMatchup === 'advantage') result.messages.push('🔺 相性有利！');
-    else if (playerMatchup === 'disadvantage') result.messages.push('🔻 相性不利…');
+    if (playerMatchup === 'advantage') result.messages.push(t('engine.matchup.advantage'));
+    else if (playerMatchup === 'disadvantage') result.messages.push(t('engine.matchup.disadvantage'));
 
     // === フェーズ0: DoTバフのtick処理 ===
     const playerDoT = calcDoTDamage(battle.playerBuffs);
     if (playerDoT > 0) {
       result.playerDamage += playerDoT;
-      result.messages.push(`💔 持続ダメージ…酔いが${playerDoT}回る！`);
+      result.messages.push(t('engine.dot.self', { value: playerDoT }));
     }
     const opponentDoT = calcDoTDamage(battle.opponentBuffs);
     if (opponentDoT > 0) {
       result.opponentDamage += opponentDoT;
-      result.messages.push(`💔 相手も持続ダメージ…酔い+${opponentDoT}！`);
+      result.messages.push(t('engine.dot.opponent', { value: opponentDoT }));
     }
 
     // === フェーズ0.5: negate_nextチェック ===
@@ -863,11 +866,11 @@ export const BattleEngine = {
     // 相手がnegate_next → プレイヤーのカード効果を完全無効化
     const playerNegated = hasBuff(battle.opponentBuffs, 'negate_next');
     if (opponentNegated) {
-      result.messages.push(`🃏 ポーカーフェイス発動！相手の${oCard.emoji}${oCard.name}を無効化！`);
+      result.messages.push(t('engine.negate.player', { emoji: oCard.emoji, name: oCard.name }));
       trackBuffConsumption(result, 'player', 'negate_next');
     }
     if (playerNegated) {
-      result.messages.push(`🃏 相手のポーカーフェイス発動！${pCard.emoji}${pCard.name}が無効化された！`);
+      result.messages.push(t('engine.negate.opponent', { emoji: pCard.emoji, name: pCard.name }));
       trackBuffConsumption(result, 'opponent', 'negate_next');
     }
 
@@ -891,13 +894,13 @@ export const BattleEngine = {
     const opponentStunned = hasBuff(battle.opponentBuffs, 'stun');
 
     if (playerStunned) {
-      result.messages.push('😵 スタン状態！行動できない…！');
+      result.messages.push(t('engine.stun.self'));
       // スタン中でも相手のカードは通常通り処理（food/utilityも有効）
       return this.resolveSingleCard(oCard, pCard, result, 'opponent', battle);
     }
 
     if (opponentStunned) {
-      result.messages.push('😵 相手がスタン状態！');
+      result.messages.push(t('engine.stun.opponent'));
       // スタン中でも自分のカードは通常通り処理（food/utilityも有効）
       return this.resolveSingleCard(pCard, oCard, result, 'player', battle);
     }

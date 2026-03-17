@@ -1,14 +1,14 @@
 import type { CardType } from '../../data/types.ts';
 
-/** カードタイプの日本語ラベル */
+/** カードタイプの翻訳キー */
 export const CARD_TYPE_LABELS: Record<CardType, string> = {
-  drink: 'ドリンク',
-  food: 'つまみ',
-  chug: '一気飲み',
-  harassment: 'セクハラ',
-  strategy: '戦略',
-  environment: '環境',
-  status: '状態異常',
+  drink: 'cardType.drinkFull',
+  food: 'cardType.foodFull',
+  chug: 'cardType.chugFull',
+  harassment: 'cardType.harassmentFull',
+  strategy: 'cardType.strategyFull',
+  environment: 'cardType.environmentFull',
+  status: 'cardType.statusFull',
 };
 
 /** カードタイプの色 (CSSカスタムプロパティと一致) */

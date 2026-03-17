@@ -359,6 +359,37 @@ const en = {
       self_atk_up: 'ATK Up',
       all_dmg_up: 'All DMG Up',
     },
+
+    // ── Deck Grid ──
+    deckGrid: {
+      atkShort: 'ATK {{value}}',
+      healShort: 'Heal {{value}}',
+      special: 'Special',
+      addHint: 'Click or\ndrag to add',
+      harassmentInfo: 'Drunk Lv{{level}} +{{damage}}',
+    },
+
+    // ── Gacha Collection ──
+    collection: {
+      filterAll: 'All',
+      filterDrink: 'Drink',
+      filterFood: 'Food',
+      filterChug: 'Chug',
+      filterHarassment: 'Harassment',
+      filterStrategy: 'Strategy',
+      filterEnvironment: 'Environment',
+      filterStatus: 'Status',
+      type_drink: 'Drink',
+      type_food: 'Food',
+      type_chug: 'Chug',
+      type_harassment: 'Harassment',
+      type_strategy: 'Strategy',
+      type_environment: 'Environment',
+      type_status: 'Status',
+      owned: 'Owned',
+      heal: 'Heal',
+      price: 'Price',
+    },
   },
 };
 

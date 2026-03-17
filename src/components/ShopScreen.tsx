@@ -98,7 +98,7 @@ export function ShopScreen() {
           if (!cards || cards.length === 0) return null;
           return (
             <div key={type}>
-              <div className="shop-section-title">{CARD_TYPE_ICONS[type]} {CARD_TYPE_LABELS[type]}</div>
+              <div className="shop-section-title">{CARD_TYPE_ICONS[type]} {t(CARD_TYPE_LABELS[type])}</div>
               {cards.map(renderShopItem)}
             </div>
           );

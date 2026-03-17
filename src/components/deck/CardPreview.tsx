@@ -20,7 +20,7 @@ export function CardPreview({ card, pos }: CardPreviewProps) {
         <span className="card-preview-name">{card.name}</span>
         <span className="card-preview-rarity">{'★'.repeat(card.rarity)}</span>
       </div>
-      <div className="card-preview-type">{CARD_TYPE_LABELS[card.type]}</div>
+      <div className="card-preview-type">{t(CARD_TYPE_LABELS[card.type])}</div>
       <div className="card-preview-stats">
         {card.damage !== undefined && <span>{t('cardPreview.attack', { value: card.damage === -1 ? '1~3' : card.damage })}</span>}
         {card.heal !== undefined && <span>{t('cardPreview.heal', { value: card.heal === 99 ? t('cardPreview.max') : card.heal })}</span>}

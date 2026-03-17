@@ -359,6 +359,37 @@ const ja = {
       self_atk_up: '攻撃力アップ',
       all_dmg_up: '全ダメージ増加',
     },
+
+    // ── Deck Grid ──
+    deckGrid: {
+      atkShort: '攻{{value}}',
+      healShort: '回{{value}}',
+      special: '特殊',
+      addHint: 'クリックか\nドラッグで追加',
+      harassmentInfo: '酔Lv{{level}} 酔+{{damage}}',
+    },
+
+    // ── Gacha Collection ──
+    collection: {
+      filterAll: '全て',
+      filterDrink: 'ドリンク',
+      filterFood: 'フード',
+      filterChug: 'イッキ',
+      filterHarassment: 'セクハラ',
+      filterStrategy: '戦略',
+      filterEnvironment: '環境',
+      filterStatus: '状態',
+      type_drink: 'ドリンク',
+      type_food: 'フード',
+      type_chug: 'イッキ',
+      type_harassment: 'セクハラ',
+      type_strategy: '戦略',
+      type_environment: '環境',
+      type_status: '状態',
+      owned: '所持',
+      heal: '回復',
+      price: '価格',
+    },
   },
 };
 

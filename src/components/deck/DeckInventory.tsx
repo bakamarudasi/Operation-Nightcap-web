@@ -127,7 +127,7 @@ export function DeckInventory({
                 <div className="inv-card-desc">
                   {card.type === 'drink' ? t('battle.cardTypeAttack', { value: card.damage === -1 ? '1~3' : card.damage }) :
                    card.type === 'food' ? t('battle.cardTypeHeal', { value: card.heal === 99 ? 'MAX' : card.heal }) :
-                   card.type === 'harassment' ? `酔Lv${card.requiredDrunkLevel} 酔+${card.drunkDamage ?? 0}` :
+                   card.type === 'harassment' ? t('deckGrid.harassmentInfo', { level: card.requiredDrunkLevel, damage: card.drunkDamage ?? 0 }) :
                    card.description.substring(0, 20)}
                 </div>
               </div>

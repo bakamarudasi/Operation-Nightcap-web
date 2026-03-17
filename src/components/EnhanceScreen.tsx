@@ -153,7 +153,7 @@ export function EnhanceScreen() {
               className={`enhance-tab ${typeFilter === type ? 'active' : ''}`}
               onClick={() => setTypeFilter(type)}
             >
-              {CARD_TYPE_LABELS[type as keyof typeof CARD_TYPE_LABELS] ?? type}
+              {t(CARD_TYPE_LABELS[type as keyof typeof CARD_TYPE_LABELS] ?? type)}
             </button>
           ))}
         </div>
@@ -195,7 +195,7 @@ export function EnhanceScreen() {
           })}
           {uniqueCards.length === 0 && (
             <div style={{ color: 'var(--text-dim)', padding: 24 }}>
-              {typeFilter !== 'all' ? t('enhance.noTypeCards', { type: CARD_TYPE_LABELS[typeFilter as keyof typeof CARD_TYPE_LABELS] }) : t('enhance.noCards')}
+              {typeFilter !== 'all' ? t('enhance.noTypeCards', { type: t(CARD_TYPE_LABELS[typeFilter as keyof typeof CARD_TYPE_LABELS]) }) : t('enhance.noCards')}
             </div>
           )}
         </div>

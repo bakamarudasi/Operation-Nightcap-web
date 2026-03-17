@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { CARD_DATA } from '../data/cards.ts';
 
 interface CardProps {
@@ -11,6 +12,7 @@ interface CardProps {
 }
 
 export function Card({ cardId, onClick, selected, size = 'normal', showPrice, level = 1 }: CardProps) {
+  const { t } = useTranslation();
   const card = CARD_DATA[cardId];
   if (!card) return null;
 
@@ -42,7 +44,7 @@ export function Card({ cardId, onClick, selected, size = 'normal', showPrice, le
         </span>
       )}
       {showPrice && (
-        <span className="card-price">{card.price}龍</span>
+        <span className="card-price">{card.price}{t('common.currencyIcon')}</span>
       )}
     </div>
   );
