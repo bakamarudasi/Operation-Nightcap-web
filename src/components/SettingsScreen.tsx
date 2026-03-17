@@ -92,6 +92,13 @@ export function SettingsScreen() {
             >
               English
             </button>
+            <button
+              className="menu-btn"
+              style={{ backgroundColor: i18n.language === 'zh-CN' ? '#886644' : '#555', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+              onClick={() => i18n.changeLanguage('zh-CN')}
+            >
+              简体中文
+            </button>
           </div>
         </div>
         <div className="settings-divider"></div>
