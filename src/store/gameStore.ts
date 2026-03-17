@@ -79,6 +79,7 @@ interface GameStore {
   setScreen: (screen: ScreenId) => void;
 
   // バトル
+  updateCurrentOpponent: (char: CharacterDef) => void;
   initBattle: (opponentId: string, characterData: Record<string, CharacterDef>) => void;
   drawHands: () => void;
   selectCard: (cardId: string) => void;
@@ -202,6 +203,8 @@ export const useGameStore = create<GameStore>()(
         currentScreen: screen,
         previousScreen: state.currentScreen,
       })),
+
+      updateCurrentOpponent: (char) => set({ currentOpponent: char }),
 
       initBattle: (opponentId, characterData) => {
         const char = characterData[opponentId];

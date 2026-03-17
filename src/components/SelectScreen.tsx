@@ -199,7 +199,7 @@ export function SelectScreen() {
         }, 2500);
       }, 300);
     }, 600);
-  }, [isAnim, charCount, money, characters, currentIdx, addTimer, initBattle]);
+  }, [isAnim, charCount, money, characters, currentIdx, addTimer, initBattle, CHARACTER_DATA]);
 
   /* ── キーボード操作 ── */
   useEffect(() => {

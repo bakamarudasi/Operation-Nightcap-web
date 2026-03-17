@@ -18,7 +18,7 @@ export function GalleryScreen() {
 
   const [activeTab, setActiveTab] = useState<'cg' | 'portrait'>('cg');
   const CHARACTER_DATA = useMemo(() => getLocalizedCharacterData(t), [t]);
-  const [selectedChar, setSelectedChar] = useState<string>(Object.keys(CHARACTER_DATA)[0] ?? 'blaze');
+  const [selectedChar, setSelectedChar] = useState<string>('blaze');
   const [drunkLevel, setDrunkLevel] = useState(0);
   const [currentLine, setCurrentLine] = useState('');
 
