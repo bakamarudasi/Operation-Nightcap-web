@@ -48,7 +48,7 @@ export function ShopScreen() {
     const card = CARD_DATA[cardId];
     if (!card) return;
     const refund = Math.floor(card.price / 2);
-    if (!window.confirm(t('shop.sellConfirm', { name: card.name, refund }))) return;
+    if (!window.confirm(t('shop.sellConfirm', { name: t(`cards.${card.id}.name`, card.name), refund }))) return;
     const success = sellCard(index);
     if (success) {
       setClosureLine(randomPick([...SHOP_DATA.closureLines.sell]) ?? '');
@@ -76,7 +76,7 @@ export function ShopScreen() {
         onClick={() => handleBuy(cardId)}
       >
         <span className="item-emoji">{card.emoji}</span>
-        <span className="item-name">{card.name}</span>
+        <span className="item-name">{t(`cards.${card.id}.name`, card.name)}</span>
         <span className="item-price">{`${card.price}${t('common.currencyIcon')}`}</span>
       </div>
     );
@@ -116,10 +116,10 @@ export function ShopScreen() {
                 key={`deck-${i}`}
                 className="deck-slot"
                 onClick={() => handleSell(i)}
-                title={`${card.name} (${t('shop.sellTitle', { amount: Math.floor(card.price / 2) })})`}
+                title={`${t(`cards.${card.id}.name`, card.name)} (${t('shop.sellTitle', { amount: Math.floor(card.price / 2) })})`}
               >
                 {card.emoji}
-                <span className="slot-name">{card.name}</span>
+                <span className="slot-name">{t(`cards.${card.id}.name`, card.name)}</span>
               </div>
             );
           })}

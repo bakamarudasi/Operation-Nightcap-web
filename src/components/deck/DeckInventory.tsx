@@ -59,7 +59,7 @@ export function DeckInventory({
     const cb = CARD_DATA[b[0]];
     if (!ca || !cb) return 0;
     switch (sortMode) {
-      case 'name': return ca.name.localeCompare(cb.name, 'ja');
+      case 'name': return t(`cards.${ca.id}.name`, ca.name).localeCompare(t(`cards.${cb.id}.name`, cb.name));
       case 'power': {
         const pa = ca.damage ?? ca.heal ?? 0;
         const pb = cb.damage ?? cb.heal ?? 0;
@@ -123,12 +123,12 @@ export function DeckInventory({
             >
               <div className="inv-card-emoji">{card.emoji}</div>
               <div className="inv-card-details">
-                <div className="inv-card-name">{card.name}</div>
+                <div className="inv-card-name">{t(`cards.${card.id}.name`, card.name)}</div>
                 <div className="inv-card-desc">
                   {card.type === 'drink' ? t('battle.cardTypeAttack', { value: card.damage === -1 ? '1~3' : card.damage }) :
                    card.type === 'food' ? t('battle.cardTypeHeal', { value: card.heal === 99 ? 'MAX' : card.heal }) :
                    card.type === 'harassment' ? t('deckGrid.harassmentInfo', { level: card.requiredDrunkLevel, damage: card.drunkDamage ?? 0 }) :
-                   card.description.substring(0, 20)}
+                   t(`cards.${card.id}.desc`, card.description).substring(0, 20)}
                 </div>
               </div>
               <div className="inv-card-rarity">{'★'.repeat(card.rarity)}</div>

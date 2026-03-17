@@ -17,7 +17,7 @@ export function CardPreview({ card, pos }: CardPreviewProps) {
     >
       <div className="card-preview-header">
         <span className="card-preview-emoji">{card.emoji}</span>
-        <span className="card-preview-name">{card.name}</span>
+        <span className="card-preview-name">{t(`cards.${card.id}.name`, card.name)}</span>
         <span className="card-preview-rarity">{'★'.repeat(card.rarity)}</span>
       </div>
       <div className="card-preview-type">{t(CARD_TYPE_LABELS[card.type])}</div>
@@ -63,7 +63,7 @@ export function CardPreview({ card, pos }: CardPreviewProps) {
         </div>
       )}
 
-      <div className="card-preview-desc">{card.description}</div>
+      <div className="card-preview-desc">{t(`cards.${card.id}.desc`, card.description)}</div>
     </div>
   );
 }

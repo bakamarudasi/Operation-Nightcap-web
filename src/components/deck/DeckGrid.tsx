@@ -83,7 +83,7 @@ export function DeckGrid({
           >
             <div className="deck-slot-remove">×</div>
             <div className="deck-slot-emoji">{card.emoji}</div>
-            <div className="deck-slot-name">{card.name}</div>
+            <div className="deck-slot-name">{t(`cards.${card.id}.name`, card.name)}</div>
             <div className="deck-slot-info">
               {card.type === 'drink' ? t('deckGrid.atkShort', { value: card.damage === -1 ? '1~3' : card.damage }) :
                card.type === 'food' ? t('deckGrid.healShort', { value: card.heal === 99 ? 'MAX' : card.heal }) :

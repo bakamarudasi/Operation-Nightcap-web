@@ -32,7 +32,7 @@ export function Card({ cardId, onClick, selected, size = 'normal', showPrice, le
         <span className="card-level-badge">{'★'.repeat(level)}</span>
       )}
       <span className="card-emoji">{card.emoji}</span>
-      <span className="card-name">{card.name}</span>
+      <span className="card-name">{t(`cards.${card.id}.name`, card.name)}</span>
       {card.type === 'drink' && card.damage !== undefined && (
         <span className="card-value">
           {card.damage === -1 ? '1~3' : card.damage}

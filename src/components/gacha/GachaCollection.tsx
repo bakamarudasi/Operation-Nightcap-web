@@ -16,10 +16,11 @@ export function GachaCollection({ inventoryMap }: Props) {
     const grouped: Record<number, Array<{ id: string; name: string; emoji: string; count: number }>> = {};
     for (const [id, card] of Object.entries(CARD_DATA)) {
       if (!grouped[card.rarity]) grouped[card.rarity] = [];
-      grouped[card.rarity].push({ id, name: card.name, emoji: card.emoji, count: inventoryMap[id] ?? 0 });
+      grouped[card.rarity].push({ id, name: t(`cards.${id}.name`, card.name), emoji: card.emoji, count: inventoryMap[id] ?? 0 });
     }
     return grouped;
-  }, [inventoryMap]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inventoryMap, t]);
 
   return (
     <div style={{
@@ -185,7 +186,7 @@ export function GachaCollection({ inventoryMap }: Props) {
                   fontSize: 11, color: '#aa8866', lineHeight: 1.8,
                   borderLeft: `2px solid ${cfg.border}44`, paddingLeft: 10,
                   marginBottom: 6,
-                }}>{card.description}</div>
+                }}>{t(`cards.${collectionDetail}.desc`, card.description)}</div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 10, color: '#5a3a18' }}>
                     {t('collection.owned')}: <span style={{ color: cfg.menuColor, fontWeight: 700 }}>{ownedCount}</span>/3

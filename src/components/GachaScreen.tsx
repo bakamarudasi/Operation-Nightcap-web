@@ -624,7 +624,7 @@ export function GachaScreen() {
                           animation: isRare ? 'borderShine 2s linear infinite' : undefined,
                         }} />
                         <div style={{ fontSize: results.length === 1 ? 48 : 28, lineHeight: 1.1, marginBottom: 5 }}>{card.emoji}</div>
-                        <div style={{ fontSize: results.length === 1 ? 13 : 9, color: cfg.text, fontWeight: 700, lineHeight: 1.3 }}>{card.name}</div>
+                        <div style={{ fontSize: results.length === 1 ? 13 : 9, color: cfg.text, fontWeight: 700, lineHeight: 1.3 }}>{t(`cards.${res.cardId}.name`, card.name)}</div>
                         <div style={{ fontSize: 8, color: cfg.menuColor, marginTop: 3 }}>{cfg.label}</div>
                       </>
                     ) : (
@@ -713,7 +713,7 @@ export function GachaScreen() {
                       }}>{t('gacha.convert')}</div>
                     )}
                     <div style={{ fontSize: results.length === 1 ? 48 : 28, lineHeight: 1.1, marginBottom: 5, position: 'relative' }}>{card.emoji}</div>
-                    <div style={{ fontSize: results.length === 1 ? 13 : 9, color: cfg.text, fontWeight: 700, lineHeight: 1.3, position: 'relative' }}>{card.name}</div>
+                    <div style={{ fontSize: results.length === 1 ? 13 : 9, color: cfg.text, fontWeight: 700, lineHeight: 1.3, position: 'relative' }}>{t(`cards.${res.cardId}.name`, card.name)}</div>
                     <div style={{ fontSize: 8, color: cfg.menuColor, marginTop: 3, position: 'relative' }}>{cfg.label}</div>
                   </div>
                 );
@@ -739,7 +739,7 @@ export function GachaScreen() {
                   }}>{card.emoji}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 16, color: '#ddd', fontWeight: 700 }}>{card.name}</span>
+                      <span style={{ fontSize: 16, color: '#ddd', fontWeight: 700 }}>{t(`cards.${selected.cardId}.name`, card.name)}</span>
                       <span style={{
                         fontSize: 9, padding: '2px 8px', borderRadius: 4,
                         background: 'rgba(0,0,0,.5)', border: `1px solid ${cfg.border}`, color: cfg.text,
@@ -754,7 +754,7 @@ export function GachaScreen() {
                     <div style={{
                       fontSize: 12, color: '#aa8866', lineHeight: 1.9,
                       borderLeft: `2px solid ${cfg.border}44`, paddingLeft: 10,
-                    }}>{card.description}</div>
+                    }}>{t(`cards.${selected.cardId}.desc`, card.description)}</div>
                     {selected.isDuplicate && (
                       <div style={{ fontSize: 10, color: '#ffcc44', marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
                         {t('gacha.dupExplain', { amount: selected.refund.toLocaleString() })}

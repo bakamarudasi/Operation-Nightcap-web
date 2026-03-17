@@ -184,7 +184,7 @@ export function EnhanceScreen() {
                 onClick={() => setSelectedId(cardId)}
               >
                 <span className={`item-emoji ${glowClass}`}>{card.emoji}</span>
-                <span className="item-name">{card.name}</span>
+                <span className="item-name">{t(`cards.${card.id}.name`, card.name)}</span>
                 <span className="item-level">{'★'.repeat(level)}{'☆'.repeat(MAX_CARD_LEVEL - level)}</span>
                 <span className="item-count">x{count}</span>
                 {count < needCards && !atMax && (
@@ -211,7 +211,7 @@ export function EnhanceScreen() {
                 <span className="preview-emoji">{selectedCard.emoji}</span>
               </div>
 
-              <h3>{selectedCard.name}</h3>
+              <h3>{t(`cards.${selectedCard.id}.name`, selectedCard.name)}</h3>
               <div className="enhance-stat-row" style={{ justifyContent: 'center' }}>
                 <span className="item-level" style={{ fontSize: 16 }}>
                   {'★'.repeat(selectedLevel)}{'☆'.repeat(MAX_CARD_LEVEL - selectedLevel)}
@@ -278,7 +278,7 @@ export function EnhanceScreen() {
               )}
 
               <div style={{ fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
-                {selectedCard.description}
+                {t(`cards.${selectedCard.id}.desc`, selectedCard.description)}
               </div>
 
               {/* パーティクルエフェクト */}

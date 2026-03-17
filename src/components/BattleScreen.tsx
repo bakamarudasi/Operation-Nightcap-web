@@ -285,7 +285,7 @@ export function BattleScreen() {
                   '';
       setTableCards(prev => ({
         ...prev,
-        player: { id: result.playerCardId, emoji: resolvedCard.emoji, name: resolvedCard.name, val }
+        player: { id: result.playerCardId, emoji: resolvedCard.emoji, name: t(`cards.${resolvedCard.id}.name`, resolvedCard.name), val }
       }));
       setPlayerFlipped(true);
       setSlamPlayer(true);
@@ -304,7 +304,7 @@ export function BattleScreen() {
                   oppCard.type === 'drink' ? `${oppCard.damage === -1 ? '?' : oppCard.damage}` :
                   oppCard.type === 'chug' ? t('battle.special') :
                   oppCard.type === 'harassment' ? t('battle.special') : '';
-        oppCardInfo = { emoji: oppCard.emoji, name: oppCard.name, val: v };
+        oppCardInfo = { emoji: oppCard.emoji, name: t(`cards.${oppCard.id}.name`, oppCard.name), val: v };
       }
 
       if (oppCardInfo) {
@@ -415,7 +415,7 @@ export function BattleScreen() {
                 const roundRes = netOpp > netPl ? t('battle.lastRoundWin') : netPl > netOpp ? t('battle.lastRoundLose') : t('battle.lastRoundDraw');
                 const roundColor = netOpp > netPl ? '#8bc98b' : netPl > netOpp ? '#c98b8b' : 'var(--gold)';
                 setLastRound({
-                  pl: `${pc.emoji} ${pc.name}`,
+                  pl: `${pc.emoji} ${t(`cards.${pc.id}.name`, pc.name)}`,
                   op: `${oppCardInfo.emoji} ${oppCardInfo.name}`,
                   res: roundRes,
                   resColor: roundColor
@@ -687,12 +687,12 @@ export function BattleScreen() {
                   <div className="card-level-badge">{'★'.repeat(cardLevel)}</div>
                 )}
                 <div className="hand-tooltip">
-                  <div className="tooltip-name">{isHidden ? '???' : card.name}</div>
-                  <div className="tooltip-desc">{costLocked ? t('battle.costLocked') : foodLocked ? t('battle.foodLocked') : (isHidden ? t('battle.hiddenCard') : card.description)}</div>
+                  <div className="tooltip-name">{isHidden ? '???' : t(`cards.${card.id}.name`, card.name)}</div>
+                  <div className="tooltip-desc">{costLocked ? t('battle.costLocked') : foodLocked ? t('battle.foodLocked') : (isHidden ? t('battle.hiddenCard') : t(`cards.${card.id}.desc`, card.description))}</div>
                 </div>
                 <div className="hand-cost">{card.cost}</div>
                 <div className="hand-icon">{isHidden ? '❓' : card.emoji}</div>
-                <div className="hand-name">{isHidden ? '???' : card.name}</div>
+                <div className="hand-name">{isHidden ? '???' : t(`cards.${card.id}.name`, card.name)}</div>
                 <div className="hand-val">{valText}</div>
               </div>
             );
@@ -742,7 +742,7 @@ export function BattleScreen() {
               return (
                 <div key={`reveal-${i}`} className={`revealed-card type-${card.type}`}>
                   <div className="revealed-card-emoji">{card.emoji}</div>
-                  <div className="revealed-card-name">{card.name}</div>
+                  <div className="revealed-card-name">{t(`cards.${card.id}.name`, card.name)}</div>
                   <div className="revealed-card-type">
                     {card.type === 'drink' ? t('battle.cardTypeAttack', { value: card.damage === -1 ? '1~3' : card.damage }) :
                      card.type === 'food' ? t('battle.cardTypeHeal', { value: card.heal }) :

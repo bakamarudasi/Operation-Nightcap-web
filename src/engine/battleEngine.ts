@@ -4,6 +4,8 @@ import { randomPick, POSITIVE_BUFF_IDS, getDrunkLevel, hasBuff, getBuffMessage }
 import i18n from '../i18n/index.ts';
 
 const t = (key: string, opts?: Record<string, unknown>) => i18n.t(key, opts);
+/** Localized card name helper */
+const cn = (card: { id: string; name: string }) => t(`cards.${card.id}.name`, card.name) as string;
 
 export interface ExtendedResult extends RoundResult {
   opponentDiscardNext?: boolean;
@@ -221,7 +223,7 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.selfHeal) {
     if (isPlayer) {
       result.playerHeal += card.selfHeal;
-      result.messages.push(t('engine.extras.selfHeal', { name: card.name, value: card.selfHeal }));
+      result.messages.push(t('engine.extras.selfHeal', { name: cn(card), value: card.selfHeal }));
     } else {
       result.opponentHeal += card.selfHeal;
     }
@@ -231,7 +233,7 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.selfDamage) {
     if (isPlayer) {
       result.playerDamage += card.selfDamage;
-      result.messages.push(t('engine.extras.selfDamage', { name: card.name, value: card.selfDamage }));
+      result.messages.push(t('engine.extras.selfDamage', { name: cn(card), value: card.selfDamage }));
     } else {
       result.opponentDamage += card.selfDamage;
     }
@@ -241,10 +243,10 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.cleanseSelf) {
     if (isPlayer) {
       result.playerCleanseSelf = (result.playerCleanseSelf ?? 0) + card.cleanseSelf;
-      result.messages.push(t('engine.extras.cleanseSelf', { name: card.name, count: card.cleanseSelf }));
+      result.messages.push(t('engine.extras.cleanseSelf', { name: cn(card), count: card.cleanseSelf }));
     } else {
       result.opponentCleanseSelf = (result.opponentCleanseSelf ?? 0) + card.cleanseSelf;
-      result.messages.push(t('engine.extras.cleanseSelfOpponent', { name: card.name, count: card.cleanseSelf }));
+      result.messages.push(t('engine.extras.cleanseSelfOpponent', { name: cn(card), count: card.cleanseSelf }));
     }
   }
 
@@ -252,10 +254,10 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.cleanseDot) {
     if (isPlayer) {
       result.playerCleanseDot = true;
-      result.messages.push(t('engine.extras.cleanseDot', { name: card.name }));
+      result.messages.push(t('engine.extras.cleanseDot', { name: cn(card) }));
     } else {
       result.opponentCleanseDot = true;
-      result.messages.push(t('engine.extras.cleanseDotOpponent', { name: card.name }));
+      result.messages.push(t('engine.extras.cleanseDotOpponent', { name: cn(card) }));
     }
   }
 
@@ -263,10 +265,10 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.corruptHand) {
     if (isPlayer) {
       result.opponentCorruptCount = (result.opponentCorruptCount ?? 0) + card.corruptHand;
-      result.messages.push(t('engine.extras.corruptHandPlayer', { name: card.name, count: card.corruptHand }));
+      result.messages.push(t('engine.extras.corruptHandPlayer', { name: cn(card), count: card.corruptHand }));
     } else {
       result.corruptCount = (result.corruptCount ?? 0) + card.corruptHand;
-      result.messages.push(t('engine.extras.corruptHandOpponent', { name: card.name, count: card.corruptHand }));
+      result.messages.push(t('engine.extras.corruptHandOpponent', { name: cn(card), count: card.corruptHand }));
     }
   }
 
@@ -274,10 +276,10 @@ function applyCardExtras(card: CardDef, result: ExtendedResult, user: 'player' |
   if (card.discardEnemyHand) {
     if (isPlayer) {
       result.discardEnemyHandCount = (result.discardEnemyHandCount ?? 0) + card.discardEnemyHand;
-      result.messages.push(t('engine.extras.discardEnemyHandPlayer', { name: card.name, count: card.discardEnemyHand }));
+      result.messages.push(t('engine.extras.discardEnemyHandPlayer', { name: cn(card), count: card.discardEnemyHand }));
     } else {
       result.discardPlayerHandCount = (result.discardPlayerHandCount ?? 0) + card.discardEnemyHand;
-      result.messages.push(t('engine.extras.discardEnemyHandOpponent', { name: card.name, count: card.discardEnemyHand }));
+      result.messages.push(t('engine.extras.discardEnemyHandOpponent', { name: cn(card), count: card.discardEnemyHand }));
     }
   }
 }
@@ -485,7 +487,7 @@ function processEffect(
         result.opponentExtraCard = fx.cardId;
       }
       const tokenCard = CARD_DATA[fx.cardId];
-      const tokenName = tokenCard?.name ?? fx.cardId;
+      const tokenName = tokenCard ? cn(tokenCard) : fx.cardId;
       result.messages.push(t('engine.effect.grantCard', { emoji: cardEmoji, name: cardName, tokenName }));
       break;
     }
@@ -735,10 +737,10 @@ const UTILITY_FLAG_HANDLERS: Array<{
     handle: ({ card, isPlayer, result }) => {
       if (isPlayer) {
         result.playerCleanseSelf = (result.playerCleanseSelf ?? 0) + card.cleanseSelf!;
-        result.messages.push(t('engine.utility.cleanseSelf.player', { name: card.name, count: card.cleanseSelf }));
+        result.messages.push(t('engine.utility.cleanseSelf.player', { name: cn(card), count: card.cleanseSelf }));
       } else {
         result.opponentCleanseSelf = (result.opponentCleanseSelf ?? 0) + card.cleanseSelf!;
-        result.messages.push(t('engine.utility.cleanseSelf.opponent', { name: card.name, count: card.cleanseSelf }));
+        result.messages.push(t('engine.utility.cleanseSelf.opponent', { name: cn(card), count: card.cleanseSelf }));
       }
     },
   },
@@ -747,10 +749,10 @@ const UTILITY_FLAG_HANDLERS: Array<{
     handle: ({ card, isPlayer, result }) => {
       if (isPlayer) {
         result.playerCleanseDot = true;
-        result.messages.push(t('engine.utility.cleanseDot.player', { name: card.name }));
+        result.messages.push(t('engine.utility.cleanseDot.player', { name: cn(card) }));
       } else {
         result.opponentCleanseDot = true;
-        result.messages.push(t('engine.utility.cleanseDot.opponent', { name: card.name }));
+        result.messages.push(t('engine.utility.cleanseDot.opponent', { name: cn(card) }));
       }
     },
   },
@@ -866,11 +868,11 @@ export const BattleEngine = {
     // 相手がnegate_next → プレイヤーのカード効果を完全無効化
     const playerNegated = hasBuff(battle.opponentBuffs, 'negate_next');
     if (opponentNegated) {
-      result.messages.push(t('engine.negate.player', { emoji: oCard.emoji, name: oCard.name }));
+      result.messages.push(t('engine.negate.player', { emoji: oCard.emoji, name: cn(oCard) }));
       trackBuffConsumption(result, 'player', 'negate_next');
     }
     if (playerNegated) {
-      result.messages.push(t('engine.negate.opponent', { emoji: pCard.emoji, name: pCard.name }));
+      result.messages.push(t('engine.negate.opponent', { emoji: pCard.emoji, name: cn(pCard) }));
       trackBuffConsumption(result, 'opponent', 'negate_next');
     }
 
@@ -927,7 +929,7 @@ export const BattleEngine = {
         let dmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
         if (playerHalvesDrink) dmg = Math.floor(dmg * 0.5);
         result.playerDamage += dmg;
-        result.messages.push(t('engine.drink.damage', { emoji: oCard.emoji, name: oCard.name, value: dmg }));
+        result.messages.push(t('engine.drink.damage', { emoji: oCard.emoji, name: cn(oCard), value: dmg }));
         applyCardExtras(oCard, result, 'opponent');
         if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
           trackBuffConsumption(result, 'opponent', 'next_drink_boost');
@@ -944,7 +946,7 @@ export const BattleEngine = {
         let dmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
         if (opponentHalvesDrink) dmg = Math.floor(dmg * 0.5);
         result.opponentDamage += dmg;
-        result.messages.push(t('engine.drink.damage', { emoji: pCard.emoji, name: pCard.name, value: dmg }));
+        result.messages.push(t('engine.drink.damage', { emoji: pCard.emoji, name: cn(pCard), value: dmg }));
         applyCardExtras(pCard, result, 'player');
         if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
           trackBuffConsumption(result, 'player', 'next_drink_boost');
@@ -1008,10 +1010,10 @@ export const BattleEngine = {
 
       if (pDmg > oDmg) {
         result.opponentDamage += pDmg - oDmg;
-        result.messages.push(t('engine.drinkVsDrink.playerWins', { pEmoji: pCard.emoji, pName: pCard.name, pDmg, oEmoji: oCard.emoji, oName: oCard.name, oDmg, diff: pDmg - oDmg }));
+        result.messages.push(t('engine.drinkVsDrink.playerWins', { pEmoji: pCard.emoji, pName: cn(pCard), pDmg, oEmoji: oCard.emoji, oName: cn(oCard), oDmg, diff: pDmg - oDmg }));
       } else if (oDmg > pDmg) {
         result.playerDamage += oDmg - pDmg;
-        result.messages.push(t('engine.drinkVsDrink.opponentWins', { oEmoji: oCard.emoji, oName: oCard.name, oDmg, pEmoji: pCard.emoji, pName: pCard.name, pDmg, diff: oDmg - pDmg }));
+        result.messages.push(t('engine.drinkVsDrink.opponentWins', { oEmoji: oCard.emoji, oName: cn(oCard), oDmg, pEmoji: pCard.emoji, pName: cn(pCard), pDmg, diff: oDmg - pDmg }));
       } else {
         result.messages.push(t('engine.drinkVsDrink.tie', { pEmoji: pCard.emoji, oEmoji: oCard.emoji }));
       }
@@ -1032,15 +1034,15 @@ export const BattleEngine = {
       if (opponentHalvesDrink) pDmg = Math.floor(pDmg * 0.5);
       result.opponentDamage += pDmg;
       if (hasBuff(battle.opponentBuffs, 'no_food')) {
-        result.messages.push(t('engine.drink.damage', { emoji: pCard.emoji, name: pCard.name, value: pDmg }));
-        result.messages.push(t('engine.food.blocked.opponent', { emoji: oCard.emoji, name: oCard.name }));
+        result.messages.push(t('engine.drink.damage', { emoji: pCard.emoji, name: cn(pCard), value: pDmg }));
+        result.messages.push(t('engine.food.blocked.opponent', { emoji: oCard.emoji, name: cn(oCard) }));
       } else {
         let heal = oCard.heal === 99 ? Math.max(0, battle.opponentDrunk + pDmg) : (oCard.heal ?? 0);
         heal = applyFoodBuffs(heal, battle.opponentBuffs);
         if (playerHalvesFood) heal = Math.floor(heal * 0.5);
         result.opponentHeal += heal;
-        result.messages.push(t('engine.drink.damage', { emoji: pCard.emoji, name: pCard.name, value: pDmg }));
-        result.messages.push(t('engine.food.heal', { emoji: oCard.emoji, name: oCard.name, value: heal }));
+        result.messages.push(t('engine.drink.damage', { emoji: pCard.emoji, name: cn(pCard), value: pDmg }));
+        result.messages.push(t('engine.food.heal', { emoji: oCard.emoji, name: cn(oCard), value: heal }));
         applyCardExtras(oCard, result, 'opponent');
         if (hasBuff(battle.opponentBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'opponent', 'next_food_boost');
@@ -1053,11 +1055,11 @@ export const BattleEngine = {
     }
     else if (pCard.type === 'food' && oCard.type === 'drink') {
       if (hasBuff(battle.playerBuffs, 'no_food')) {
-        result.messages.push(t('engine.food.blocked.self', { emoji: pCard.emoji, name: pCard.name }));
+        result.messages.push(t('engine.food.blocked.self', { emoji: pCard.emoji, name: cn(pCard) }));
         let oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
         if (playerHalvesDrink) oDmg = Math.floor(oDmg * 0.5);
         result.playerDamage += oDmg;
-        result.messages.push(t('engine.drink.damage', { emoji: oCard.emoji, name: oCard.name, value: oDmg }));
+        result.messages.push(t('engine.drink.damage', { emoji: oCard.emoji, name: cn(oCard), value: oDmg }));
       } else {
         let oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
         if (playerHalvesDrink) oDmg = Math.floor(oDmg * 0.5);
@@ -1066,8 +1068,8 @@ export const BattleEngine = {
         heal = applyFoodBuffs(heal, battle.playerBuffs);
         if (opponentHalvesFood) heal = Math.floor(heal * 0.5);
         result.playerHeal += heal;
-        result.messages.push(t('engine.drink.damage', { emoji: oCard.emoji, name: oCard.name, value: oDmg }));
-        result.messages.push(t('engine.food.heal', { emoji: pCard.emoji, name: pCard.name, value: heal }));
+        result.messages.push(t('engine.drink.damage', { emoji: oCard.emoji, name: cn(oCard), value: oDmg }));
+        result.messages.push(t('engine.food.heal', { emoji: pCard.emoji, name: cn(pCard), value: heal }));
         applyCardExtras(pCard, result, 'player');
         if (hasBuff(battle.playerBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'player', 'next_food_boost');
@@ -1081,26 +1083,26 @@ export const BattleEngine = {
     // === つまみ vs つまみ ===
     else if (pCard.type === 'food' && oCard.type === 'food') {
       if (hasBuff(battle.playerBuffs, 'no_food')) {
-        result.messages.push(t('engine.food.blocked.self', { emoji: pCard.emoji, name: pCard.name }));
+        result.messages.push(t('engine.food.blocked.self', { emoji: pCard.emoji, name: cn(pCard) }));
       } else {
         let heal = pCard.heal === 99 ? Math.max(0, battle.playerDrunk) : (pCard.heal ?? 0);
         heal = applyFoodBuffs(heal, battle.playerBuffs);
         if (opponentHalvesFood) heal = Math.floor(heal * 0.5);
         result.playerHeal += heal;
-        result.messages.push(t('engine.food.heal', { emoji: pCard.emoji, name: pCard.name, value: heal }));
+        result.messages.push(t('engine.food.heal', { emoji: pCard.emoji, name: cn(pCard), value: heal }));
         applyCardExtras(pCard, result, 'player');
         if (hasBuff(battle.playerBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'player', 'next_food_boost');
         }
       }
       if (hasBuff(battle.opponentBuffs, 'no_food')) {
-        result.messages.push(t('engine.food.blocked.opponentAlso', { emoji: oCard.emoji, name: oCard.name }));
+        result.messages.push(t('engine.food.blocked.opponentAlso', { emoji: oCard.emoji, name: cn(oCard) }));
       } else {
         let heal = oCard.heal === 99 ? Math.max(0, battle.opponentDrunk) : (oCard.heal ?? 0);
         heal = applyFoodBuffs(heal, battle.opponentBuffs);
         if (playerHalvesFood) heal = Math.floor(heal * 0.5);
         result.opponentHeal += heal;
-        result.messages.push(t('engine.food.healOpponent', { emoji: oCard.emoji, name: oCard.name, value: heal }));
+        result.messages.push(t('engine.food.healOpponent', { emoji: oCard.emoji, name: cn(oCard), value: heal }));
         applyCardExtras(oCard, result, 'opponent');
         if (hasBuff(battle.opponentBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, 'opponent', 'next_food_boost');
@@ -1126,10 +1128,10 @@ export const BattleEngine = {
       const dmg = applyDrinkBuffs(getCardDamage(activeCard), attackerBuffs, defenderBuffs);
       if (isPlayer) {
         result.opponentDamage += dmg;
-        result.messages.push(t('engine.drink.damage', { emoji: activeCard.emoji, name: activeCard.name, value: dmg }));
+        result.messages.push(t('engine.drink.damage', { emoji: activeCard.emoji, name: cn(activeCard), value: dmg }));
       } else {
         result.playerDamage += dmg;
-        result.messages.push(t('engine.drink.damage', { emoji: activeCard.emoji, name: activeCard.name, value: dmg }));
+        result.messages.push(t('engine.drink.damage', { emoji: activeCard.emoji, name: cn(activeCard), value: dmg }));
       }
       applyCardExtras(activeCard, result, user);
       if (hasBuff(attackerBuffs, 'next_drink_boost')) {
@@ -1138,7 +1140,7 @@ export const BattleEngine = {
     } else if (activeCard.type === 'food') {
       const userBuffs = isPlayer ? battle.playerBuffs : battle.opponentBuffs;
       if (hasBuff(userBuffs, 'no_food')) {
-        result.messages.push(t('engine.food.blocked.self', { emoji: activeCard.emoji, name: activeCard.name }));
+        result.messages.push(t('engine.food.blocked.self', { emoji: activeCard.emoji, name: cn(activeCard) }));
       } else {
         const drunkVal = isPlayer ? battle.playerDrunk : battle.opponentDrunk;
         let heal = activeCard.heal === 99 ? Math.max(0, drunkVal) : (activeCard.heal ?? 0);
@@ -1148,7 +1150,7 @@ export const BattleEngine = {
         } else {
           result.opponentHeal += heal;
         }
-        result.messages.push(t('engine.food.heal', { emoji: activeCard.emoji, name: activeCard.name, value: heal }));
+        result.messages.push(t('engine.food.heal', { emoji: activeCard.emoji, name: cn(activeCard), value: heal }));
         applyCardExtras(activeCard, result, user);
         if (hasBuff(userBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, user, 'next_food_boost');
@@ -1175,15 +1177,15 @@ export const BattleEngine = {
 
     // === 宣言的効果システム（effects配列があればそちらを優先） ===
     if (card.effects && card.effects.length > 0) {
-      result.messages.push(t('engine.utility.cardPlay', { emoji: card.emoji, name: card.name }));
-      processEffects(card.effects, card.name, card.emoji, isPlayer, result, battle);
+      result.messages.push(t('engine.utility.cardPlay', { emoji: card.emoji, name: cn(card) }));
+      processEffects(card.effects, cn(card), card.emoji, isPlayer, result, battle);
       // effects[]内にapply_buffがある場合はlegacyバフ適用をスキップ（二重付与防止）
       const hasApplyBuff = card.effects.some(e => e.type === 'apply_buff');
       if (!hasApplyBuff) applyLegacyBuffs(card, isPlayer, result);
       return;
     }
 
-    result.messages.push(t('engine.utility.cardPlay', { emoji: card.emoji, name: card.name }));
+    result.messages.push(t('engine.utility.cardPlay', { emoji: card.emoji, name: cn(card) }));
 
     // --- フラグ駆動の効果処理（ハンドラーマップ） ---
     const ctx: UtilityContext = { card, isPlayer, result, battle, selfBuffs, targetBuffs };
@@ -1196,7 +1198,7 @@ export const BattleEngine = {
     // === 宣言的効果システム ===
     if (chugCard.effects && chugCard.effects.length > 0) {
       const isPlayer = chugUser === 'player';
-      processEffects(chugCard.effects, chugCard.name, chugCard.emoji, isPlayer, result, battle);
+      processEffects(chugCard.effects, cn(chugCard), chugCard.emoji, isPlayer, result, battle);
       const hasApplyBuff = chugCard.effects.some(e => e.type === 'apply_buff');
       if (!hasApplyBuff) applyLegacyBuffs(chugCard, isPlayer, result);
       // 相手のカードも処理（spillで無効化されていなければ）
@@ -1208,11 +1210,11 @@ export const BattleEngine = {
       if (chugUser === 'player') {
         result.opponentDamage += chugCard.enemyDamage ?? 0;
         result.playerDamage += chugCard.selfDamage ?? 0;
-        result.messages.push(t('engine.chug.player', { name: chugCard.name, enemyDmg: chugCard.enemyDamage, selfDmg: chugCard.selfDamage }));
+        result.messages.push(t('engine.chug.player', { name: cn(chugCard), enemyDmg: chugCard.enemyDamage, selfDmg: chugCard.selfDamage }));
       } else {
         result.playerDamage += chugCard.enemyDamage ?? 0;
         result.opponentDamage += chugCard.selfDamage ?? 0;
-        result.messages.push(t('engine.chug.opponent', { name: chugCard.name, value: chugCard.enemyDamage }));
+        result.messages.push(t('engine.chug.opponent', { name: cn(chugCard), value: chugCard.enemyDamage }));
       }
       // 一気飲みカードの追加バフ（ウルサス式度胸試し等）
       if (chugCard.applyBuffs) {
@@ -1254,19 +1256,19 @@ export const BattleEngine = {
       if (roll < chance) {
         if (chugUser === 'player') {
           result.opponentDamage += successDmg;
-          result.messages.push(t('engine.roulette.hit.player', { name: chugCard.name, value: successDmg }));
+          result.messages.push(t('engine.roulette.hit.player', { name: cn(chugCard), value: successDmg }));
         } else {
           result.playerDamage += successDmg;
-          result.messages.push(t('engine.roulette.hit.opponent', { name: chugCard.name, value: successDmg }));
+          result.messages.push(t('engine.roulette.hit.opponent', { name: cn(chugCard), value: successDmg }));
         }
       } else {
         // 失敗: 自分にダメージ
         if (chugUser === 'player') {
           result.playerDamage += failDmg;
-          result.messages.push(t('engine.roulette.miss.player', { name: chugCard.name, value: failDmg }));
+          result.messages.push(t('engine.roulette.miss.player', { name: cn(chugCard), value: failDmg }));
         } else {
           result.opponentDamage += failDmg;
-          result.messages.push(t('engine.roulette.miss.opponent', { name: chugCard.name, value: failDmg }));
+          result.messages.push(t('engine.roulette.miss.opponent', { name: cn(chugCard), value: failDmg }));
         }
       }
     }
@@ -1296,10 +1298,10 @@ export const BattleEngine = {
       const dmg = applyDrinkBuffs(getCardDamage(otherCard), attackerBuffs, defenderBuffs);
       if (isOtherPlayer) {
         result.opponentDamage += dmg;
-        result.messages.push(t('engine.drink.damageToOpponent', { emoji: otherCard.emoji, name: otherCard.name, value: dmg }));
+        result.messages.push(t('engine.drink.damageToOpponent', { emoji: otherCard.emoji, name: cn(otherCard), value: dmg }));
       } else {
         result.playerDamage += dmg;
-        result.messages.push(t('engine.drink.damageFromOpponent', { emoji: otherCard.emoji, name: otherCard.name, value: dmg }));
+        result.messages.push(t('engine.drink.damageFromOpponent', { emoji: otherCard.emoji, name: cn(otherCard), value: dmg }));
       }
       applyCardExtras(otherCard, result, otherUser);
       if (hasBuff(attackerBuffs, 'next_drink_boost')) {
@@ -1308,7 +1310,7 @@ export const BattleEngine = {
     } else if (otherCard.type === 'food') {
       const userBuffs = isOtherPlayer ? battle.playerBuffs : battle.opponentBuffs;
       if (hasBuff(userBuffs, 'no_food')) {
-        result.messages.push(t('engine.food.blocked.self', { emoji: otherCard.emoji, name: otherCard.name }));
+        result.messages.push(t('engine.food.blocked.self', { emoji: otherCard.emoji, name: cn(otherCard) }));
       } else {
         const drunkVal = isOtherPlayer ? battle.playerDrunk : battle.opponentDrunk;
         let heal = otherCard.heal === 99 ? Math.max(0, drunkVal) : (otherCard.heal ?? 0);
@@ -1318,7 +1320,7 @@ export const BattleEngine = {
         } else {
           result.opponentHeal += heal;
         }
-        result.messages.push(t('engine.food.heal', { emoji: otherCard.emoji, name: otherCard.name, value: heal }));
+        result.messages.push(t('engine.food.heal', { emoji: otherCard.emoji, name: cn(otherCard), value: heal }));
         applyCardExtras(otherCard, result, otherUser);
         if (hasBuff(userBuffs, 'next_food_boost')) {
           trackBuffConsumption(result, otherUser, 'next_food_boost');
@@ -1341,7 +1343,7 @@ export const BattleEngine = {
 
     // stealth: 相手にstealthバフがある場合、ハラスメント不発
     if (hasBuff(targetBuffs, 'stealth')) {
-      result.messages.push(t('engine.harassment.stealth', { name: hCard.name }));
+      result.messages.push(t('engine.harassment.stealth', { name: cn(hCard) }));
     } else if (triggerLevel >= adjustedRequired) {
       // === 成功 ===
       // afterglow ダメージボーナス
@@ -1349,7 +1351,7 @@ export const BattleEngine = {
       if (user === 'player') {
         if (hCard.instantWin) {
           result.instantWin = true;
-          result.messages.push(t('engine.harassment.instantWin', { emoji: hCard.emoji, name: hCard.name }));
+          result.messages.push(t('engine.harassment.instantWin', { emoji: hCard.emoji, name: cn(hCard) }));
         } else {
           let dmg = hCard.drunkDamage ?? 0;
           dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
@@ -1374,7 +1376,7 @@ export const BattleEngine = {
             result.messages.push(t('engine.harassment.breastTouch'));
           }
           result.opponentDamage += dmg;
-          result.messages.push(t('engine.harassment.success', { emoji: hCard.emoji, name: hCard.name, value: dmg }));
+          result.messages.push(t('engine.harassment.success', { emoji: hCard.emoji, name: cn(hCard), value: dmg }));
         }
         // プレイヤーのハラスメント成功時もバフ付与を処理
         if (hCard.applyBuffs) {
@@ -1398,20 +1400,20 @@ export const BattleEngine = {
         if (hCard.sanityDamage) {
           // sanity_negate: 理性ダメージ無効化
           if (hasBuff(targetBuffs, 'sanity_negate')) {
-            result.messages.push(t('engine.harassment.sanityNegate', { name: hCard.name }));
+            result.messages.push(t('engine.harassment.sanityNegate', { name: cn(hCard) }));
           } else {
             let dmg = hCard.sanityDamage;
             dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
             if (hasAfterglow) { dmg += 2; result.messages.push(t('engine.harassment.afterglowSanity')); }
             result.playerSanityDamage += dmg;
-            result.messages.push(t('engine.harassment.sanityDamage', { emoji: hCard.emoji, name: hCard.name, value: dmg }));
+            result.messages.push(t('engine.harassment.sanityDamage', { emoji: hCard.emoji, name: cn(hCard), value: dmg }));
           }
         } else if (hCard.drunkDamage) {
           let dmg = hCard.drunkDamage;
           dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
           if (hasAfterglow) { dmg += 2; result.messages.push(t('engine.harassment.afterglow')); }
           result.playerDamage += dmg;
-          result.messages.push(t('engine.harassment.drunkDamage', { emoji: hCard.emoji, name: hCard.name, value: dmg }));
+          result.messages.push(t('engine.harassment.drunkDamage', { emoji: hCard.emoji, name: cn(hCard), value: dmg }));
         }
 
         // バフ付与
@@ -1441,7 +1443,7 @@ export const BattleEngine = {
     } else {
       // === 不発 → 焦らし（Frustration）変換 ===
       if (user === 'player') {
-        result.messages.push(t('engine.harassment.fail.player', { emoji: hCard.emoji, name: hCard.name }));
+        result.messages.push(t('engine.harassment.fail.player', { emoji: hCard.emoji, name: cn(hCard) }));
         // 焦らし: 不発でも相手にフラストレーション蓄積
         const existing = targetBuffs.find(b => b.id === 'frustration');
         const stacks = (existing?.value ?? 0) + 1;
@@ -1455,7 +1457,7 @@ export const BattleEngine = {
           result.messages.push(t('engine.harassment.frustration.building.player', { stacks }));
         }
       } else {
-        result.messages.push(t('engine.harassment.fail.opponent', { emoji: hCard.emoji, name: hCard.name }));
+        result.messages.push(t('engine.harassment.fail.opponent', { emoji: hCard.emoji, name: cn(hCard) }));
         // 逆セクハラ不発でもプレイヤーにフラストレーション蓄積
         const existing = targetBuffs.find(b => b.id === 'frustration');
         const stacks = (existing?.value ?? 0) + 1;
@@ -1478,7 +1480,7 @@ export const BattleEngine = {
         if (user === 'player') {
           const dmg = applyDrinkBuffs(baseDmg, battle.opponentBuffs, battle.playerBuffs);
           result.playerDamage += dmg;
-          result.messages.push(t('engine.drink.damageFromOpponent', { emoji: otherCard.emoji, name: otherCard.name, value: dmg }));
+          result.messages.push(t('engine.drink.damageFromOpponent', { emoji: otherCard.emoji, name: cn(otherCard), value: dmg }));
           applyCardExtras(otherCard, result, 'opponent');
           if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
             trackBuffConsumption(result, 'opponent', 'next_drink_boost');
@@ -1486,7 +1488,7 @@ export const BattleEngine = {
         } else {
           const dmg = applyDrinkBuffs(baseDmg, battle.playerBuffs, battle.opponentBuffs);
           result.opponentDamage += dmg;
-          result.messages.push(t('engine.drink.damageToOpponent', { emoji: otherCard.emoji, name: otherCard.name, value: dmg }));
+          result.messages.push(t('engine.drink.damageToOpponent', { emoji: otherCard.emoji, name: cn(otherCard), value: dmg }));
           applyCardExtras(otherCard, result, 'player');
           if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
             trackBuffConsumption(result, 'player', 'next_drink_boost');
@@ -1495,7 +1497,7 @@ export const BattleEngine = {
       } else if (otherCard.type === 'food') {
         const foodUserBuffs = user === 'player' ? battle.opponentBuffs : battle.playerBuffs;
         if (hasBuff(foodUserBuffs, 'no_food')) {
-          result.messages.push(t('engine.food.blocked.self', { emoji: otherCard.emoji, name: otherCard.name }));
+          result.messages.push(t('engine.food.blocked.self', { emoji: otherCard.emoji, name: cn(otherCard) }));
         } else {
           const drunkVal = user === 'player' ? battle.opponentDrunk : battle.playerDrunk;
           let heal = otherCard.heal === 99 ? Math.max(0, drunkVal) : (otherCard.heal ?? 0);
@@ -1505,7 +1507,7 @@ export const BattleEngine = {
           } else {
             result.opponentHeal += heal;
           }
-          result.messages.push(t('engine.food.heal', { emoji: otherCard.emoji, name: otherCard.name, value: heal }));
+          result.messages.push(t('engine.food.heal', { emoji: otherCard.emoji, name: cn(otherCard), value: heal }));
           applyCardExtras(otherCard, result, otherUser);
           if (hasBuff(foodUserBuffs, 'next_food_boost')) {
             trackBuffConsumption(result, otherUser, 'next_food_boost');
