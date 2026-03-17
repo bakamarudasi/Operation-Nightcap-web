@@ -115,6 +115,48 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
     },
     cgEvents: [
       {
+        id: 'hand_hold_cg',
+        triggerCard: 'hand_hold',
+        requiredDrunkLevel: 1,
+        cgColor: '#e85d3a',
+        dialogue: [
+          { speaker: '', text: '――テーブルの下で、ドクターの指がそっとブレイズの手に触れた。' },
+          { speaker: 'ブレイズ', text: '……え。……ドクター、手……' },
+          { speaker: '', text: '驚いたように息を呑むが、振り払わない。こちらの顔をじっと見つめてくる。' },
+          { speaker: 'ブレイズ', text: '……なに、急に。……酔ってるでしょ、ドクター。……別に嫌じゃないけど' },
+          { speaker: '', text: '指と指を絡ませると、戦場を駆ける手とは思えないほど繊細な震えが伝わってくる。' },
+          { speaker: 'ブレイズ', text: '……ドクターの手、冷たい。……私のアーツで温めてあげよっか。……ふふ、冗談だよ' },
+          { speaker: '', text: '冗談と言いながら、彼女の手は力を込めてこちらの手を握り返してきた。離す気はないらしい。' },
+          { speaker: 'ブレイズ', text: '……ねぇ。……このまま、もうちょっとだけ……いい？' },
+        ],
+        frames: [
+          {
+            src: '/characters/blaze/cg/hand_hold_1.webp',
+            label: 'テーブル下で指が触れる',
+            dialogueStart: 0,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/hand_hold_2.webp',
+            label: '驚くブレイズ',
+            dialogueStart: 2,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/hand_hold_3.webp',
+            label: '指を絡ませる',
+            dialogueStart: 4,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/hand_hold_4.webp',
+            label: '握り返す',
+            dialogueStart: 6,
+            transition: 'fade',
+          },
+        ],
+      },
+      {
         id: 'shoulder_lean_cg',
         triggerCard: 'shoulder_lean',
         requiredDrunkLevel: 1,
@@ -269,6 +311,48 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         ],
       },
       {
+        id: 'thigh_touch_cg',
+        triggerCard: 'thigh_touch',
+        requiredDrunkLevel: 2,
+        cgColor: '#ff6b8a',
+        dialogue: [
+          { speaker: '', text: '――テーブルの下で、ドクターの手がブレイズの膝にそっと置かれた。' },
+          { speaker: 'ブレイズ', text: '……ドクター？ ……手、膝に乗ってるけど。' },
+          { speaker: '', text: '返事の代わりに、指先がゆっくりと太ももの内側を撫で上げていく。' },
+          { speaker: 'ブレイズ', text: '……っ！ ちょ、待って……そっちはだめ……っ' },
+          { speaker: '', text: '鍛え抜かれた太ももが、指先の下で微かに震えている。アーツの熱なのか体温なのか、触れた肌がじんわり熱い。' },
+          { speaker: 'ブレイズ', text: '……ん……ドクターの指、冷たくて……ぞくぞくする……もう、だめだって……' },
+          { speaker: '', text: '口では抵抗しているのに、太ももの力が緩んで、ドクターの手を受け入れるように少しだけ足が開いた。' },
+          { speaker: 'ブレイズ', text: '……わかってる……わかってて、やってるでしょ……。……ばか。……テーブルの下で、よかったね……' },
+        ],
+        frames: [
+          {
+            src: '/characters/blaze/cg/thigh_touch_1.webp',
+            label: '膝に手を置く',
+            dialogueStart: 0,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/thigh_touch_2.webp',
+            label: '太ももを撫でる',
+            dialogueStart: 2,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/thigh_touch_3.webp',
+            label: '力が抜けていく',
+            dialogueStart: 5,
+            transition: 'zoom',
+          },
+          {
+            src: '/characters/blaze/cg/thigh_touch_4.webp',
+            label: '観念した表情',
+            dialogueStart: 7,
+            transition: 'fade',
+          },
+        ],
+      },
+      {
         id: 'ear_bite_cg',
         triggerCard: 'ear_bite',
         requiredDrunkLevel: 3,
@@ -299,19 +383,6 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
             dialogueStart: 3,
             transition: 'fade',
           },
-        ],
-      },
-      {
-        id: 'lap_pillow_cg',
-        triggerCard: 'lap_pillow',
-        requiredDrunkLevel: 3,
-        cgColor: '#e85d3a',
-        dialogue: [
-          { speaker: 'ドクター', text: '（ブレイズの頭をそっと膝に導き、髪を指に絡める）' },
-          { speaker: 'ブレイズ', text: 'え、ちょ……膝枕とか……んっ、髪、触んないでよ……くすぐったい……' },
-          { speaker: 'ブレイズ', text: 'ドクターの太もも……あったかい……すごい、心臓の音聞こえる……' },
-          { speaker: 'ブレイズ', text: '……ねぇ、このまま寝ちゃったら……何する気？ ……してもいいよ、今なら……' },
-          { speaker: 'ブレイズ', text: '……ん……もう動けない……ドクターの匂い……好き……zzZ' },
         ],
       },
       {
@@ -360,11 +431,14 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
         requiredDrunkLevel: 2,
         cgColor: '#ff5577',
         dialogue: [
-          { speaker: '', text: '――テーブルの下で、何かが足に触れた。' },
-          { speaker: 'ブレイズ', text: '……ん？ どうしたのドクター、顔赤いよ？ お酒のせい？' },
+          { speaker: '', text: '――テーブルの下。熱を持った素足が、太ももの内側から、さらに奥の際どい場所へと潜り込んでくる。' },
+          { speaker: 'ブレイズ', text: '……ん？ どうしたのドクター。やけに汗かいてるじゃん。ここ、ちょっと暑い？' },
+          { speaker: '', text: '（とぼけた声とは裏腹に、彼女のつま先は明確な意思を持って、布越しに『そこ』を器用に弄っている……）' },
           { speaker: 'ブレイズ', text: '……ふふ、違うよね。……わかってるくせに' },
-          { speaker: 'ブレイズ', text: '（足先をゆっくり這わせながら）……ここ、弱いんだ？ ……知らなかったなぁ' },
-          { speaker: 'ブレイズ', text: '……逃げないでよ。……私が飽きるまで、ね？' },
+          { speaker: '', text: 'フェリーン特有のしなやかな足運びと、アーツを帯びたような微かな熱。その摩擦が、理性をじわじわと溶かしていく。' },
+          { speaker: 'ブレイズ', text: '（足の裏をさらに深く押し当てて）……ほーら、力抜いてよ。ドクターが熱くなってるの、足先から直に伝わってくるからさ' },
+          { speaker: 'ドクター', text: '豪快な普段の彼女からは想像もつかない、ねっとりとした声と、執拗な足先の感触に息が詰まる。' },
+          { speaker: 'ブレイズ', text: '……声、出さないでね。私がこれで満足するまで……大人しく、ドクターの全部預けてよ' },
         ],
         frames: [
           {
@@ -382,7 +456,13 @@ export const CHARACTER_DATA: Record<string, CharacterDef> = {
           {
             src: '/characters/blaze/cg/foot_tease_3.webp',
             label: '攻めるブレイズ',
-            dialogueStart: 3,
+            dialogueStart: 4,
+            transition: 'fade',
+          },
+          {
+            src: '/characters/blaze/cg/foot_tease_4.webp',
+            label: '',
+            dialogueStart: 7,
             transition: 'fade',
           },
         ],
