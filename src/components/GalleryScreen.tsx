@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import { randomPick } from '../engine/utils.ts';
@@ -6,6 +7,7 @@ import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
 
 export function GalleryScreen() {
+  const { t } = useTranslation();
   const setScreen = useGameStore((s) => s.setScreen);
   const unlockedCGs = useGameStore((s) => s.unlockedCGs);
   const showCG = useGameStore((s) => s.showCG);
@@ -61,8 +63,8 @@ export function GalleryScreen() {
   return (
     <div className="screen active">
       <div className="gallery-header">
-        <button className="back-btn" onClick={() => setScreen('title')}>← 戻る</button>
-        <h2>🖼️ ギャラリー</h2>
+        <button className="back-btn" onClick={() => setScreen('title')}>{t('common.back')}</button>
+        <h2>{t('gallery.title')}</h2>
       </div>
 
       {/* タブ切替 */}
@@ -71,13 +73,13 @@ export function GalleryScreen() {
           className={`gallery-tab ${activeTab === 'cg' ? 'active' : ''}`}
           onClick={() => setActiveTab('cg')}
         >
-          🖼️ CG
+          {t('gallery.cgTab')}
         </button>
         <button
           className={`gallery-tab ${activeTab === 'portrait' ? 'active' : ''}`}
           onClick={() => setActiveTab('portrait')}
         >
-          👗 立ち絵
+          {t('gallery.portraitTab')}
         </button>
       </div>
 
@@ -85,7 +87,7 @@ export function GalleryScreen() {
       {activeTab === 'cg' && (
         <div className="gallery-tab-content active">
           <span className="gallery-progress">
-            解放率: {unlockedCount}/{allCGs.length} ({allCGs.length > 0 ? Math.round(unlockedCount / allCGs.length * 100) : 0}%)
+            {t('gallery.unlockRate', { unlocked: unlockedCount, total: allCGs.length, percent: allCGs.length > 0 ? Math.round(unlockedCount / allCGs.length * 100) : 0 })}
           </span>
           <div className="gallery-content">
             {allCGs.map((cg) => {
@@ -103,12 +105,12 @@ export function GalleryScreen() {
                   {isUnlocked ? (
                     <>
                       <span className="gallery-thumb">
-                        {cg.dialogue[0]?.speaker === 'ドクター' ? '💫' : cg.charName}
+                        {cg.dialogue[0]?.speaker === t('common.doctor') ? '💫' : cg.charName}
                       </span>
                       <span className="gallery-label">{cg.id.replace(/_/g, ' ')}</span>
                     </>
                   ) : (
-                    <span className="gallery-thumb">???</span>
+                    <span className="gallery-thumb">{t('gallery.unknown')}</span>
                   )}
                 </div>
               );
@@ -118,7 +120,7 @@ export function GalleryScreen() {
           {/* 勝利後イベント */}
           <div className="gallery-after-section">
             <div className="gallery-after-title">
-              🌙 勝利後イベント ({characters.flatMap(c => c.afterEvents).filter(ae => unlockedAfterEvents.includes(ae.id)).length}/{characters.flatMap(c => c.afterEvents).length})
+              {t('gallery.afterEvents', { unlocked: characters.flatMap(c => c.afterEvents).filter(ae => unlockedAfterEvents.includes(ae.id)).length, total: characters.flatMap(c => c.afterEvents).length })}
             </div>
             <div className="gallery-after-grid">
               {characters.flatMap(c => c.afterEvents).map((ae) => {
@@ -144,7 +146,7 @@ export function GalleryScreen() {
                         <span className="gallery-after-label">{ae.title}</span>
                       </>
                     ) : (
-                      <div className="gallery-after-lock">🔒</div>
+                      <div className="gallery-after-lock">{t('gallery.locked')}</div>
                     )}
                   </div>
                 );
@@ -210,12 +212,12 @@ export function GalleryScreen() {
                 <div className="portrait-dialogue">
                   <p className="portrait-line">{currentLine || char.drunkLevels[0].lines[0]}</p>
                   <button className="portrait-next-line-btn" onClick={handleNextLine}>
-                    ↻ セリフ切替
+                    {t('gallery.changeLine')}
                   </button>
                 </div>
                 <div className="portrait-stats">
-                  <span>戦績: {wins}勝 {losses}敗</span>
-                  <span>CG: {char.cgEvents.filter(e => unlockedCGs.includes(e.id)).length}/{char.cgEvents.length}</span>
+                  <span>{t('gallery.stats', { wins, losses })}</span>
+                  <span>{t('gallery.cgProgress', { unlocked: char.cgEvents.filter(e => unlockedCGs.includes(e.id)).length, total: char.cgEvents.length })}</span>
                 </div>
               </div>
             )}

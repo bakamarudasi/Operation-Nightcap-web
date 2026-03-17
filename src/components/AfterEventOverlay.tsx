@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 
 export function AfterEventOverlay() {
+  const { t } = useTranslation();
   const activeAfterEvent = useGameStore((s) => s.activeAfterEvent);
   const afterEventDialogueIndex = useGameStore((s) => s.afterEventDialogueIndex);
   const advanceAfterEvent = useGameStore((s) => s.advanceAfterEvent);
@@ -92,8 +94,8 @@ export function AfterEventOverlay() {
 
         <div className="after-event-hint">
           {afterEventDialogueIndex < activeAfterEvent.dialogue.length - 1
-            ? '▶ クリックで次へ'
-            : '▶ クリックで閉じる'}
+            ? t('event.clickNext')
+            : t('event.clickClose')}
         </div>
       </div>
     </div>

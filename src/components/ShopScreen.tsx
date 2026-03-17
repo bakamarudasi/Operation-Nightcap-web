@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import { SHOP_DATA, getShopLineCategory } from '../data/shop.ts';
@@ -7,6 +8,7 @@ import { randomPick } from '../engine/utils.ts';
 import type { CardType } from '../data/types.ts';
 
 export function ShopScreen() {
+  const { t } = useTranslation();
   const money = useGameStore((s) => s.money);
   const playerDeck = useGameStore((s) => s.playerDeck);
   const setScreen = useGameStore((s) => s.setScreen);
@@ -35,7 +37,7 @@ export function ShopScreen() {
       let line = randomPick([...lines]) ?? '';
       // デッキ満杯の場合は追加メッセージ
       if (playerDeck.length >= 12) {
-        line += '（デッキは満杯だからインベントリに追加したよ）';
+        line += t('shop.deckFullMessage');
       }
       setClosureLine(line);
     }
@@ -46,7 +48,7 @@ export function ShopScreen() {
     const card = CARD_DATA[cardId];
     if (!card) return;
     const refund = Math.floor(card.price / 2);
-    if (!window.confirm(`${card.name}を売却しますか？（${refund}龍門幣）`)) return;
+    if (!window.confirm(t('shop.sellConfirm', { name: card.name, refund }))) return;
     const success = sellCard(index);
     if (success) {
       setClosureLine(randomPick([...SHOP_DATA.closureLines.sell]) ?? '');
@@ -75,7 +77,7 @@ export function ShopScreen() {
       >
         <span className="item-emoji">{card.emoji}</span>
         <span className="item-name">{card.name}</span>
-        <span className="item-price">{card.price}龍</span>
+        <span className="item-price">{`${card.price}${t('common.currencyIcon')}`}</span>
       </div>
     );
   };
@@ -83,9 +85,9 @@ export function ShopScreen() {
   return (
     <div className="screen active">
       <div className="shop-header">
-        <button className="back-btn" onClick={() => setScreen('title')}>← 戻る</button>
-        <h2>🏮 ロドスバー商店</h2>
-        <span className="shop-money">💰 {money} 龍門幣</span>
+        <button className="back-btn" onClick={() => setScreen('title')}>{t('common.back')}</button>
+        <h2>{t('shop.title')}</h2>
+        <span className="shop-money">{t('shop.moneyDisplay', { amount: money })}</span>
       </div>
 
       <div className="closure-dialogue">{closureLine}</div>
@@ -104,7 +106,7 @@ export function ShopScreen() {
       </div>
 
       <div className="deck-editor">
-        <h3>現在のデッキ ({playerDeck.length}/12)</h3>
+        <h3>{t('shop.currentDeck', { count: playerDeck.length })}</h3>
         <div className="deck-display">
           {playerDeck.map((cardId, i) => {
             const card = CARD_DATA[cardId];
@@ -114,7 +116,7 @@ export function ShopScreen() {
                 key={`deck-${i}`}
                 className="deck-slot"
                 onClick={() => handleSell(i)}
-                title={`${card.name} (売却: ${Math.floor(card.price / 2)}龍)`}
+                title={`${card.name} (${t('shop.sellTitle', { amount: Math.floor(card.price / 2) })})`}
               >
                 {card.emoji}
                 <span className="slot-name">{card.name}</span>

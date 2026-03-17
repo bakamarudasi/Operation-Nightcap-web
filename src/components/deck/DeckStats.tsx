@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { CARD_DATA } from '../../data/cards.ts';
 import type { CardType } from '../../data/types.ts';
 import { CARD_TYPE_LABELS, CARD_TYPE_COLORS } from './cardTypeLabels.ts';
@@ -7,6 +8,7 @@ interface DeckStatsProps {
 }
 
 export function DeckStats({ playerDeck }: DeckStatsProps) {
+  const { t } = useTranslation();
   if (playerDeck.length === 0) return null;
 
   // タイプ別集計
@@ -47,8 +49,8 @@ export function DeckStats({ playerDeck }: DeckStatsProps) {
 
       {/* サマリー */}
       <div className="deck-summary">
-        <span className="summary-item summary-atk">攻撃力 {totalDamage}</span>
-        <span className="summary-item summary-heal">回復力 {totalHeal}</span>
+        <span className="summary-item summary-atk">{t('deck.attackStat', { value: totalDamage })}</span>
+        <span className="summary-item summary-heal">{t('deck.healStat', { value: totalHeal })}</span>
         <span className="summary-legend">
           {barEntries.map(([type, count]) => (
             <span key={type} className="legend-item">

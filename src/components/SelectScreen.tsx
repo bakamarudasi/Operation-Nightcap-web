@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CHARACTER_DATA } from '../data/characters.ts';
 import type { CharacterDef } from '../data/types.ts';
@@ -74,6 +75,7 @@ type Phase = 'select' | 'noren-close' | 'noren-closed' | 'noren-open' | 'vs' | '
 
 /* ── コンポーネント ── */
 export function SelectScreen() {
+  const { t } = useTranslation();
   const setScreen = useGameStore((s) => s.setScreen);
   const initBattle = useGameStore((s) => s.initBattle);
   const money = useGameStore((s) => s.money);
@@ -239,12 +241,12 @@ export function SelectScreen() {
               disabled={isAnim}
               onClick={() => !isAnim && setScreen('title')}
             >
-              ← 戻る
+              {t('common.back')}
             </button>
-            <h2>対戦相手を選べ</h2>
+            <h2>{t('select.chooseOpponent')}</h2>
             <div className={`sel-money ${moneyShake ? 'shake' : ''}`}>
-              <span className="sel-money-icon">龍</span>
-              <span>{money.toLocaleString()} 龍門幣</span>
+              <span className="sel-money-icon">{t('common.currencyIcon')}</span>
+              <span>{t('common.currencyAmount', { amount: money.toLocaleString() })}</span>
             </div>
           </div>
 
@@ -312,20 +314,20 @@ export function SelectScreen() {
             <div className="sel-detail">
               <div className="sel-detail-stats">
                 <div className="sel-stat">
-                  <span className="sel-stat-label">タイプ</span>
+                  <span className="sel-stat-label">{t('select.type')}</span>
                   <span className="sel-stat-value">{currentChar.drunkType}</span>
                 </div>
                 <div className="sel-stat">
-                  <span className="sel-stat-label">対戦績</span>
-                  <span className="sel-stat-value">{charWins}勝</span>
+                  <span className="sel-stat-label">{t('select.record')}</span>
+                  <span className="sel-stat-value">{t('select.winsCount', { count: charWins })}</span>
                 </div>
                 <div className="sel-stat">
-                  <span className="sel-stat-label">CG</span>
+                  <span className="sel-stat-label">{t('select.cg')}</span>
                   <span className="sel-stat-value">{cgCount}/{cgTotal}</span>
                 </div>
                 <div className="sel-stat">
-                  <span className="sel-stat-label">好感度</span>
-                  <span className="sel-stat-value sel-affinity">{affinityStars}{nextAffinity ? <span className="sel-affinity-next"> (次: {nextAffinity.requiredWins}勝)</span> : ''}</span>
+                  <span className="sel-stat-label">{t('select.affinity')}</span>
+                  <span className="sel-stat-value sel-affinity">{affinityStars}{nextAffinity ? <span className="sel-affinity-next"> ({t('select.nextAffinity', { count: nextAffinity.requiredWins })})</span> : ''}</span>
                 </div>
               </div>
               <div className="sel-detail-quote">
@@ -337,22 +339,22 @@ export function SelectScreen() {
                   disabled={isAnim}
                   onClick={() => setScreen('deck')}
                 >
-                  🃏 デッキ編集
+                  {t('select.editDeck')}
                 </button>
                 <button
                   className="sel-deck-btn"
                   disabled={isAnim}
                   onClick={() => setScreen('enhance')}
                 >
-                  🔨 強化工房
+                  {t('select.enhance')}
                 </button>
                 <button
                   className="sel-drink-btn"
                   disabled={isAnim || money < DRINK_COST}
                   onClick={startDrink}
                 >
-                  <span>🍶 この相手と飲む</span>
-                  <span className="sel-drink-cost">{DRINK_COST} 龍門幣</span>
+                  <span>{t('select.drinkWith')}</span>
+                  <span className="sel-drink-cost">{t('select.drinkCost', { cost: DRINK_COST })}</span>
                 </button>
               </div>
             </div>
@@ -371,10 +373,10 @@ export function SelectScreen() {
           'opening'
         }`}>
           <div className="sel-noren-half sel-noren-left">
-            <span className="sel-noren-kanji">酒</span>
+            <span className="sel-noren-kanji">{t('title.noren.sake')}</span>
           </div>
           <div className="sel-noren-half sel-noren-right">
-            <span className="sel-noren-kanji">処</span>
+            <span className="sel-noren-kanji">{t('title.noren.dokoro')}</span>
           </div>
         </div>
       )}
@@ -385,7 +387,7 @@ export function SelectScreen() {
           <div className="sel-vs-bg" />
           <div className="sel-vs-side sel-vs-player">
             <div className="sel-vs-icon">🧑‍⚕️</div>
-            <div className="sel-vs-name">ドクター</div>
+            <div className="sel-vs-name">{t('common.doctor')}</div>
           </div>
           <div className="sel-vs-badge">VS</div>
           <div className="sel-vs-side sel-vs-opponent">
@@ -411,7 +413,7 @@ export function SelectScreen() {
 
           {/* text */}
           {kanpaiText && (
-            <div className="sel-kanpai-text">乾杯！</div>
+            <div className="sel-kanpai-text">{t('select.kanpai')}</div>
           )}
 
           {/* confetti */}

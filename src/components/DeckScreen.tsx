@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import type { CardDef } from '../data/types.ts';
@@ -33,6 +34,7 @@ interface AnimCard {
 let animIdCounter = 0;
 
 export function DeckScreen() {
+  const { t } = useTranslation();
   const playerDeck = useGameStore((s) => s.playerDeck);
   const inventory = useGameStore((s) => s.inventory);
   const setScreen = useGameStore((s) => s.setScreen);
@@ -303,14 +305,14 @@ export function DeckScreen() {
     <div className="screen active deck-screen">
       {/* ── ヘッダー ── */}
       <div className="deck-header">
-        <button className="back-btn" onClick={goBack}>← 戻る</button>
-        <h2>🃏 デッキ編集</h2>
+        <button className="back-btn" onClick={goBack}>{t('common.back')}</button>
+        <h2>{t('deck.title')}</h2>
         <button className="enhance-shortcut-btn" onClick={() => setScreen('enhance')}>
-          🔨 強化工房
+          {t('deck.enhanceShortcut')}
         </button>
         <div className={`deck-count ${deckFull ? 'deck-full' : ''}`}>
           {playerDeck.length}/12
-          {deckFull && <span className="deck-full-label">FULL</span>}
+          {deckFull && <span className="deck-full-label">{t('deck.full')}</span>}
         </div>
       </div>
 
@@ -319,7 +321,7 @@ export function DeckScreen() {
         {/* 左: デッキ */}
         <div className="deck-left">
           <div className="deck-section">
-            <div className="deck-section-title">現在のデッキ</div>
+            <div className="deck-section-title">{t('deck.currentDeck')}</div>
             <DeckGrid
               playerDeck={playerDeck}
               animCards={animCards}
@@ -338,7 +340,7 @@ export function DeckScreen() {
             {playerDeck.length > 0 && playerDeck.length < 4 && (
               <div className="deck-warning">
                 <span className="warning-icon">⚠</span>
-                最低4枚は必要です（現在 {playerDeck.length} 枚）
+                {t('deck.warning', { count: playerDeck.length })}
               </div>
             )}
           </div>

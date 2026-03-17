@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
@@ -12,6 +13,7 @@ import { GachaCollection } from './gacha/GachaCollection.tsx';
 import { FeaturedCard } from './gacha/FeaturedCard.tsx';
 
 export function GachaScreen() {
+  const { t } = useTranslation();
   const money = useGameStore(s => s.money);
   const inventory = useGameStore(s => s.inventory);
   const pullGacha = useGameStore(s => s.pullGacha);
@@ -249,14 +251,14 @@ export function GachaScreen() {
           background: 'none', border: '1px solid rgba(255,180,80,0.25)',
           color: '#c9a96e', padding: '6px 16px', borderRadius: 6,
           fontFamily: 'inherit', fontSize: 13,
-        }}>← 戻る</button>
+        }}>{t('common.back')}</button>
         <h1 style={{
           fontSize: 26, fontWeight: 900, color: '#fbbf24',
           textShadow: '0 0 20px rgba(251,191,36,0.4)',
           letterSpacing: 4, margin: 0,
           fontFamily: "'Shippori Mincho','Noto Serif JP',serif",
         }}>
-          <span style={{ color: '#ff8c00' }}>お品書き</span>ガチャ
+          {t('gacha.titlePlain')}
         </h1>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
@@ -348,11 +350,11 @@ export function GachaScreen() {
               <div style={{
                 fontSize: 14, color: '#c9a96e', letterSpacing: 3, marginBottom: 16,
                 fontFamily: "'Shippori Mincho','Noto Serif JP',serif",
-              }}>今宵も一杯、いかがですか</div>
+              }}>{t('gacha.heroText')}</div>
 
               {/* 収集進捗バー */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
-                <span style={{ fontSize: 11, color: '#888', letterSpacing: 1 }}>収集進捗</span>
+                <span style={{ fontSize: 11, color: '#888', letterSpacing: 1 }}>{t('gacha.collectProgress')}</span>
                 <div style={{ width: 120, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{
                     width: `${(collectionStats.owned / collectionStats.total) * 100}%`,
@@ -384,7 +386,7 @@ export function GachaScreen() {
                 overflow: 'hidden',
               }}>
                 <span style={{ fontSize: 32 }}>🍺</span>
-                <span style={{ fontSize: 18, fontWeight: 700, color: money >= GACHA_SINGLE_COST ? '#e8d5b5' : '#443322', letterSpacing: 2 }}>一杯だけ</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: money >= GACHA_SINGLE_COST ? '#e8d5b5' : '#443322', letterSpacing: 2 }}>{t('gacha.singlePull')}</span>
                 <span style={{ fontSize: 13, color: money >= GACHA_SINGLE_COST ? '#fbbf24' : '#332211', fontWeight: 700 }}>
                   🪙 {GACHA_SINGLE_COST.toLocaleString()}
                 </span>
@@ -409,9 +411,9 @@ export function GachaScreen() {
                   whiteSpace: 'nowrap', boxShadow: '0 3px 10px rgba(200,40,0,.5)',
                   border: '1px solid rgba(255,100,50,.3)',
                   animation: 'neonFlicker 4s ease-in-out infinite',
-                }}>✦ 1杯分お得 ✦</div>}
+                }}>{t('gacha.multiDiscount')}</div>}
                 <span style={{ fontSize: 32 }}>🍻</span>
-                <span style={{ fontSize: 18, fontWeight: 700, color: money >= GACHA_MULTI_COST ? '#e8d5b5' : '#443322', letterSpacing: 2 }}>飲み放題</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: money >= GACHA_MULTI_COST ? '#e8d5b5' : '#443322', letterSpacing: 2 }}>{t('gacha.multiPull')}</span>
                 <span style={{ fontSize: 13, color: money >= GACHA_MULTI_COST ? '#fbbf24' : '#332211', fontWeight: 700 }}>
                   🪙 {GACHA_MULTI_COST.toLocaleString()}
                 </span>
@@ -420,11 +422,11 @@ export function GachaScreen() {
 
             {/* サブ情報 */}
             <div style={{ textAlign: 'center', fontSize: 12, color: '#888', padding: '4px 0' }}>
-              <span>秘蔵↑ <span style={{ color: '#e8a020' }}>3.5%</span></span>
+              <span>{t('gacha.rateSecret')} <span style={{ color: '#e8a020' }}>3.5%</span></span>
               <span style={{ margin: '0 12px', color: '#555' }}>|</span>
-              <span>幻↑ <span style={{ color: '#ff3366' }}>0.5%</span></span>
+              <span>{t('gacha.rateMyth')} <span style={{ color: '#ff3366' }}>0.5%</span></span>
               <span style={{ margin: '0 12px', color: '#555' }}>|</span>
-              <span>ダブりは龍門幣変換</span>
+              <span>{t('gacha.dupConvert')}</span>
             </div>
 
             {/* コイン不足時のUX */}
@@ -434,9 +436,7 @@ export function GachaScreen() {
                 borderRadius: 10, padding: '12px 16px', textAlign: 'center',
               }}>
                 <div style={{ fontSize: 12, color: '#cc8866', marginBottom: 8 }}>
-                  🪙 あと <span style={{ color: '#ffaa44', fontWeight: 700, fontSize: 14 }}>
-                    {(GACHA_SINGLE_COST - money).toLocaleString()}
-                  </span> 龍門幣足りません
+                  🪙 {t('gacha.shortMoney', { amount: (GACHA_SINGLE_COST - money).toLocaleString() })}
                 </div>
                 <button className="gbtn" onClick={() => setScreen('shop')} style={{
                   background: 'linear-gradient(160deg,#2a3a10,#1a2508)',
@@ -444,7 +444,7 @@ export function GachaScreen() {
                   borderRadius: 8, padding: '8px 20px', color: '#aad060',
                   fontSize: 12, fontWeight: 700, letterSpacing: 1,
                 }}>
-                  🏪 ショップで稼ぐ
+                  {t('gacha.goShop')}
                 </button>
               </div>
             )}
@@ -511,12 +511,12 @@ export function GachaScreen() {
               </div>
             </div>
             <div style={{ fontSize: 12, color: '#8a6030', letterSpacing: 5, marginTop: 20 }} className="flick">
-              {pendingCount === 1 ? '一杯お注ぎします…' : '飲み放題、いきます…'}
+              {pendingCount === 1 ? t('gacha.pouring') : t('gacha.pouringMulti')}
             </div>
             <button className="gbtn" onClick={skipToResult} style={{
               marginTop: 16, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)',
               borderRadius: 6, padding: '6px 20px', color: '#666', fontSize: 11,
-            }}>スキップ ▸▸</button>
+            }}>{t('gacha.skip')}</button>
           </div>
         )}
 
@@ -563,12 +563,12 @@ export function GachaScreen() {
               textShadow: `0 0 24px ${glowColor}, 0 0 60px ${glowColor}55`,
               animation: 'pulseGlow 0.5s ease-in-out infinite',
             }}>
-              {highest >= 6 ? '─ 幻の一品…！！ ─' : highest >= 5 ? '秘蔵品、登場…！' : highest >= 4 ? '極品、来た…！' : 'お待ちどうさまです'}
+              {highest >= 6 ? t('gacha.glowMyth') : highest >= 5 ? t('gacha.glowSecret') : highest >= 4 ? t('gacha.glowRare') : t('gacha.glowNormal')}
             </div>
             <button className="gbtn" onClick={skipToResult} style={{
               marginTop: 16, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)',
               borderRadius: 6, padding: '6px 20px', color: '#666', fontSize: 11,
-            }}>スキップ ▸▸</button>
+            }}>{t('gacha.skip')}</button>
           </div>
         )}
 
@@ -578,12 +578,12 @@ export function GachaScreen() {
             {manualReveal && revealedCount < results.length && (
               <div style={{ textAlign: 'center', marginBottom: 12, display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center' }}>
                 <span style={{ fontSize: 12, color: '#aa8050', letterSpacing: 2 }}>
-                  タップでめくる {revealedCount}/{results.length}
+                  {t('gacha.tapReveal', { current: revealedCount, total: results.length })}
                 </span>
                 <button className="gbtn" onClick={skipToResult} style={{
                   background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)',
                   borderRadius: 6, padding: '4px 14px', color: '#666', fontSize: 10,
-                }}>全て開く</button>
+                }}>{t('gacha.revealAll')}</button>
               </div>
             )}
             <div
@@ -648,13 +648,13 @@ export function GachaScreen() {
                 boxShadow: `0 0 20px ${RARITY_CONFIG[highest].glow}`,
               }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: RARITY_CONFIG[highest].text, letterSpacing: 3 }}>
-                  {highest === 6 ? '🎉 幻の一品、入荷！！ 🎉' : '✨ 秘蔵品、入荷！ ✨'}
+                  {highest === 6 ? t('gacha.resultMyth') : t('gacha.resultSecret')}
                 </span>
               </div>
             )}
             {refundTotal > 0 && (
               <div style={{ textAlign: 'center', fontSize: 11, color: '#ffcc44', marginBottom: 8 }}>
-                🪙 重複変換 +{refundTotal.toLocaleString()}龍門幣 還元
+                {t('gacha.dupRefund', { amount: refundTotal.toLocaleString() })}
               </div>
             )}
             {/* カードグリッド */}
@@ -710,7 +710,7 @@ export function GachaScreen() {
                         position: 'absolute', top: 3, right: 3,
                         background: 'rgba(150,90,0,.35)', border: '1px solid rgba(190,130,0,.45)',
                         borderRadius: 4, padding: '1px 5px', fontSize: 7, color: '#ffcc44',
-                      }}>変換</div>
+                      }}>{t('gacha.convert')}</div>
                     )}
                     <div style={{ fontSize: results.length === 1 ? 48 : 28, lineHeight: 1.1, marginBottom: 5, position: 'relative' }}>{card.emoji}</div>
                     <div style={{ fontSize: results.length === 1 ? 13 : 9, color: cfg.text, fontWeight: 700, lineHeight: 1.3, position: 'relative' }}>{card.name}</div>
@@ -748,7 +748,7 @@ export function GachaScreen() {
                         <span style={{
                           fontSize: 9, padding: '2px 7px', borderRadius: 4,
                           background: 'rgba(30,100,30,.25)', color: '#88ee88', border: '1px solid rgba(50,140,50,.4)',
-                        }}>初入荷</span>
+                        }}>{t('gacha.firstDrop')}</span>
                       )}
                     </div>
                     <div style={{
@@ -757,11 +757,11 @@ export function GachaScreen() {
                     }}>{card.description}</div>
                     {selected.isDuplicate && (
                       <div style={{ fontSize: 10, color: '#ffcc44', marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        🪙 在庫3枚上限のため <span style={{ fontWeight: 700 }}>{selected.refund.toLocaleString()}龍門幣</span>に変換
+                        {t('gacha.dupExplain', { amount: selected.refund.toLocaleString() })}
                       </div>
                     )}
                     <div style={{ fontSize: 9, color: '#4a3015', marginTop: 6 }}>
-                      所持数: {inventoryMap[selected.cardId] ?? 0} / 3
+                      {t('gacha.ownCount', { count: inventoryMap[selected.cardId] ?? 0 })}
                     </div>
                   </div>
                 </div>
@@ -777,7 +777,7 @@ export function GachaScreen() {
                 boxShadow: money >= GACHA_SINGLE_COST ? '0 4px 18px rgba(0,0,0,.6)' : 'none',
               }}>
                 <span style={{ fontSize: 16 }}>🍺</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: money >= GACHA_SINGLE_COST ? '#e8c090' : '#443322', marginLeft: 6 }}>もう一杯</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: money >= GACHA_SINGLE_COST ? '#e8c090' : '#443322', marginLeft: 6 }}>{t('gacha.onceMore')}</span>
                 <div style={{ fontSize: 11, color: money >= GACHA_SINGLE_COST ? '#ffaa44' : '#332211', marginTop: 4 }}>
                   🪙 {GACHA_SINGLE_COST.toLocaleString()}
                 </div>
@@ -790,7 +790,7 @@ export function GachaScreen() {
                 boxShadow: money >= GACHA_MULTI_COST ? '0 4px 22px rgba(0,0,0,.6)' : 'none',
               }}>
                 <span style={{ fontSize: 16 }}>🍻</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: money >= GACHA_MULTI_COST ? '#ffcc66' : '#443322', marginLeft: 6 }}>飲み放題もう一回</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: money >= GACHA_MULTI_COST ? '#ffcc66' : '#443322', marginLeft: 6 }}>{t('gacha.multiMore')}</span>
                 <div style={{ fontSize: 11, color: money >= GACHA_MULTI_COST ? '#ffcc44' : '#332211', marginTop: 4 }}>
                   🪙 {GACHA_MULTI_COST.toLocaleString()}
                 </div>
@@ -817,7 +817,7 @@ export function GachaScreen() {
                   {animPhase === 'pour' ? '🍺' : animPhase === 'glow' ? '✨' : '🃏'}
                 </div>
                 <div style={{ fontSize: 14, color: '#aa8050', letterSpacing: 4, fontWeight: 700 }}>
-                  {animPhase === 'pour' ? '仕込み中…' : animPhase === 'glow' ? '光が…！' : 'お品出し中…'}
+                  {animPhase === 'pour' ? t('gacha.overlayPrep') : animPhase === 'glow' ? t('gacha.overlayGlow') : t('gacha.overlayReveal')}
                 </div>
                 <div style={{
                   width: 60, height: 3, borderRadius: 2, overflow: 'hidden',
@@ -842,7 +842,7 @@ export function GachaScreen() {
                 letterSpacing: 2,
                 borderBottom: `2px solid ${selectedTab === 'rates' ? '#fbbf24' : 'transparent'}`,
                 marginBottom: -2, transition: 'all 0.2s',
-              }}>本日のお品書き</button>
+              }}>{t('gacha.rateTab')}</button>
               <button className="gbtn" onClick={() => setSelectedTab('collection')} style={{
                 flex: 1, background: 'none', border: 'none',
                 color: selectedTab === 'collection' ? '#fbbf24' : '#777',
@@ -851,7 +851,7 @@ export function GachaScreen() {
                 letterSpacing: 2,
                 borderBottom: `2px solid ${selectedTab === 'collection' ? '#fbbf24' : 'transparent'}`,
                 marginBottom: -2, transition: 'all 0.2s',
-              }}>📖 お品書き帳 {collectionStats.owned}/{collectionStats.total}</button>
+              }}>{t('gacha.collectionTab', { owned: collectionStats.owned, total: collectionStats.total })}</button>
             </div>
 
             {/* レート表示タブ */}
@@ -862,7 +862,7 @@ export function GachaScreen() {
                 borderRadius: '0 0 12px 12px', padding: 16,
               }}>
                 <div style={{ textAlign: 'right', marginBottom: 8 }}>
-                  <span style={{ color: '#aaa', fontSize: 12 }}>提供割合</span>
+                  <span style={{ color: '#aaa', fontSize: 12 }}>{t('gacha.rateLabel')}</span>
                 </div>
                 {MENU_ROWS.map((row, idx) => {
                   const cfg = RARITY_CONFIG[row.r];
@@ -910,9 +910,9 @@ export function GachaScreen() {
                 {/* 注意事項 */}
                 <div style={{ marginTop: 16, padding: 12, borderTop: '1px solid rgba(255,180,80,0.1)' }}>
                   <p style={{ color: '#777', fontSize: 11, lineHeight: 1.6, margin: 0 }}>
-                    ※ 表示確率は小数点第2位以下を四捨五入しています<br />
-                    ※ 同一カード3枚上限、超過は龍門幣に変換されます<br />
-                    ※ おすすめカードは提供期間終了後、通常排出に移行します
+                    {t('gacha.rateNotes').split('\n').map((line, i) => (
+                      <span key={i}>{line}{i < 2 && <br />}</span>
+                    ))}
                   </p>
                 </div>
               </div>
@@ -927,7 +927,7 @@ export function GachaScreen() {
                 background: 'rgba(18,9,2,.85)', border: '1px solid rgba(90,50,15,.3)',
                 borderRadius: 8, padding: '8px 14px', fontSize: 11, color: '#5a3a18',
               }}>
-                累計 <span style={{ color: '#aa8855', fontWeight: 700, fontSize: 16 }}>{pullCount}</span> 回
+                {t('gacha.totalPulls')} <span style={{ color: '#aa8855', fontWeight: 700, fontSize: 16 }}>{pullCount}</span> {t('gacha.totalPullsCount')}
               </div>
             )}
           </div>

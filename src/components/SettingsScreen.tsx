@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 
 export function SettingsScreen() {
+  const { t, i18n } = useTranslation();
   const setScreen = useGameStore((s) => s.setScreen);
   const resetData = useGameStore((s) => s.resetData);
   const loadDebugPreset = useGameStore((s) => s.loadDebugPreset);
@@ -12,19 +14,19 @@ export function SettingsScreen() {
   const [textSpeed, setTextSpeed] = useState(30);
 
   const getTextSpeedLabel = (val: number) => {
-    if (val <= 15) return 'はやい';
-    if (val <= 40) return 'ふつう';
-    return 'おそい';
+    if (val <= 15) return t('settings.speedFast');
+    if (val <= 40) return t('settings.speedNormal');
+    return t('settings.speedSlow');
   };
 
   const handleReset = () => {
-    if (window.confirm('本当にデータをリセットしますか？\nすべてのセーブデータが消去されます。')) {
+    if (window.confirm(t('settings.resetConfirm'))) {
       resetData();
     }
   };
 
   const handleDebugPreset = () => {
-    if (window.confirm('デバッグプリセットを読み込みますか？\n\n・所持金: 99,999\n・デッキ: セクハラカード全種+VIPルーム\n・勝利数: 50\n・バトル開始時: 相手 酔いLv3')) {
+    if (window.confirm(t('settings.debugConfirm'))) {
       loadDebugPreset();
     }
   };
@@ -32,12 +34,12 @@ export function SettingsScreen() {
   return (
     <div className="screen active">
       <div className="settings-header">
-        <button className="back-btn" onClick={() => setScreen('title')}>← 戻る</button>
-        <h2>⚙️ 設定</h2>
+        <button className="back-btn" onClick={() => setScreen('title')}>{t('common.back')}</button>
+        <h2>{t('settings.title')}</h2>
       </div>
       <div className="settings-content">
         <div className="settings-section">
-          <label className="settings-label">🔊 BGM 音量</label>
+          <label className="settings-label">{t('settings.bgmVolume')}</label>
           <input
             type="range"
             className="settings-slider"
@@ -49,7 +51,7 @@ export function SettingsScreen() {
           <span className="settings-value">{bgmVolume}%</span>
         </div>
         <div className="settings-section">
-          <label className="settings-label">🔉 SE 音量</label>
+          <label className="settings-label">{t('settings.seVolume')}</label>
           <input
             type="range"
             className="settings-slider"
@@ -61,7 +63,7 @@ export function SettingsScreen() {
           <span className="settings-value">{seVolume}%</span>
         </div>
         <div className="settings-section">
-          <label className="settings-label">💬 テキスト速度</label>
+          <label className="settings-label">{t('settings.textSpeed')}</label>
           <input
             type="range"
             className="settings-slider"
@@ -73,20 +75,39 @@ export function SettingsScreen() {
           />
           <span className="settings-value">{getTextSpeedLabel(textSpeed)}</span>
         </div>
+        <div className="settings-section">
+          <label className="settings-label">{t('settings.language')}</label>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              className="menu-btn"
+              style={{ backgroundColor: i18n.language === 'ja' ? '#886644' : '#555', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+              onClick={() => i18n.changeLanguage('ja')}
+            >
+              日本語
+            </button>
+            <button
+              className="menu-btn"
+              style={{ backgroundColor: i18n.language === 'en' ? '#886644' : '#555', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+              onClick={() => i18n.changeLanguage('en')}
+            >
+              English
+            </button>
+          </div>
+        </div>
         <div className="settings-divider"></div>
         <div className="settings-section">
           <button className="menu-btn" onClick={handleDebugPreset} style={{ backgroundColor: debugMode ? '#4a9' : '#555' }}>
-            {debugMode ? '🐛 デバッグモード ON' : '🐛 デバッグプリセット読込'}
+            {debugMode ? t('settings.debugOn') : t('settings.debugLoad')}
           </button>
           {debugMode && (
             <p style={{ color: '#aaa', fontSize: '0.75rem', marginTop: '0.5rem' }}>
-              セクハラカード全種デッキ / 相手酔いLv3スタート / 所持金99,999
+              {t('settings.debugDesc')}
             </p>
           )}
         </div>
         <div className="settings-section">
           <button className="menu-btn danger-btn" onClick={handleReset}>
-            🗑️ データリセット
+            {t('settings.resetData')}
           </button>
         </div>
       </div>

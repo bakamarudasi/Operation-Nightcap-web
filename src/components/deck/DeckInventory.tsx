@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CARD_DATA } from '../../data/cards.ts';
 import type { CardDef } from '../../data/types.ts';
 
@@ -19,14 +20,14 @@ interface DeckInventoryProps {
 }
 
 const FILTERS = [
-  { key: 'all', label: '全て' },
-  { key: 'drink', label: '🍺 ドリンク' },
-  { key: 'food', label: '🥜 つまみ' },
-  { key: 'chug', label: '🍻 一気飲み' },
-  { key: 'harassment', label: '💋 セクハラ' },
-  { key: 'strategy', label: '🗣️ 戦略' },
-  { key: 'environment', label: '🎤 環境' },
-  { key: 'status', label: '😳 状態異常' },
+  { key: 'all', labelKey: 'deck.filterAll' },
+  { key: 'drink', labelKey: 'deck.filterDrink' },
+  { key: 'food', labelKey: 'deck.filterFood' },
+  { key: 'chug', labelKey: 'deck.filterChug' },
+  { key: 'harassment', labelKey: 'deck.filterHarassment' },
+  { key: 'strategy', labelKey: 'deck.filterStrategy' },
+  { key: 'environment', labelKey: 'deck.filterEnvironment' },
+  { key: 'status', labelKey: 'deck.filterStatus' },
 ];
 
 export function DeckInventory({
@@ -34,6 +35,7 @@ export function DeckInventory({
   onCardClick, onMouseDown, onTouchStart, onCancelLongPress,
   onShowPreview, onHidePreview, onShowTouchPreview,
 }: DeckInventoryProps) {
+  const { t } = useTranslation();
   const [sortMode, setSortMode] = useState<SortMode>('rarity');
 
   // フィルター別枚数集計（全リストから計算）
@@ -72,11 +74,11 @@ export function DeckInventory({
   return (
     <div className="deck-inventory-panel">
       <div className="inventory-panel-header">
-        <div className="deck-section-title">所持カード（デッキ外）</div>
+        <div className="deck-section-title">{t('deck.ownedCards')}</div>
         <div className="sort-toggle">
-          <button className={sortMode === 'rarity' ? 'active' : ''} onClick={() => setSortMode('rarity')}>レア順</button>
-          <button className={sortMode === 'name' ? 'active' : ''} onClick={() => setSortMode('name')}>名前順</button>
-          <button className={sortMode === 'power' ? 'active' : ''} onClick={() => setSortMode('power')}>威力順</button>
+          <button className={sortMode === 'rarity' ? 'active' : ''} onClick={() => setSortMode('rarity')}>{t('deck.sortRarity')}</button>
+          <button className={sortMode === 'name' ? 'active' : ''} onClick={() => setSortMode('name')}>{t('deck.sortName')}</button>
+          <button className={sortMode === 'power' ? 'active' : ''} onClick={() => setSortMode('power')}>{t('deck.sortPower')}</button>
         </div>
       </div>
 
@@ -89,7 +91,7 @@ export function DeckInventory({
               className={`deck-filter-btn ${filter === f.key ? 'active' : ''}`}
               onClick={() => onFilterChange(f.key)}
             >
-              {f.label}
+              {t(f.labelKey)}
               {count > 0 && <span className="filter-count">{count}</span>}
             </button>
           );
@@ -99,7 +101,7 @@ export function DeckInventory({
       <div className="inventory-grid">
         {sorted.length === 0 && (
           <div className="inventory-empty">
-            デッキ外のカードはありません。ガチャやショップでカードを入手しましょう！
+            {t('deck.emptyInventory')}
           </div>
         )}
         {sorted.map(([cardId, counts]) => {
@@ -123,8 +125,8 @@ export function DeckInventory({
               <div className="inv-card-details">
                 <div className="inv-card-name">{card.name}</div>
                 <div className="inv-card-desc">
-                  {card.type === 'drink' ? `攻撃 ${card.damage === -1 ? '1~3' : card.damage}` :
-                   card.type === 'food' ? `回復 ${card.heal === 99 ? 'MAX' : card.heal}` :
+                  {card.type === 'drink' ? t('battle.cardTypeAttack', { value: card.damage === -1 ? '1~3' : card.damage }) :
+                   card.type === 'food' ? t('battle.cardTypeHeal', { value: card.heal === 99 ? 'MAX' : card.heal }) :
                    card.type === 'harassment' ? `酔Lv${card.requiredDrunkLevel} 酔+${card.drunkDamage ?? 0}` :
                    card.description.substring(0, 20)}
                 </div>
