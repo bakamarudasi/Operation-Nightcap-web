@@ -362,12 +362,18 @@ const ja = {
 
     // ── Engine Messages ──
     engine: {
+      target: {
+        opponent: '相手',
+        us: 'こちら',
+      },
       matchup: {
         advantage: '🔺 相性有利！',
         disadvantage: '🔻 相性不利…',
       },
       drink: {
         damage: '{{emoji}} {{name}}で酔い{{value}}ダメージ！',
+        damageToOpponent: '{{emoji}}{{name}}で相手に酔い{{value}}ダメージ！',
+        damageFromOpponent: '相手の{{emoji}}{{name}}で酔い{{value}}ダメージ！',
       },
       food: {
         heal: '{{emoji}} {{name}}で{{value}}回復！',
@@ -378,6 +384,18 @@ const ja = {
           opponent: '🚫 相手はつまみ封じ中！{{emoji}}{{name}}が使えない！',
           opponentAlso: '🚫 相手もつまみ封じ中！{{emoji}}{{name}}が使えない！',
         },
+      },
+      dot: {
+        self: '💔 継続ダメージ…酔い+{{value}}！',
+        opponent: '💔 相手に継続ダメージ…酔い+{{value}}！',
+      },
+      negate: {
+        player: '🃏 {{emoji}}{{name}}を無効化した！',
+        opponent: '🃏 {{emoji}}{{name}}が無効化された！',
+      },
+      stun: {
+        self: '😵 スタン中…行動不能！',
+        opponent: '😵 相手はスタン中…行動不能！',
       },
       atkDown: {
         self: '⬇️ 攻撃力低下中…ダメージ半減！',
@@ -392,6 +410,32 @@ const ja = {
         nullified: {
           player: '🍺 勢いで流された！プレイヤーのセクハラは無効！',
           opponent: '🍺 相手のセクハラを勢いで無効化！',
+        },
+        stealth: '👻 {{name}}はステルスで回避された！',
+        instantWin: '💋 {{emoji}}{{name}}…即堕ち！勝利！',
+        success: '💋 {{emoji}}{{name}}成功！酔い+{{value}}！',
+        afterglow: '✨ 余韻ボーナス…追加ダメージ+2！',
+        afterglowSanity: '✨ 余韻ボーナス…理性ダメージ+2！',
+        wallPin: '🧱 壁ドン！相手のバフを全解除！',
+        earBite: '👂 耳噛み！相手の攻撃強化を奪った！',
+        breastTouch: '💗 胸タッチ！ドリンクカードをセクハラに変換！',
+        sanityNegate: '✨ {{name}}の理性ダメージを加護で無効化！',
+        sanityDamage: '💋 {{emoji}}{{name}}…理性に{{value}}ダメージ！',
+        drunkDamage: '💋 {{emoji}}{{name}}…酔い+{{value}}！',
+        corruptHand: '🔥 手札{{count}}枚が発情状態に！',
+        fail: {
+          player: '💋 {{emoji}}{{name}}…失敗！',
+          opponent: '💋 相手の{{emoji}}{{name}}…失敗！',
+        },
+        frustration: {
+          full: {
+            player: '😤 相手の焦らしが爆発！酔い+1！',
+            opponent: '😤 焦らしが爆発！酔い+1！',
+          },
+          building: {
+            player: '😏 相手の焦らし蓄積…({{stacks}}/2)',
+            opponent: '😏 焦らし蓄積…({{stacks}}/2)',
+          },
         },
       },
       chug: {
@@ -416,8 +460,104 @@ const ja = {
           opponent: '🎰 相手の{{name}}…ハズレ！相手に{{value}}自爆ダメージ！',
         },
       },
+      post: {
+        reflectAll: {
+          player: '🛡️ 全反射！相手に{{value}}ダメージを跳ね返した！',
+          opponent: '🛡️ 相手の全反射！{{value}}ダメージを跳ね返された！',
+        },
+        thorns: {
+          player: '⚖️ 反撃の棘！相手に{{value}}反射ダメージ！',
+          opponent: '⚖️ 相手の反撃！{{value}}反射ダメージを受けた！',
+        },
+      },
       utility: {
         cardPlay: '{{emoji}} {{name}}！',
+        revealHand: {
+          player: '👁️ 相手の手札を覗き見た！',
+          opponent: '👁️ 相手にこちらの手札を見られた！',
+        },
+        rumor: {
+          player: '🗣️ 噂を流した！相手の手札がシャッフルされた！',
+          opponent: '🗣️ 相手が噂を流した！手札がシャッフルされた！',
+        },
+        swapDrunk: '🔄 酔いレベルが入れ替わった！',
+        discardHighest: {
+          player: '🗑️ 相手の最強カードを捨てさせた！',
+          opponent: '🗑️ 最強カードを捨てさせられた！',
+        },
+        discardEnemyHand: {
+          player: '🗑️ 相手の手札を{{count}}枚破棄させた！',
+          opponent: '🗑️ 手札を{{count}}枚破棄させられた！',
+        },
+        reduceMaxRounds: '⏩ 最大ラウンド数が{{value}}減少！',
+        selfHeal: '💚 {{name}}で自分を{{value}}回復！',
+        selfDamage: '💥 {{name}}の反動で自分に{{value}}ダメージ！',
+        corruptHand: {
+          player: '🔥 相手の手札{{count}}枚を汚染した！',
+          opponent: '🔥 手札{{count}}枚が汚染された！',
+        },
+        cleanseSelf: {
+          player: '✨ {{name}}でデバフを{{count}}個解除！',
+          opponent: '✨ 相手が{{name}}でデバフを{{count}}個解除！',
+        },
+        cleanseDot: {
+          player: '✨ {{name}}で継続ダメージを解除！',
+          opponent: '✨ 相手が{{name}}で継続ダメージを解除！',
+        },
+      },
+      effect: {
+        damage: {
+          both: '💥 {{emoji}}{{name}}！双方に{{value}}ダメージ！',
+          enemy: '💥 {{emoji}}{{name}}！{{target}}に{{value}}ダメージ！',
+          self: '💥 {{emoji}}{{name}}！自分に{{value}}ダメージ！',
+        },
+        heal: '💚 {{emoji}}{{name}}で{{value}}回復！',
+        cleanseEnemyBuffs: {
+          success: '✨ {{emoji}}相手のバフを{{count}}個解除！',
+          noBuff: '{{emoji}} 解除するバフがなかった…',
+        },
+        cleanseSelf: '✨ {{emoji}}デバフを{{count}}個解除！',
+        cleanseDot: '✨ {{emoji}}継続ダメージを解除！',
+        swapHands: '🔄 {{emoji}}{{name}}！次のラウンド手札交換！',
+        swapDrunk: '🔄 {{emoji}}{{name}}！酔いレベル交換！',
+        transformCard: {
+          player: '🎭 {{emoji}}{{name}}！相手のカードを変換！',
+          opponent: '🎭 {{emoji}}{{name}}！カードを変換された！',
+        },
+        grantCard: '🎁 {{emoji}}{{name}}！{{tokenName}}を獲得！',
+        discardHand: '🗑️ {{emoji}}相手の手札を{{count}}枚破棄！',
+        discardHighest: '🗑️ {{emoji}}相手の最強カードを破棄！',
+        revealHand: {
+          player: '👁️ {{emoji}}相手の手札が見えた！',
+          opponent: '👁️ {{emoji}}手札を覗かれた！',
+        },
+        rumor: {
+          player: '🗣️ {{emoji}}噂を流した！相手の手札シャッフル！',
+          opponent: '🗣️ {{emoji}}噂を流された！手札シャッフル！',
+        },
+        reduceMaxRounds: '⏩ {{emoji}}最大ラウンド-{{value}}！',
+        corruptHand: '🔥 {{emoji}}相手の手札{{count}}枚を汚染！',
+        reduceHand: '✂️ {{emoji}}相手の手札上限-1！',
+        instantWin: {
+          player: '💋 {{emoji}}{{name}}…即堕ち！勝利！',
+          opponent: '💋 {{emoji}}{{name}}…即堕ち！敗北！',
+        },
+        roulette: {
+          hit: '🎰 {{name}}…大当たり！',
+          miss: '🎰 {{name}}…ハズレ！',
+        },
+      },
+      extras: {
+        selfHeal: '💚 {{name}}の追加効果：自分{{value}}回復！',
+        selfDamage: '💥 {{name}}の反動：自分に{{value}}ダメージ！',
+        cleanseSelf: '✨ {{name}}でデバフ{{count}}個解除！',
+        cleanseSelfOpponent: '✨ 相手の{{name}}でデバフ{{count}}個解除！',
+        cleanseDot: '✨ {{name}}で継続ダメージ解除！',
+        cleanseDotOpponent: '✨ 相手の{{name}}で継続ダメージ解除！',
+        corruptHandPlayer: '🔥 {{name}}で相手の手札{{count}}枚を汚染！',
+        corruptHandOpponent: '🔥 相手の{{name}}で手札{{count}}枚が汚染された！',
+        discardEnemyHandPlayer: '🗑️ {{name}}で相手の手札{{count}}枚を破棄！',
+        discardEnemyHandOpponent: '🗑️ 相手の{{name}}で手札{{count}}枚が破棄された！',
       },
     },
 

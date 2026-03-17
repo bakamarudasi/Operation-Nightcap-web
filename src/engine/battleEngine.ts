@@ -1478,7 +1478,7 @@ export const BattleEngine = {
         if (user === 'player') {
           const dmg = applyDrinkBuffs(baseDmg, battle.opponentBuffs, battle.playerBuffs);
           result.playerDamage += dmg;
-          result.messages.push(`相手の${otherCard.emoji}${otherCard.name}で酔い${dmg}ダメージ！`);
+          result.messages.push(t('engine.drink.damageFromOpponent', { emoji: otherCard.emoji, name: otherCard.name, value: dmg }));
           applyCardExtras(otherCard, result, 'opponent');
           if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
             trackBuffConsumption(result, 'opponent', 'next_drink_boost');
@@ -1486,7 +1486,7 @@ export const BattleEngine = {
         } else {
           const dmg = applyDrinkBuffs(baseDmg, battle.playerBuffs, battle.opponentBuffs);
           result.opponentDamage += dmg;
-          result.messages.push(`${otherCard.emoji}${otherCard.name}で相手に酔い${dmg}ダメージ！`);
+          result.messages.push(t('engine.drink.damageToOpponent', { emoji: otherCard.emoji, name: otherCard.name, value: dmg }));
           applyCardExtras(otherCard, result, 'player');
           if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
             trackBuffConsumption(result, 'player', 'next_drink_boost');
@@ -1495,7 +1495,7 @@ export const BattleEngine = {
       } else if (otherCard.type === 'food') {
         const foodUserBuffs = user === 'player' ? battle.opponentBuffs : battle.playerBuffs;
         if (hasBuff(foodUserBuffs, 'no_food')) {
-          result.messages.push(`🚫 つまみ封じ中！${otherCard.emoji}${otherCard.name}が使えない！`);
+          result.messages.push(t('engine.food.blocked.self', { emoji: otherCard.emoji, name: otherCard.name }));
         } else {
           const drunkVal = user === 'player' ? battle.opponentDrunk : battle.playerDrunk;
           let heal = otherCard.heal === 99 ? Math.max(0, drunkVal) : (otherCard.heal ?? 0);
@@ -1505,7 +1505,7 @@ export const BattleEngine = {
           } else {
             result.opponentHeal += heal;
           }
-          result.messages.push(`${otherCard.emoji} ${otherCard.name}で${heal}回復！`);
+          result.messages.push(t('engine.food.heal', { emoji: otherCard.emoji, name: otherCard.name, value: heal }));
           applyCardExtras(otherCard, result, otherUser);
           if (hasBuff(foodUserBuffs, 'next_food_boost')) {
             trackBuffConsumption(result, otherUser, 'next_food_boost');

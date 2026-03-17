@@ -362,12 +362,18 @@ const en = {
 
     // ── Engine Messages ──
     engine: {
+      target: {
+        opponent: 'opponent',
+        us: 'you',
+      },
       matchup: {
         advantage: '🔺 Type Advantage!',
         disadvantage: '🔻 Type Disadvantage...',
       },
       drink: {
         damage: '{{emoji}} {{name}} — Drunk +{{value}}!',
+        damageToOpponent: '{{emoji}}{{name}} — Drunk +{{value}} to opponent!',
+        damageFromOpponent: "Opponent's {{emoji}}{{name}} — Drunk +{{value}}!",
       },
       food: {
         heal: '{{emoji}} {{name}} — Healed {{value}}!',
@@ -378,6 +384,18 @@ const en = {
           opponent: '🚫 Opponent food sealed! {{emoji}}{{name}} is unusable!',
           opponentAlso: '🚫 Opponent also food sealed! {{emoji}}{{name}} is unusable!',
         },
+      },
+      dot: {
+        self: '💔 DoT tick... Drunk +{{value}}!',
+        opponent: '💔 DoT tick on opponent... Drunk +{{value}}!',
+      },
+      negate: {
+        player: '🃏 Nullified {{emoji}}{{name}}!',
+        opponent: '🃏 {{emoji}}{{name}} was nullified!',
+      },
+      stun: {
+        self: '😵 Stunned... Unable to act!',
+        opponent: '😵 Opponent is stunned... Unable to act!',
       },
       atkDown: {
         self: '⬇️ ATK Down... Damage halved!',
@@ -392,6 +410,32 @@ const en = {
         nullified: {
           player: '🍺 Washed away! Your harassment was nullified!',
           opponent: '🍺 Washed away the harassment with booze!',
+        },
+        stealth: "👻 {{name}} was evaded via Stealth!",
+        instantWin: '💋 {{emoji}}{{name}}... Total surrender! Victory!',
+        success: '💋 {{emoji}}{{name}} landed! Drunk +{{value}}!',
+        afterglow: '✨ Afterglow bonus... +2 extra damage!',
+        afterglowSanity: '✨ Afterglow bonus... +2 Sanity damage!',
+        wallPin: "🧱 Wall pin! Cleared all opponent's buffs!",
+        earBite: "👂 Ear bite! Stole opponent's ATK boost!",
+        breastTouch: '💗 Chest graze! Converted a drink card to harassment!',
+        sanityNegate: "✨ {{name}}'s Sanity damage blocked by barrier!",
+        sanityDamage: '💋 {{emoji}}{{name}}... Sanity -{{value}}!',
+        drunkDamage: '💋 {{emoji}}{{name}}... Drunk +{{value}}!',
+        corruptHand: '🔥 {{count}} cards in hand corrupted!',
+        fail: {
+          player: '💋 {{emoji}}{{name}}... Failed!',
+          opponent: "💋 Opponent's {{emoji}}{{name}}... Failed!",
+        },
+        frustration: {
+          full: {
+            player: "😤 Opponent's frustration exploded! Drunk +1!",
+            opponent: '😤 Frustration exploded! Drunk +1!',
+          },
+          building: {
+            player: "😏 Opponent's frustration building... ({{stacks}}/2)",
+            opponent: '😏 Frustration building... ({{stacks}}/2)',
+          },
         },
       },
       chug: {
@@ -416,8 +460,104 @@ const en = {
           opponent: "🎰 Opponent's {{name}}... Miss! {{value}} self-damage to them!",
         },
       },
+      post: {
+        reflectAll: {
+          player: '🛡️ Full reflect! Bounced {{value}} damage back!',
+          opponent: "🛡️ Opponent's full reflect! {{value}} damage bounced back!",
+        },
+        thorns: {
+          player: '⚖️ Thorns! {{value}} reflected damage to opponent!',
+          opponent: "⚖️ Opponent's thorns! Took {{value}} reflected damage!",
+        },
+      },
       utility: {
         cardPlay: '{{emoji}} {{name}}!',
+        revealHand: {
+          player: "👁️ Peeked at opponent's hand!",
+          opponent: '👁️ Opponent saw your hand!',
+        },
+        rumor: {
+          player: "🗣️ Spread a rumor! Opponent's hand shuffled!",
+          opponent: '🗣️ Opponent spread a rumor! Hand shuffled!',
+        },
+        swapDrunk: '🔄 Drunk levels swapped!',
+        discardHighest: {
+          player: "🗑️ Discarded opponent's strongest card!",
+          opponent: '🗑️ Your strongest card was discarded!',
+        },
+        discardEnemyHand: {
+          player: "🗑️ Discarded {{count}} cards from opponent's hand!",
+          opponent: '🗑️ {{count}} cards discarded from your hand!',
+        },
+        reduceMaxRounds: '⏩ Max rounds reduced by {{value}}!',
+        selfHeal: '💚 {{name}} — Self-healed {{value}}!',
+        selfDamage: '💥 {{name}} recoil — {{value}} self-damage!',
+        corruptHand: {
+          player: "🔥 Corrupted {{count}} cards in opponent's hand!",
+          opponent: '🔥 {{count}} cards in your hand were corrupted!',
+        },
+        cleanseSelf: {
+          player: '✨ {{name}} cleansed {{count}} debuffs!',
+          opponent: '✨ Opponent cleansed {{count}} debuffs with {{name}}!',
+        },
+        cleanseDot: {
+          player: '✨ {{name}} removed DoT!',
+          opponent: '✨ Opponent removed DoT with {{name}}!',
+        },
+      },
+      effect: {
+        damage: {
+          both: '💥 {{emoji}}{{name}}! {{value}} damage to both sides!',
+          enemy: '💥 {{emoji}}{{name}}! {{value}} damage to {{target}}!',
+          self: '💥 {{emoji}}{{name}}! {{value}} self-damage!',
+        },
+        heal: '💚 {{emoji}}{{name}} — Healed {{value}}!',
+        cleanseEnemyBuffs: {
+          success: "✨ {{emoji}} Removed {{count}} of opponent's buffs!",
+          noBuff: '{{emoji}} No buffs to remove...',
+        },
+        cleanseSelf: '✨ {{emoji}} Cleansed {{count}} debuffs!',
+        cleanseDot: '✨ {{emoji}} Removed DoT!',
+        swapHands: '🔄 {{emoji}}{{name}}! Hands swap next round!',
+        swapDrunk: '🔄 {{emoji}}{{name}}! Drunk levels swapped!',
+        transformCard: {
+          player: "🎭 {{emoji}}{{name}}! Transformed opponent's card!",
+          opponent: '🎭 {{emoji}}{{name}}! Your card was transformed!',
+        },
+        grantCard: '🎁 {{emoji}}{{name}}! Gained {{tokenName}}!',
+        discardHand: "🗑️ {{emoji}} Discarded {{count}} cards from opponent's hand!",
+        discardHighest: "🗑️ {{emoji}} Discarded opponent's strongest card!",
+        revealHand: {
+          player: "👁️ {{emoji}} Opponent's hand revealed!",
+          opponent: '👁️ {{emoji}} Your hand was revealed!',
+        },
+        rumor: {
+          player: "🗣️ {{emoji}} Rumor spread! Opponent's hand shuffled!",
+          opponent: '🗣️ {{emoji}} Rumor spread! Your hand shuffled!',
+        },
+        reduceMaxRounds: '⏩ {{emoji}} Max rounds -{{value}}!',
+        corruptHand: "🔥 {{emoji}} Corrupted {{count}} cards in opponent's hand!",
+        reduceHand: "✂️ {{emoji}} Opponent's hand size -1!",
+        instantWin: {
+          player: '💋 {{emoji}}{{name}}... Total surrender! Victory!',
+          opponent: '💋 {{emoji}}{{name}}... Total surrender! Defeat!',
+        },
+        roulette: {
+          hit: '🎰 {{name}}... Jackpot!',
+          miss: '🎰 {{name}}... Miss!',
+        },
+      },
+      extras: {
+        selfHeal: '💚 {{name}} bonus: Self-healed {{value}}!',
+        selfDamage: '💥 {{name}} recoil: {{value}} self-damage!',
+        cleanseSelf: '✨ {{name}} cleansed {{count}} debuffs!',
+        cleanseSelfOpponent: "✨ Opponent's {{name}} cleansed {{count}} debuffs!",
+        cleanseDot: '✨ {{name}} removed DoT!',
+        cleanseDotOpponent: "✨ Opponent's {{name}} removed DoT!",
+        corruptHandPlayer: "🔥 {{name}} corrupted {{count}} cards in opponent's hand!",
+        corruptHandOpponent: "🔥 Opponent's {{name}} corrupted {{count}} of your cards!",
+        discardEnemyHandPlayer: "🗑️ {{name}} discarded {{count}} cards from opponent's hand!",
+        discardEnemyHandOpponent: "🗑️ Opponent's {{name}} discarded {{count}} of your cards!",
       },
     },
 
