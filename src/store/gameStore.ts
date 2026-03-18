@@ -3,26 +3,13 @@ import { persist } from 'zustand/middleware';
 import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, GachaResult, CardType } from '../data/types.ts';
 import { DEFAULT_DECK, CARD_DATA, getEnhanceCost, MAX_CARD_LEVEL } from '../data/cards.ts';
 import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
-import { shuffleArray, randomPick, POSITIVE_BUFF_IDS, DEBUFF_IDS, findHighestValueCardIndex, getDrunkLevel, hasBuff, buildCorruptedSlots, getHiddenSlotCount, shouldMisplay, isFoodDisabled, canPlayCard } from '../engine/utils.ts';
-import { BattleEngine, tickBuffs, getAdjustedRequiredLevel, type ExtendedResult } from '../engine/battleEngine.ts';
+import { shuffleArray, randomPick, findHighestValueCardIndex, getDrunkLevel, hasBuff, buildCorruptedSlots, getHiddenSlotCount, shouldMisplay, isFoodDisabled, canPlayCard } from '../engine/utils.ts';
+import { BattleEngine, type ExtendedResult } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
+import { applyCorruptedSlotDamage, lookupCGEvents, processRoundBuffs } from '../engine/roundProcessor.ts';
 import { pullMulti } from '../engine/gachaEngine.ts';
 import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
 
-/** デバフをN個除去するヘルパー */
-function cleanseDebuffs(buffs: Buff[], count: number): Buff[] {
-  const result = [...buffs];
-  let remaining = count;
-  for (const debuffId of DEBUFF_IDS) {
-    if (remaining <= 0) break;
-    const idx = result.findIndex(bf => bf.id === debuffId);
-    if (idx >= 0) {
-      result.splice(idx, 1);
-      remaining--;
-    }
-  }
-  return result;
-}
 
 /** デッキ→手札を引く共通処理 */
 function drawFromDeck(
@@ -421,71 +408,15 @@ export const useGameStore = create<GameStore>()(
 
         const result = BattleEngine.resolveRound(resolvedPlayerCardId, opponentCardId, b);
 
-        // BUG-006: 汚染カード使用時の自分へのダメージ処理（プレイヤー）
-        const selectedIdx = b.playerHand.indexOf(resolvedPlayerCardId);
-        if (selectedIdx >= 0 && b.corruptedSlots[selectedIdx]) {
-          result.playerDamage += 1;
-          result.messages.push('🔥 発情状態のカードを使った…自分に酔い+1！');
-        }
+        // 汚染スロットの自傷ダメージ適用
+        applyCorruptedSlotDamage(result, resolvedPlayerCardId, opponentCardId, b);
 
-        // 汚染カード使用時の自傷ダメージ（相手）
-        const opSelectedIdx = b.opponentHand.indexOf(opponentCardId);
-        if (opSelectedIdx >= 0 && b.opponentCorruptedSlots[opSelectedIdx]) {
-          result.opponentDamage += 1;
-          result.messages.push('🔥 相手が発情状態のカードを使った…相手に酔い+1！');
-        }
+        // CGイベント検索
+        const cgLookup = lookupCGEvents(result, resolvedPlayerCardId, opponentCardId, b, state.currentOpponent);
+        if (cgLookup.playerCgEvent) result.cgEvent = cgLookup.playerCgEvent;
+        const opponentCgEvent = cgLookup.opponentCgEvent;
 
-        // === プレイヤーのセクハラ成功時 → CGイベント検索 ===
-        const pCard = CARD_DATA[resolvedPlayerCardId];
-        if (pCard?.type === 'harassment') {
-          const targetDrunk = b.opponentDrunk;
-          const targetLevel = getDrunkLevel(targetDrunk);
-          const adjustedRequired = getAdjustedRequiredLevel(pCard.requiredDrunkLevel ?? 0, b.playerBuffs, b.opponentBuffs, !!pCard.instantWin);
-          const hasCgEvent = state.currentOpponent?.cgEvents.some(e => e.triggerCard === resolvedPlayerCardId);
-          console.log('[CG判定:プレイヤー]', {
-            card: resolvedPlayerCardId,
-            spillNullified: result.spillNullified,
-            targetDrunk, targetLevel, adjustedRequired,
-            conditionMet: targetLevel >= adjustedRequired,
-            hasCgEvent,
-            opponent: state.currentOpponent?.id,
-          });
-          if (!result.spillNullified && state.currentOpponent) {
-            if (targetLevel >= adjustedRequired) {
-              const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === resolvedPlayerCardId);
-              if (cgEvent) {
-                result.cgEvent = cgEvent;
-              }
-            }
-          }
-        }
-
-        // === 相手の逆セクハラ成功時 → CGイベント検索 ===
-        const oCard = CARD_DATA[opponentCardId];
-        let opponentCgEvent: CGEvent | null = null;
-        if (oCard?.type === 'harassment') {
-          const playerDrunk = b.playerDrunk;
-          const playerLevel = getDrunkLevel(playerDrunk);
-          const adjustedRequired = getAdjustedRequiredLevel(oCard.requiredDrunkLevel ?? 0, b.opponentBuffs, b.playerBuffs, !!oCard.instantWin);
-          const hasCgEvent = state.currentOpponent?.cgEvents.some(e => e.triggerCard === opponentCardId);
-          console.log('[CG判定:相手]', {
-            card: opponentCardId,
-            spillNullified: result.spillNullified,
-            playerDrunk, playerLevel, adjustedRequired,
-            conditionMet: playerLevel >= adjustedRequired,
-            hasCgEvent,
-          });
-          if (!result.spillNullified && state.currentOpponent) {
-            if (playerLevel >= adjustedRequired) {
-              const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === opponentCardId);
-              if (cgEvent) {
-                opponentCgEvent = cgEvent;
-              }
-            }
-          }
-        }
-
-        // CG解放（プレイヤー側 + 相手側の両方）
+        // CG解放
         const cgSet = new Set(state.unlockedCGs);
         if (result.cgEvent) cgSet.add(result.cgEvent.id);
         if (opponentCgEvent) cgSet.add(opponentCgEvent.id);
@@ -493,57 +424,10 @@ export const useGameStore = create<GameStore>()(
           set({ unlockedCGs: [...cgSet] });
         }
 
-        // === バフ処理 ===
-        // 既存バフのtick（duration減少）
-        let newPlayerBuffs = tickBuffs([...b.playerBuffs]);
-        let newOpponentBuffs = tickBuffs([...b.opponentBuffs]);
-
-        // 消費型バフの除去（next_drink_boost, next_food_boost, negate_next等）
+        // バフ一括処理（tick → 消費 → クレンズ → 全除去 → 新規付与）
+        const { playerBuffs: newPlayerBuffs, opponentBuffs: newOpponentBuffs } =
+          processRoundBuffs(result, b.playerBuffs, b.opponentBuffs);
         const extResult = result as ExtendedResult;
-        if (extResult.consumePlayerBuffs) {
-          for (const buffId of extResult.consumePlayerBuffs) {
-            const idx = newPlayerBuffs.findIndex(bf => bf.id === buffId);
-            if (idx >= 0) newPlayerBuffs.splice(idx, 1);
-          }
-        }
-        if (extResult.consumeOpponentBuffs) {
-          for (const buffId of extResult.consumeOpponentBuffs) {
-            const idx = newOpponentBuffs.findIndex(bf => bf.id === buffId);
-            if (idx >= 0) newOpponentBuffs.splice(idx, 1);
-          }
-        }
-
-        // デバフ除去（クロージャの錠剤等）
-        if (extResult.playerCleanseSelf && extResult.playerCleanseSelf > 0) {
-          newPlayerBuffs = cleanseDebuffs(newPlayerBuffs, extResult.playerCleanseSelf);
-        }
-        if (extResult.playerCleanseDot) {
-          newPlayerBuffs = newPlayerBuffs.filter(bf => bf.id !== 'dot');
-        }
-
-        // 相手側のデバフ除去
-        if (extResult.opponentCleanseSelf && extResult.opponentCleanseSelf > 0) {
-          newOpponentBuffs = cleanseDebuffs(newOpponentBuffs, extResult.opponentCleanseSelf);
-        }
-        if (extResult.opponentCleanseDot) {
-          newOpponentBuffs = newOpponentBuffs.filter(bf => bf.id !== 'dot');
-        }
-
-        // 敵バフ全除去（レイジの落雷）
-        if (extResult.clearAllOpponentBuffs) {
-          newOpponentBuffs = newOpponentBuffs.filter(bf => !(POSITIVE_BUFF_IDS as readonly string[]).includes(bf.id));
-        }
-        if (extResult.clearAllPlayerBuffs) {
-          newPlayerBuffs = newPlayerBuffs.filter(bf => !(POSITIVE_BUFF_IDS as readonly string[]).includes(bf.id));
-        }
-
-        // 今回のラウンドで付与されたバフを追加
-        if (result.newPlayerBuffs) {
-          newPlayerBuffs = [...newPlayerBuffs, ...result.newPlayerBuffs];
-        }
-        if (result.newOpponentBuffs) {
-          newOpponentBuffs = [...newOpponentBuffs, ...result.newOpponentBuffs];
-        }
 
         // === 手札汚染処理（プレイヤー側） ===
         let corruptedSlots = [...b.corruptedSlots];
