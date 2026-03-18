@@ -657,13 +657,15 @@ export function BattleScreen() {
 
         {/* 手札エリア */}
         <div className="hand-area" data-card-count={battle.playerHand.length}>
-          {battle.playerHand.map((cardId, i) => {
+          {(() => {
+            const playerDrunkLevel = getDrunkLevel(battle.playerDrunk);
+            const foodDisabled = isFoodDisabled(playerDrunkLevel);
+            return battle.playerHand.map((cardId, i) => {
             const card = CARD_DATA[cardId];
             if (!card) return null;
             const isPlaying = playingCardIdx === i;
-            const playerDrunkLevel = getDrunkLevel(battle.playerDrunk);
             const costLocked = !canPlayCard(card, battle.playerDrunk);
-            const foodLocked = isFoodDisabled(playerDrunkLevel) && card.type === 'food';
+            const foodLocked = foodDisabled && card.type === 'food';
             const isDisabled = ((battle.isProcessing || playingCardIdx !== null) && !isPlaying) || costLocked || foodLocked;
             const isSelected = battle.selectedCard === cardId && !isPlaying;
             const isCorrupted = battle.corruptedSlots[i] === true;
@@ -696,7 +698,8 @@ export function BattleScreen() {
                 <div className="hand-val">{valText}</div>
               </div>
             );
-          })}
+          });
+          })()}
         </div>
 
         {matchupBadge && <div className="matchup-badge">{matchupBadge}</div>}

@@ -486,15 +486,11 @@ export const useGameStore = create<GameStore>()(
         }
 
         // CG解放（プレイヤー側 + 相手側の両方）
-        const cgs = [...state.unlockedCGs];
-        if (result.cgEvent && !cgs.includes(result.cgEvent.id)) {
-          cgs.push(result.cgEvent.id);
-        }
-        if (opponentCgEvent && !cgs.includes(opponentCgEvent.id)) {
-          cgs.push(opponentCgEvent.id);
-        }
-        if (cgs.length !== state.unlockedCGs.length) {
-          set({ unlockedCGs: cgs });
+        const cgSet = new Set(state.unlockedCGs);
+        if (result.cgEvent) cgSet.add(result.cgEvent.id);
+        if (opponentCgEvent) cgSet.add(opponentCgEvent.id);
+        if (cgSet.size !== state.unlockedCGs.length) {
+          set({ unlockedCGs: [...cgSet] });
         }
 
         // === バフ処理 ===
@@ -909,16 +905,18 @@ export const useGameStore = create<GameStore>()(
         const char = state.currentOpponent;
         const totalCGs = char.cgEvents.length;
         if (totalCGs === 0) return null;
-        const unlockedCount = char.cgEvents.filter(e => state.unlockedCGs.includes(e.id)).length;
+        const cgSet = new Set(state.unlockedCGs);
+        const unlockedCount = char.cgEvents.filter(e => cgSet.has(e.id)).length;
         const cgRate = unlockedCount / totalCGs;
 
         // 条件を満たす未解放の勝利後イベントを探す（最も条件が高いものを優先）
         const charWins = state.winsByCharacter[char.id] ?? 0;
+        const afterEventSet = new Set(state.unlockedAfterEvents);
         const eligible = char.afterEvents
           .filter(ae =>
             cgRate >= ae.requiredCGRate &&
             charWins >= ae.requiredWins &&
-            !state.unlockedAfterEvents.includes(ae.id)
+            !afterEventSet.has(ae.id)
           )
           .sort((a, b) => b.requiredCGRate - a.requiredCGRate);
 
@@ -927,14 +925,14 @@ export const useGameStore = create<GameStore>()(
 
       showAfterEvent: (event) => {
         const state = get();
-        const unlocked = [...state.unlockedAfterEvents];
-        if (!unlocked.includes(event.id)) {
-          unlocked.push(event.id);
-        }
+        const afterEventSet = new Set(state.unlockedAfterEvents);
+        afterEventSet.add(event.id);
         set({
           activeAfterEvent: event,
           afterEventDialogueIndex: 0,
-          unlockedAfterEvents: unlocked,
+          unlockedAfterEvents: afterEventSet.size !== state.unlockedAfterEvents.length
+            ? [...afterEventSet]
+            : state.unlockedAfterEvents,
         });
       },
 

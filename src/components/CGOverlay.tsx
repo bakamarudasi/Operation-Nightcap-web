@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import { CGSequencePlayer } from './CGSequencePlayer.tsx';
+import { useTypewriterEffect } from '../hooks/useTypewriterEffect.ts';
 
 export function CGOverlay() {
   const { t } = useTranslation();
@@ -11,53 +11,14 @@ export function CGOverlay() {
   const advanceCG = useGameStore((s) => s.advanceCG);
   const closeCG = useGameStore((s) => s.closeCG);
 
-  const [displayText, setDisplayText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const typeIntervalRef = useRef<number | null>(null);
-
   const currentLine = activeCG?.dialogue[cgDialogueIndex];
-
-  useEffect(() => {
-    if (!currentLine) return;
-
-    setDisplayText('');
-    setIsTyping(true);
-
-    let i = 0;
-    const chars = currentLine.text.split('');
-
-    typeIntervalRef.current = window.setInterval(() => {
-      if (i < chars.length) {
-        const ch = chars[i];
-        i++;
-        setDisplayText(prev => prev + ch);
-      } else {
-        if (typeIntervalRef.current) {
-          clearInterval(typeIntervalRef.current);
-          typeIntervalRef.current = null;
-        }
-        setIsTyping(false);
-      }
-    }, 30);
-
-    return () => {
-      if (typeIntervalRef.current) {
-        clearInterval(typeIntervalRef.current);
-      }
-    };
-  }, [currentLine]);
+  const { displayText, isTyping, skipToEnd } = useTypewriterEffect(currentLine?.text, 30);
 
   if (!activeCG || !currentLine) return null;
 
   const handleClick = () => {
     if (isTyping) {
-      // タイプライター途中なら全文表示
-      if (typeIntervalRef.current) {
-        clearInterval(typeIntervalRef.current);
-        typeIntervalRef.current = null;
-      }
-      setDisplayText(currentLine.text);
-      setIsTyping(false);
+      skipToEnd();
     } else {
       // 次のセリフへ
       advanceCG();
