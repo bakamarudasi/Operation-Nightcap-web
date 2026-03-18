@@ -25,8 +25,9 @@ export function AfterEventOverlay() {
 
     typeIntervalRef.current = window.setInterval(() => {
       if (i < chars.length) {
-        setDisplayText(prev => prev + chars[i]);
+        const ch = chars[i];
         i++;
+        setDisplayText(prev => prev + ch);
       } else {
         if (typeIntervalRef.current) {
           clearInterval(typeIntervalRef.current);
