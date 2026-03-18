@@ -22,4 +22,11 @@ i18n
     },
   });
 
+const updateHtmlLang = (lng: string) => {
+  document.documentElement.lang = lng;
+};
+
+updateHtmlLang(i18n.language);
+i18n.on('languageChanged', updateHtmlLang);
+
 export default i18n;

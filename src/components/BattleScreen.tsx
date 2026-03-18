@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
-import { CARD_DATA, getEnhancedCard } from '../data/cards.ts';
+import { CARD_DATA } from '../data/cards.ts';
 import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
 import { useLocalizedCharacterData } from '../hooks/useLocalizedCharacterData.ts';
 import { gaugePercent } from '../data/constants.ts';
 import { randomPick, getDrunkLevel, BUFF_META, getKanryoku, canPlayCard, isFoodDisabled } from '../engine/utils.ts';
+import { buildCardDisplayInfo, buildOpponentCardDisplayInfo, computeRoundOutcome } from '../engine/battlePresenter.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { BuffDisplay } from './BuffDisplay.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
@@ -278,15 +279,9 @@ export function BattleScreen() {
     }, 15000);
 
     // プレイヤーカードをフィールドに表示
-    const resolvedCard = CARD_DATA[result.playerCardId] ?? pCard;
-    if (resolvedCard) {
-      const val = resolvedCard.type === 'food' ? (resolvedCard.heal === 99 ? '+MAX' : `+${resolvedCard.heal ?? 0}`) :
-                  resolvedCard.type === 'drink' ? `${resolvedCard.damage === -1 ? '1~3' : resolvedCard.damage}` :
-                  '';
-      setTableCards(prev => ({
-        ...prev,
-        player: { id: result.playerCardId, emoji: resolvedCard.emoji, name: t(`cards.${resolvedCard.id}.name`, resolvedCard.name), val }
-      }));
+    const playerCardInfo = buildCardDisplayInfo(result.playerCardId, t);
+    if (playerCardInfo) {
+      setTableCards(prev => ({ ...prev, player: playerCardInfo }));
       setPlayerFlipped(true);
       setSlamPlayer(true);
       playSound('slam');
@@ -297,18 +292,10 @@ export function BattleScreen() {
     // 相手カードを少し遅れて表示
     safeTimeout(() => {
       // 相手カードをplayRoundの結果から直接取得
-      const oppCard = CARD_DATA[result.opponentCardId];
-      let oppCardInfo: { emoji: string; name: string; val: string } | null = null;
-      if (oppCard) {
-        const v = oppCard.type === 'food' ? (oppCard.heal === 99 ? '+MAX' : `+${oppCard.heal ?? 0}`) :
-                  oppCard.type === 'drink' ? `${oppCard.damage === -1 ? '?' : oppCard.damage}` :
-                  oppCard.type === 'chug' ? t('battle.special') :
-                  oppCard.type === 'harassment' ? t('battle.special') : '';
-        oppCardInfo = { emoji: oppCard.emoji, name: t(`cards.${oppCard.id}.name`, oppCard.name), val: v };
-      }
+      const oppCardInfo = buildOpponentCardDisplayInfo(result.opponentCardId, t);
 
       if (oppCardInfo) {
-        setTableCards(prev => ({ ...prev, opponent: { id: '', ...oppCardInfo! } }));
+        setTableCards(prev => ({ ...prev, opponent: oppCardInfo }));
       }
 
       setSlamOpp(true);
@@ -327,16 +314,9 @@ export function BattleScreen() {
             setDialogue({ speaker: currentOpponent?.name ?? '', text: result.messages.join(' / ') });
           }
 
-          // リアクション（実際のダメージ値で判定）
-          const oppNetDamage = result.opponentDamage - result.opponentHeal;
-          const plNetDamage = result.playerDamage - result.playerHeal;
-          if (oppNetDamage > 0 && oppNetDamage >= plNetDamage) {
-            setReaction('😵');
-          } else if (plNetDamage > 0) {
-            setReaction('😏');
-          } else {
-            setReaction(null);
-          }
+          // ラウンドアウトカム計算
+          const outcome = computeRoundOutcome(result);
+          setReaction(outcome.reaction);
           safeTimeout(() => setReaction(null), 2000);
 
           if (result.playerMisplay) {
@@ -348,13 +328,12 @@ export function BattleScreen() {
           else setMatchupBadge(null);
 
           // ラウンド結果ポップアップ
-          if (oppNetDamage > plNetDamage) {
-            setRoundPopup({ text: t('battle.roundWin'), cls: 'result-win' });
-          } else if (plNetDamage > oppNetDamage) {
-            setRoundPopup({ text: t('battle.roundLose'), cls: 'result-lose' });
-          } else {
-            setRoundPopup({ text: t('battle.roundDraw'), cls: 'result-draw' });
-          }
+          const popupMap = {
+            win:  { text: t('battle.roundWin'), cls: 'result-win' },
+            lose: { text: t('battle.roundLose'), cls: 'result-lose' },
+            draw: { text: t('battle.roundDraw'), cls: 'result-draw' },
+          };
+          setRoundPopup(popupMap[outcome.roundResultType]);
           safeTimeout(() => setRoundPopup(null), 1800);
 
           // distract: 相手の手札を公開
@@ -410,15 +389,17 @@ export function BattleScreen() {
               // 直前のラウンド記録
               const pc = pCard;
               if (pc && oppCardInfo) {
-                const netOpp = result.opponentDamage - result.opponentHeal;
-                const netPl = result.playerDamage - result.playerHeal;
-                const roundRes = netOpp > netPl ? t('battle.lastRoundWin') : netPl > netOpp ? t('battle.lastRoundLose') : t('battle.lastRoundDraw');
-                const roundColor = netOpp > netPl ? '#8bc98b' : netPl > netOpp ? '#c98b8b' : 'var(--gold)';
+                const lastRoundMap = {
+                  win:  { res: t('battle.lastRoundWin'), color: '#8bc98b' },
+                  lose: { res: t('battle.lastRoundLose'), color: '#c98b8b' },
+                  draw: { res: t('battle.lastRoundDraw'), color: 'var(--gold)' },
+                };
+                const lr = lastRoundMap[outcome.roundResultType];
                 setLastRound({
                   pl: `${pc.emoji} ${t(`cards.${pc.id}.name`, pc.name)}`,
                   op: `${oppCardInfo.emoji} ${oppCardInfo.name}`,
-                  res: roundRes,
-                  resColor: roundColor
+                  res: lr.res,
+                  resColor: lr.color,
                 });
               }
 
@@ -657,13 +638,15 @@ export function BattleScreen() {
 
         {/* 手札エリア */}
         <div className="hand-area" data-card-count={battle.playerHand.length}>
-          {battle.playerHand.map((cardId, i) => {
+          {(() => {
+            const playerDrunkLevel = getDrunkLevel(battle.playerDrunk);
+            const foodDisabled = isFoodDisabled(playerDrunkLevel);
+            return battle.playerHand.map((cardId, i) => {
             const card = CARD_DATA[cardId];
             if (!card) return null;
             const isPlaying = playingCardIdx === i;
-            const playerDrunkLevel = getDrunkLevel(battle.playerDrunk);
             const costLocked = !canPlayCard(card, battle.playerDrunk);
-            const foodLocked = isFoodDisabled(playerDrunkLevel) && card.type === 'food';
+            const foodLocked = foodDisabled && card.type === 'food';
             const isDisabled = ((battle.isProcessing || playingCardIdx !== null) && !isPlaying) || costLocked || foodLocked;
             const isSelected = battle.selectedCard === cardId && !isPlaying;
             const isCorrupted = battle.corruptedSlots[i] === true;
@@ -696,7 +679,8 @@ export function BattleScreen() {
                 <div className="hand-val">{valText}</div>
               </div>
             );
-          })}
+          });
+          })()}
         </div>
 
         {matchupBadge && <div className="matchup-badge">{matchupBadge}</div>}

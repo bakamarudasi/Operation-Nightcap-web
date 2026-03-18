@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
+import { useTypewriterEffect } from '../hooks/useTypewriterEffect.ts';
 
 export function AfterEventOverlay() {
   const { t } = useTranslation();
@@ -8,51 +8,14 @@ export function AfterEventOverlay() {
   const afterEventDialogueIndex = useGameStore((s) => s.afterEventDialogueIndex);
   const advanceAfterEvent = useGameStore((s) => s.advanceAfterEvent);
 
-  const [displayText, setDisplayText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const typeIntervalRef = useRef<number | null>(null);
-
   const currentLine = activeAfterEvent?.dialogue[afterEventDialogueIndex];
-
-  useEffect(() => {
-    if (!currentLine) return;
-
-    setDisplayText('');
-    setIsTyping(true);
-
-    let i = 0;
-    const chars = currentLine.text.split('');
-
-    typeIntervalRef.current = window.setInterval(() => {
-      if (i < chars.length) {
-        setDisplayText(prev => prev + chars[i]);
-        i++;
-      } else {
-        if (typeIntervalRef.current) {
-          clearInterval(typeIntervalRef.current);
-          typeIntervalRef.current = null;
-        }
-        setIsTyping(false);
-      }
-    }, 40);
-
-    return () => {
-      if (typeIntervalRef.current) {
-        clearInterval(typeIntervalRef.current);
-      }
-    };
-  }, [currentLine]);
+  const { displayText, isTyping, skipToEnd } = useTypewriterEffect(currentLine?.text, 40);
 
   if (!activeAfterEvent || !currentLine) return null;
 
   const handleClick = () => {
     if (isTyping) {
-      if (typeIntervalRef.current) {
-        clearInterval(typeIntervalRef.current);
-        typeIntervalRef.current = null;
-      }
-      setDisplayText(currentLine.text);
-      setIsTyping(false);
+      skipToEnd();
     } else {
       advanceAfterEvent();
     }
