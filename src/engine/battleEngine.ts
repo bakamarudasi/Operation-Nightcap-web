@@ -5,7 +5,7 @@ import i18n from '../i18n/index.ts';
 
 const t = (key: string, opts?: Record<string, unknown>) => i18n.t(key, opts);
 /** Localized card name helper */
-const cn = (card: { id: string; name: string }) => t(`cards.${card.id}.name`, card.name) as string;
+const cn = (card: { id: string; name: string }) => t(`cards.${card.id}.name`, { defaultValue: card.name }) as string;
 
 export interface ExtendedResult extends RoundResult {
   opponentDiscardNext?: boolean;
@@ -592,6 +592,82 @@ function processEffect(
   }
 }
 
+// ============================================
+// === ドリンク / フード 共通解決ヘルパー ===
+// ============================================
+
+interface CardResolveContext {
+  card: CardDef;
+  user: 'player' | 'opponent';
+  result: ExtendedResult;
+  battle: BattleState;
+  /** 相手のフードで半減するか */
+  halvesDrink: boolean;
+  /** 相手のハラスメントで半減するか */
+  halvesFood: boolean;
+}
+
+/**
+ * ドリンクカード1枚の効果を解決する。
+ * ダメージ計算 → result に加算 → メッセージ追加 → 追加効果 → バフ消費記録。
+ * @returns 計算後のダメージ値（drink vs drink の差分計算に使用）
+ */
+function resolveDrinkCard(ctx: CardResolveContext): number {
+  const { card, user, result, battle, halvesDrink } = ctx;
+  const isPlayer = user === 'player';
+  const attackerBuffs = isPlayer ? battle.playerBuffs : battle.opponentBuffs;
+  const defenderBuffs = isPlayer ? battle.opponentBuffs : battle.playerBuffs;
+  let dmg = applyDrinkBuffs(getCardDamage(card), attackerBuffs, defenderBuffs);
+  if (halvesDrink) dmg = Math.floor(dmg * 0.5);
+
+  if (isPlayer) {
+    result.opponentDamage += dmg;
+  } else {
+    result.playerDamage += dmg;
+  }
+  result.messages.push(t('engine.drink.damage', { emoji: card.emoji, name: cn(card), value: dmg }));
+  applyCardExtras(card, result, user);
+  if (hasBuff(attackerBuffs, 'next_drink_boost')) {
+    trackBuffConsumption(result, user, 'next_drink_boost');
+  }
+  return dmg;
+}
+
+/**
+ * フードカード1枚の効果を解決する。
+ * no_food チェック → 回復量計算 → result に加算 → メッセージ追加 → 追加効果。
+ * @param incomingDamage ドリンクとの対戦時、受けたダメージを加味した完全回復計算用
+ * @param msgKey メッセージの翻訳キー（相手フードなど区別用）
+ */
+function resolveFoodCard(ctx: CardResolveContext, incomingDamage: number = 0, msgKey: string = 'engine.food.heal'): boolean {
+  const { card, user, result, battle, halvesFood } = ctx;
+  const isPlayer = user === 'player';
+  const userBuffs = isPlayer ? battle.playerBuffs : battle.opponentBuffs;
+
+  if (hasBuff(userBuffs, 'no_food')) {
+    const blockedKey = isPlayer ? 'engine.food.blocked.self' : 'engine.food.blocked.opponent';
+    result.messages.push(t(blockedKey, { emoji: card.emoji, name: cn(card) }));
+    return false; // フード効果なし
+  }
+
+  const drunkVal = isPlayer ? battle.playerDrunk : battle.opponentDrunk;
+  let heal = card.heal === 99 ? Math.max(0, drunkVal + incomingDamage) : (card.heal ?? 0);
+  heal = applyFoodBuffs(heal, userBuffs);
+  if (halvesFood) heal = Math.floor(heal * 0.5);
+
+  if (isPlayer) {
+    result.playerHeal += heal;
+  } else {
+    result.opponentHeal += heal;
+  }
+  result.messages.push(t(msgKey, { emoji: card.emoji, name: cn(card), value: heal }));
+  applyCardExtras(card, result, user);
+  if (hasBuff(userBuffs, 'next_food_boost')) {
+    trackBuffConsumption(result, user, 'next_food_boost');
+  }
+  return true;
+}
+
 /** resolveUtilityCard のハンドラーに渡すコンテキスト */
 interface UtilityContext {
   card: CardDef;
@@ -926,14 +1002,7 @@ export const BattleEngine = {
     if (isUtilityType(pCard.type)) {
       // プレイヤーがユーティリティ → 相手の攻撃だけ通る
       if (oCard.type === 'drink') {
-        let dmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
-        if (playerHalvesDrink) dmg = Math.floor(dmg * 0.5);
-        result.playerDamage += dmg;
-        result.messages.push(t('engine.drink.damage', { emoji: oCard.emoji, name: cn(oCard), value: dmg }));
-        applyCardExtras(oCard, result, 'opponent');
-        if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
-          trackBuffConsumption(result, 'opponent', 'next_drink_boost');
-        }
+        resolveDrinkCard({ card: oCard, user: 'opponent', result, battle, halvesDrink: playerHalvesDrink, halvesFood: false });
       } else if (oCard.type === 'chug') {
         return this.resolveChugCard(oCard, pCard, result, 'opponent', battle);
       } else if (oCard.type === 'harassment') {
@@ -943,14 +1012,7 @@ export const BattleEngine = {
     }
     if (isUtilityType(oCard.type)) {
       if (pCard.type === 'drink') {
-        let dmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
-        if (opponentHalvesDrink) dmg = Math.floor(dmg * 0.5);
-        result.opponentDamage += dmg;
-        result.messages.push(t('engine.drink.damage', { emoji: pCard.emoji, name: cn(pCard), value: dmg }));
-        applyCardExtras(pCard, result, 'player');
-        if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
-          trackBuffConsumption(result, 'player', 'next_drink_boost');
-        }
+        resolveDrinkCard({ card: pCard, user: 'player', result, battle, halvesDrink: opponentHalvesDrink, halvesFood: false });
       } else if (pCard.type === 'chug') {
         return this.resolveChugCard(pCard, oCard, result, 'player', battle);
       } else if (pCard.type === 'harassment') {
@@ -998,164 +1060,89 @@ export const BattleEngine = {
 
     // === ドリンク vs ドリンク ===
     if (pCard.type === 'drink' && oCard.type === 'drink') {
-      let pDmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
-      let oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
-
-      if (hasBuff(battle.playerBuffs, 'atk_down')) {
-        result.messages.push(t('engine.atkDown.self'));
-      }
-      if (hasBuff(battle.opponentBuffs, 'atk_down')) {
-        result.messages.push(t('engine.atkDown.opponent'));
-      }
-
-      if (pDmg > oDmg) {
-        result.opponentDamage += pDmg - oDmg;
-        result.messages.push(t('engine.drinkVsDrink.playerWins', { pEmoji: pCard.emoji, pName: cn(pCard), pDmg, oEmoji: oCard.emoji, oName: cn(oCard), oDmg, diff: pDmg - oDmg }));
-      } else if (oDmg > pDmg) {
-        result.playerDamage += oDmg - pDmg;
-        result.messages.push(t('engine.drinkVsDrink.opponentWins', { oEmoji: oCard.emoji, oName: cn(oCard), oDmg, pEmoji: pCard.emoji, pName: cn(pCard), pDmg, diff: oDmg - pDmg }));
-      } else {
-        result.messages.push(t('engine.drinkVsDrink.tie', { pEmoji: pCard.emoji, oEmoji: oCard.emoji }));
-      }
-
-      // ドリンク追加効果
-      applyCardExtras(pCard, result, 'player');
-      applyCardExtras(oCard, result, 'opponent');
-      if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
-        trackBuffConsumption(result, 'player', 'next_drink_boost');
-      }
-      if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
-        trackBuffConsumption(result, 'opponent', 'next_drink_boost');
-      }
+      this.resolveDrinkVsDrink(pCard, oCard, result, battle);
     }
-    // === ドリンク vs つまみ ===
+    // === ドリンク vs つまみ / つまみ vs ドリンク ===
     else if (pCard.type === 'drink' && oCard.type === 'food') {
-      let pDmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
-      if (opponentHalvesDrink) pDmg = Math.floor(pDmg * 0.5);
-      result.opponentDamage += pDmg;
-      if (hasBuff(battle.opponentBuffs, 'no_food')) {
-        result.messages.push(t('engine.drink.damage', { emoji: pCard.emoji, name: cn(pCard), value: pDmg }));
-        result.messages.push(t('engine.food.blocked.opponent', { emoji: oCard.emoji, name: cn(oCard) }));
-      } else {
-        let heal = oCard.heal === 99 ? Math.max(0, battle.opponentDrunk + pDmg) : (oCard.heal ?? 0);
-        heal = applyFoodBuffs(heal, battle.opponentBuffs);
-        if (playerHalvesFood) heal = Math.floor(heal * 0.5);
-        result.opponentHeal += heal;
-        result.messages.push(t('engine.drink.damage', { emoji: pCard.emoji, name: cn(pCard), value: pDmg }));
-        result.messages.push(t('engine.food.heal', { emoji: oCard.emoji, name: cn(oCard), value: heal }));
-        applyCardExtras(oCard, result, 'opponent');
-        if (hasBuff(battle.opponentBuffs, 'next_food_boost')) {
-          trackBuffConsumption(result, 'opponent', 'next_food_boost');
-        }
-      }
-      applyCardExtras(pCard, result, 'player');
-      if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
-        trackBuffConsumption(result, 'player', 'next_drink_boost');
-      }
+      this.resolveDrinkVsFood(pCard, oCard, result, 'player', battle, opponentHalvesDrink, playerHalvesFood);
     }
     else if (pCard.type === 'food' && oCard.type === 'drink') {
-      if (hasBuff(battle.playerBuffs, 'no_food')) {
-        result.messages.push(t('engine.food.blocked.self', { emoji: pCard.emoji, name: cn(pCard) }));
-        let oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
-        if (playerHalvesDrink) oDmg = Math.floor(oDmg * 0.5);
-        result.playerDamage += oDmg;
-        result.messages.push(t('engine.drink.damage', { emoji: oCard.emoji, name: cn(oCard), value: oDmg }));
-      } else {
-        let oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
-        if (playerHalvesDrink) oDmg = Math.floor(oDmg * 0.5);
-        result.playerDamage += oDmg;
-        let heal = pCard.heal === 99 ? Math.max(0, battle.playerDrunk + oDmg) : (pCard.heal ?? 0);
-        heal = applyFoodBuffs(heal, battle.playerBuffs);
-        if (opponentHalvesFood) heal = Math.floor(heal * 0.5);
-        result.playerHeal += heal;
-        result.messages.push(t('engine.drink.damage', { emoji: oCard.emoji, name: cn(oCard), value: oDmg }));
-        result.messages.push(t('engine.food.heal', { emoji: pCard.emoji, name: cn(pCard), value: heal }));
-        applyCardExtras(pCard, result, 'player');
-        if (hasBuff(battle.playerBuffs, 'next_food_boost')) {
-          trackBuffConsumption(result, 'player', 'next_food_boost');
-        }
-      }
-      applyCardExtras(oCard, result, 'opponent');
-      if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
-        trackBuffConsumption(result, 'opponent', 'next_drink_boost');
-      }
+      this.resolveDrinkVsFood(oCard, pCard, result, 'opponent', battle, playerHalvesDrink, opponentHalvesFood);
     }
     // === つまみ vs つまみ ===
     else if (pCard.type === 'food' && oCard.type === 'food') {
-      if (hasBuff(battle.playerBuffs, 'no_food')) {
-        result.messages.push(t('engine.food.blocked.self', { emoji: pCard.emoji, name: cn(pCard) }));
-      } else {
-        let heal = pCard.heal === 99 ? Math.max(0, battle.playerDrunk) : (pCard.heal ?? 0);
-        heal = applyFoodBuffs(heal, battle.playerBuffs);
-        if (opponentHalvesFood) heal = Math.floor(heal * 0.5);
-        result.playerHeal += heal;
-        result.messages.push(t('engine.food.heal', { emoji: pCard.emoji, name: cn(pCard), value: heal }));
-        applyCardExtras(pCard, result, 'player');
-        if (hasBuff(battle.playerBuffs, 'next_food_boost')) {
-          trackBuffConsumption(result, 'player', 'next_food_boost');
-        }
-      }
-      if (hasBuff(battle.opponentBuffs, 'no_food')) {
-        result.messages.push(t('engine.food.blocked.opponentAlso', { emoji: oCard.emoji, name: cn(oCard) }));
-      } else {
-        let heal = oCard.heal === 99 ? Math.max(0, battle.opponentDrunk) : (oCard.heal ?? 0);
-        heal = applyFoodBuffs(heal, battle.opponentBuffs);
-        if (playerHalvesFood) heal = Math.floor(heal * 0.5);
-        result.opponentHeal += heal;
-        result.messages.push(t('engine.food.healOpponent', { emoji: oCard.emoji, name: cn(oCard), value: heal }));
-        applyCardExtras(oCard, result, 'opponent');
-        if (hasBuff(battle.opponentBuffs, 'next_food_boost')) {
-          trackBuffConsumption(result, 'opponent', 'next_food_boost');
-        }
-      }
+      resolveFoodCard(
+        { card: pCard, user: 'player', result, battle, halvesDrink: false, halvesFood: opponentHalvesFood },
+      );
+      resolveFoodCard(
+        { card: oCard, user: 'opponent', result, battle, halvesDrink: false, halvesFood: playerHalvesFood },
+        0, 'engine.food.healOpponent',
+      );
       result.messages.push(t('engine.food.peacefulRound'));
     }
 
     return result;
   },
 
+  /** ドリンク vs ドリンク: 差分ダメージ計算 + 追加効果 */
+  resolveDrinkVsDrink(pCard: CardDef, oCard: CardDef, result: ExtendedResult, battle: BattleState): void {
+    const pDmg = applyDrinkBuffs(getCardDamage(pCard), battle.playerBuffs, battle.opponentBuffs);
+    const oDmg = applyDrinkBuffs(getCardDamage(oCard), battle.opponentBuffs, battle.playerBuffs);
+
+    if (hasBuff(battle.playerBuffs, 'atk_down')) {
+      result.messages.push(t('engine.atkDown.self'));
+    }
+    if (hasBuff(battle.opponentBuffs, 'atk_down')) {
+      result.messages.push(t('engine.atkDown.opponent'));
+    }
+
+    if (pDmg > oDmg) {
+      result.opponentDamage += pDmg - oDmg;
+      result.messages.push(t('engine.drinkVsDrink.playerWins', { pEmoji: pCard.emoji, pName: cn(pCard), pDmg, oEmoji: oCard.emoji, oName: cn(oCard), oDmg, diff: pDmg - oDmg }));
+    } else if (oDmg > pDmg) {
+      result.playerDamage += oDmg - pDmg;
+      result.messages.push(t('engine.drinkVsDrink.opponentWins', { oEmoji: oCard.emoji, oName: cn(oCard), oDmg, pEmoji: pCard.emoji, pName: cn(pCard), pDmg, diff: oDmg - pDmg }));
+    } else {
+      result.messages.push(t('engine.drinkVsDrink.tie', { pEmoji: pCard.emoji, oEmoji: oCard.emoji }));
+    }
+
+    // ドリンク追加効果
+    applyCardExtras(pCard, result, 'player');
+    applyCardExtras(oCard, result, 'opponent');
+    if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
+      trackBuffConsumption(result, 'player', 'next_drink_boost');
+    }
+    if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
+      trackBuffConsumption(result, 'opponent', 'next_drink_boost');
+    }
+  },
+
+  /**
+   * ドリンク vs つまみ: ドリンク側がダメージ、フード側が回復。
+   * @param drinkCard ドリンクカード
+   * @param foodCard  つまみカード
+   * @param drinkUser ドリンクを出した側 ('player' | 'opponent')
+   */
+  resolveDrinkVsFood(drinkCard: CardDef, foodCard: CardDef, result: ExtendedResult, drinkUser: 'player' | 'opponent', battle: BattleState, halvesDrink: boolean, halvesFood: boolean): void {
+    const foodUser: 'player' | 'opponent' = drinkUser === 'player' ? 'opponent' : 'player';
+
+    // ドリンクのダメージ適用
+    const dmg = resolveDrinkCard({ card: drinkCard, user: drinkUser, result, battle, halvesDrink, halvesFood: false });
+
+    // フードの回復適用（受けたダメージを加味）
+    resolveFoodCard({ card: foodCard, user: foodUser, result, battle, halvesDrink: false, halvesFood }, dmg);
+  },
+
   /**
    * 片方のカードだけ解決（negate_nextで相手が無効化された場合）
    */
   resolveSingleCard(activeCard: CardDef, _nullifiedCard: CardDef, result: ExtendedResult, user: 'player' | 'opponent', battle: BattleState): ExtendedResult {
-    const isPlayer = user === 'player';
-
     if (isUtilityType(activeCard.type)) {
       this.resolveUtilityCard(activeCard, result, user, battle);
     } else if (activeCard.type === 'drink') {
-      const attackerBuffs = isPlayer ? battle.playerBuffs : battle.opponentBuffs;
-      const defenderBuffs = isPlayer ? battle.opponentBuffs : battle.playerBuffs;
-      const dmg = applyDrinkBuffs(getCardDamage(activeCard), attackerBuffs, defenderBuffs);
-      if (isPlayer) {
-        result.opponentDamage += dmg;
-        result.messages.push(t('engine.drink.damage', { emoji: activeCard.emoji, name: cn(activeCard), value: dmg }));
-      } else {
-        result.playerDamage += dmg;
-        result.messages.push(t('engine.drink.damage', { emoji: activeCard.emoji, name: cn(activeCard), value: dmg }));
-      }
-      applyCardExtras(activeCard, result, user);
-      if (hasBuff(attackerBuffs, 'next_drink_boost')) {
-        trackBuffConsumption(result, user, 'next_drink_boost');
-      }
+      resolveDrinkCard({ card: activeCard, user, result, battle, halvesDrink: false, halvesFood: false });
     } else if (activeCard.type === 'food') {
-      const userBuffs = isPlayer ? battle.playerBuffs : battle.opponentBuffs;
-      if (hasBuff(userBuffs, 'no_food')) {
-        result.messages.push(t('engine.food.blocked.self', { emoji: activeCard.emoji, name: cn(activeCard) }));
-      } else {
-        const drunkVal = isPlayer ? battle.playerDrunk : battle.opponentDrunk;
-        let heal = activeCard.heal === 99 ? Math.max(0, drunkVal) : (activeCard.heal ?? 0);
-        heal = applyFoodBuffs(heal, userBuffs);
-        if (isPlayer) {
-          result.playerHeal += heal;
-        } else {
-          result.opponentHeal += heal;
-        }
-        result.messages.push(t('engine.food.heal', { emoji: activeCard.emoji, name: cn(activeCard), value: heal }));
-        applyCardExtras(activeCard, result, user);
-        if (hasBuff(userBuffs, 'next_food_boost')) {
-          trackBuffConsumption(result, user, 'next_food_boost');
-        }
-      }
+      resolveFoodCard({ card: activeCard, user, result, battle, halvesDrink: false, halvesFood: false });
     } else if (activeCard.type === 'chug') {
       this.resolveChugCard(activeCard, _nullifiedCard, result, user, battle);
     } else if (activeCard.type === 'harassment') {
@@ -1286,46 +1273,14 @@ export const BattleEngine = {
    */
   _resolveOtherCard(otherCard: CardDef, _chugCard: CardDef, result: ExtendedResult, chugUser: 'player' | 'opponent', battle: BattleState): void {
     if (result.spillNullified) return;
-    // chug vs chug の場合は各chugが個別解決されるので、ここでは何もしない
     if (otherCard.type === 'chug') return;
 
     const otherUser: 'player' | 'opponent' = chugUser === 'player' ? 'opponent' : 'player';
-    const isOtherPlayer = otherUser === 'player';
 
     if (otherCard.type === 'drink') {
-      const attackerBuffs = isOtherPlayer ? battle.playerBuffs : battle.opponentBuffs;
-      const defenderBuffs = isOtherPlayer ? battle.opponentBuffs : battle.playerBuffs;
-      const dmg = applyDrinkBuffs(getCardDamage(otherCard), attackerBuffs, defenderBuffs);
-      if (isOtherPlayer) {
-        result.opponentDamage += dmg;
-        result.messages.push(t('engine.drink.damageToOpponent', { emoji: otherCard.emoji, name: cn(otherCard), value: dmg }));
-      } else {
-        result.playerDamage += dmg;
-        result.messages.push(t('engine.drink.damageFromOpponent', { emoji: otherCard.emoji, name: cn(otherCard), value: dmg }));
-      }
-      applyCardExtras(otherCard, result, otherUser);
-      if (hasBuff(attackerBuffs, 'next_drink_boost')) {
-        trackBuffConsumption(result, otherUser, 'next_drink_boost');
-      }
+      resolveDrinkCard({ card: otherCard, user: otherUser, result, battle, halvesDrink: false, halvesFood: false });
     } else if (otherCard.type === 'food') {
-      const userBuffs = isOtherPlayer ? battle.playerBuffs : battle.opponentBuffs;
-      if (hasBuff(userBuffs, 'no_food')) {
-        result.messages.push(t('engine.food.blocked.self', { emoji: otherCard.emoji, name: cn(otherCard) }));
-      } else {
-        const drunkVal = isOtherPlayer ? battle.playerDrunk : battle.opponentDrunk;
-        let heal = otherCard.heal === 99 ? Math.max(0, drunkVal) : (otherCard.heal ?? 0);
-        heal = applyFoodBuffs(heal, userBuffs);
-        if (isOtherPlayer) {
-          result.playerHeal += heal;
-        } else {
-          result.opponentHeal += heal;
-        }
-        result.messages.push(t('engine.food.heal', { emoji: otherCard.emoji, name: cn(otherCard), value: heal }));
-        applyCardExtras(otherCard, result, otherUser);
-        if (hasBuff(userBuffs, 'next_food_boost')) {
-          trackBuffConsumption(result, otherUser, 'next_food_boost');
-        }
-      }
+      resolveFoodCard({ card: otherCard, user: otherUser, result, battle, halvesDrink: false, halvesFood: false });
     } else if (isUtilityType(otherCard.type)) {
       this.resolveUtilityCard(otherCard, result, otherUser, battle);
     }
@@ -1472,47 +1427,13 @@ export const BattleEngine = {
       }
     }
 
-    // 相手のカードも処理
+    // 相手のカードも処理（spillで無効化されていなければ）
     if (!result.spillNullified) {
       const otherUser: 'player' | 'opponent' = user === 'player' ? 'opponent' : 'player';
       if (otherCard.type === 'drink') {
-        const baseDmg = getCardDamage(otherCard);
-        if (user === 'player') {
-          const dmg = applyDrinkBuffs(baseDmg, battle.opponentBuffs, battle.playerBuffs);
-          result.playerDamage += dmg;
-          result.messages.push(t('engine.drink.damageFromOpponent', { emoji: otherCard.emoji, name: cn(otherCard), value: dmg }));
-          applyCardExtras(otherCard, result, 'opponent');
-          if (hasBuff(battle.opponentBuffs, 'next_drink_boost')) {
-            trackBuffConsumption(result, 'opponent', 'next_drink_boost');
-          }
-        } else {
-          const dmg = applyDrinkBuffs(baseDmg, battle.playerBuffs, battle.opponentBuffs);
-          result.opponentDamage += dmg;
-          result.messages.push(t('engine.drink.damageToOpponent', { emoji: otherCard.emoji, name: cn(otherCard), value: dmg }));
-          applyCardExtras(otherCard, result, 'player');
-          if (hasBuff(battle.playerBuffs, 'next_drink_boost')) {
-            trackBuffConsumption(result, 'player', 'next_drink_boost');
-          }
-        }
+        resolveDrinkCard({ card: otherCard, user: otherUser, result, battle, halvesDrink: false, halvesFood: false });
       } else if (otherCard.type === 'food') {
-        const foodUserBuffs = user === 'player' ? battle.opponentBuffs : battle.playerBuffs;
-        if (hasBuff(foodUserBuffs, 'no_food')) {
-          result.messages.push(t('engine.food.blocked.self', { emoji: otherCard.emoji, name: cn(otherCard) }));
-        } else {
-          const drunkVal = user === 'player' ? battle.opponentDrunk : battle.playerDrunk;
-          let heal = otherCard.heal === 99 ? Math.max(0, drunkVal) : (otherCard.heal ?? 0);
-          heal = applyFoodBuffs(heal, foodUserBuffs);
-          if (otherUser === 'player') {
-            result.playerHeal += heal;
-          } else {
-            result.opponentHeal += heal;
-          }
-          result.messages.push(t('engine.food.heal', { emoji: otherCard.emoji, name: cn(otherCard), value: heal }));
-          applyCardExtras(otherCard, result, otherUser);
-          if (hasBuff(foodUserBuffs, 'next_food_boost')) {
-            trackBuffConsumption(result, otherUser, 'next_food_boost');
-          }
-        }
+        resolveFoodCard({ card: otherCard, user: otherUser, result, battle, halvesDrink: false, halvesFood: false });
       } else if (otherCard.type === 'chug') {
         this.resolveChugCard(otherCard, hCard, result, otherUser, battle);
       } else if (isUtilityType(otherCard.type)) {
