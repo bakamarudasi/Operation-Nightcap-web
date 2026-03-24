@@ -3,26 +3,17 @@ import { persist } from 'zustand/middleware';
 import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, GachaResult, CardType } from '../data/types.ts';
 import { DEFAULT_DECK, CARD_DATA, getEnhanceCost, MAX_CARD_LEVEL } from '../data/cards.ts';
 import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
-import { shuffleArray, randomPick, POSITIVE_BUFF_IDS, DEBUFF_IDS, findHighestValueCardIndex, getDrunkLevel, hasBuff, buildCorruptedSlots, getHiddenSlotCount, shouldMisplay, isFoodDisabled, canPlayCard } from '../engine/utils.ts';
-import { BattleEngine, tickBuffs, getAdjustedRequiredLevel, type ExtendedResult } from '../engine/battleEngine.ts';
+import { shuffleArray, randomPick, findHighestValueCardIndex, getDrunkLevel, hasBuff, buildCorruptedSlots, getHiddenSlotCount, shouldMisplay, isFoodDisabled, canPlayCard } from '../engine/utils.ts';
+import { BattleEngine, type ExtendedResult } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
+import { applyCorruptedSlotDamage, lookupCGEvents, processRoundBuffs } from '../engine/roundProcessor.ts';
 import { pullMulti } from '../engine/gachaEngine.ts';
 import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
 
-/** デバフをN個除去するヘルパー */
-function cleanseDebuffs(buffs: Buff[], count: number): Buff[] {
-  const result = [...buffs];
-  let remaining = count;
-  for (const debuffId of DEBUFF_IDS) {
-    if (remaining <= 0) break;
-    const idx = result.findIndex(bf => bf.id === debuffId);
-    if (idx >= 0) {
-      result.splice(idx, 1);
-      remaining--;
-    }
-  }
-  return result;
-}
+
+// ============================================
+// === drawHands 純粋関数ヘルパー群 ===
+// ============================================
 
 /** デッキ→手札を引く共通処理 */
 function drawFromDeck(
@@ -43,6 +34,103 @@ function drawFromDeck(
     hand.push(rem.shift()!);
   }
   return { hand, remaining: rem, discard: disc };
+}
+
+/** 手札からランダムN枚を破棄して捨て札へ移す */
+function discardRandomCards(hand: string[], discard: string[], count: number): void {
+  for (let n = 0; n < count && hand.length > 1; n++) {
+    const idx = Math.floor(Math.random() * hand.length);
+    discard.push(...hand.splice(idx, 1));
+  }
+}
+
+/** 手札の破棄処理（最強カード破棄 / N枚破棄 / 乾杯破棄）を適用 */
+function applyDiscards(
+  hand: string[],
+  discard: string[],
+  opts: { discardHighest: boolean; discardCount: number; discardNext: boolean },
+): void {
+  if (opts.discardHighest && hand.length > 1) {
+    discard.push(...hand.splice(findHighestValueCardIndex(hand), 1));
+  }
+  if (opts.discardCount > 0) discardRandomCards(hand, discard, opts.discardCount);
+  if (opts.discardNext) discardRandomCards(hand, discard, 1);
+}
+
+/** rumor / swap / transform / extraCards の手札変更を適用 */
+function applyHandModifications(
+  pHand: string[], oHand: string[],
+  pRemaining: string[], oRemaining: string[],
+  battle: BattleState,
+): void {
+  // rumor: 相手の手札1枚をデッキからランダムに差し替え
+  if (battle.rumorActive && oHand.length > 0 && oRemaining.length > 0) {
+    const replaceIdx = Math.floor(Math.random() * oHand.length);
+    const replacedCard = oHand[replaceIdx];
+    const newCardIdx = Math.floor(Math.random() * oRemaining.length);
+    oHand[replaceIdx] = oRemaining[newCardIdx];
+    oRemaining[newCardIdx] = replacedCard;
+  }
+
+  // playerRumor: プレイヤーの手札1枚をデッキからランダムに差し替え
+  if (battle.playerRumorActive && pHand.length > 0 && pRemaining.length > 0) {
+    const replaceIdx = Math.floor(Math.random() * pHand.length);
+    const replacedCard = pHand[replaceIdx];
+    const newCardIdx = Math.floor(Math.random() * pRemaining.length);
+    pHand[replaceIdx] = pRemaining[newCardIdx];
+    pRemaining[newCardIdx] = replacedCard;
+  }
+
+  // 手札入れ替え（クロワッサンの手札交換）
+  if (battle.swapHandsNextRound) {
+    const tempHand = [...pHand];
+    pHand.length = 0;
+    pHand.push(...oHand);
+    oHand.length = 0;
+    oHand.push(...tempHand);
+  }
+
+  // カード変身（ディープカラーの彩筆）— 最強カードを変身
+  if (battle.opponentTransformCard && oHand.length > 0) {
+    oHand[findHighestValueCardIndex(oHand)] = battle.opponentTransformCard;
+  }
+  if (battle.playerTransformCard && pHand.length > 0) {
+    pHand[findHighestValueCardIndex(pHand)] = battle.playerTransformCard;
+  }
+
+  // トークンカード追加（Mon3tr等）
+  for (const extraId of battle.playerExtraCards) {
+    pHand.push(extraId);
+  }
+  for (const extraId of battle.opponentExtraCards) {
+    oHand.push(extraId);
+  }
+}
+
+/** hidden / blurred / corrupted スロットを計算 */
+function calculateVisibilitySlots(
+  hand: string[],
+  drunkLevel: number,
+  corruptedSlots: boolean[],
+): { hiddenSlots: number[]; blurredSlot: number; adjustedCorrupted: boolean[] } {
+  const hiddenCount = getHiddenSlotCount(drunkLevel);
+  const indices = Array.from({ length: hand.length }, (_, i) => i);
+  shuffleArray(indices);
+  const hiddenSlots = indices.slice(0, Math.min(hand.length, hiddenCount));
+
+  // ぼやけスロット: hidden以外からランダム1枚
+  let blurredSlot = -1;
+  if (drunkLevel >= 1) {
+    const avail = Array.from({ length: hand.length }, (_, i) => i).filter(i => !hiddenSlots.includes(i));
+    blurredSlot = avail.length > 0 ? avail[Math.floor(Math.random() * avail.length)] : -1;
+  }
+
+  // 汚染スロットを実際の手札サイズに合わせる
+  const adjustedCorrupted = corruptedSlots.length > hand.length
+    ? corruptedSlots.slice(0, hand.length)
+    : corruptedSlots;
+
+  return { hiddenSlots, blurredSlot, adjustedCorrupted };
 }
 
 interface GameStore {
@@ -235,119 +323,37 @@ export const useGameStore = create<GameStore>()(
       drawHands: () => {
         set((state) => {
           const b = { ...state.battle };
-          const handSize = b.playerReducedHand ? 3 : 4;
-          b.playerReducedHand = false;
 
-          // プレイヤー手札
-          const pDraw = drawFromDeck(b.playerDeckRemaining, b.playerDiscardPile, handSize);
-          const pHand = pDraw.hand;
-          let pRemaining = pDraw.remaining;
-          let pDiscard = pDraw.discard;
-
-          // 相手手札
+          // ステップ1: デッキから手札を引く
+          const pHandSize = b.playerReducedHand ? 3 : 4;
           const oHandSize = b.opponentReducedHand ? 3 : 4;
-          b.opponentReducedHand = false;
+          const pDraw = drawFromDeck(b.playerDeckRemaining, b.playerDiscardPile, pHandSize);
           const oDraw = drawFromDeck(b.opponentDeckRemaining, b.opponentDiscardPile, oHandSize);
+          const pHand = pDraw.hand;
           const oHand = oDraw.hand;
-          let oRemaining = oDraw.remaining;
-          let oDiscard = oDraw.discard;
+          const pRemaining = pDraw.remaining;
+          const oRemaining = oDraw.remaining;
+          const pDiscard = pDraw.discard;
+          const oDiscard = oDraw.discard;
 
-          // 手札からランダムN枚を破棄して捨て札へ移す
-          const discardRandom = (hand: string[], discard: string[], count: number) => {
-            for (let n = 0; n < count && hand.length > 1; n++) {
-              const idx = Math.floor(Math.random() * hand.length);
-              discard.push(...hand.splice(idx, 1));
-            }
-          };
+          // ステップ2: 手札の破棄処理
+          applyDiscards(oHand, oDiscard, {
+            discardHighest: b.opponentDiscardHighest,
+            discardCount: b.opponentDiscardCount,
+            discardNext: b.opponentDiscardNext,
+          });
+          applyDiscards(pHand, pDiscard, {
+            discardHighest: b.playerDiscardHighest,
+            discardCount: b.playerDiscardCount,
+            discardNext: b.playerDiscardNext,
+          });
 
-          // --- 相手の手札破棄処理（破棄カードは捨て札へ） ---
-          if (b.opponentDiscardHighest && oHand.length > 1) {
-            oDiscard.push(...oHand.splice(findHighestValueCardIndex(oHand), 1));
-          }
-          if (b.opponentDiscardCount > 0) discardRandom(oHand, oDiscard, b.opponentDiscardCount);
-          if (b.opponentDiscardNext) discardRandom(oHand, oDiscard, 1);
+          // ステップ3: rumor / swap / transform / extra cards
+          applyHandModifications(pHand, oHand, pRemaining, oRemaining, b);
 
-          // --- プレイヤーの手札破棄処理（破棄カードは捨て札へ） ---
-          if (b.playerDiscardHighest && pHand.length > 1) {
-            pDiscard.push(...pHand.splice(findHighestValueCardIndex(pHand), 1));
-          }
-          if (b.playerDiscardCount > 0) discardRandom(pHand, pDiscard, b.playerDiscardCount);
-          if (b.playerDiscardNext) discardRandom(pHand, pDiscard, 1);
-
-          // rumor: 相手の手札1枚をデッキからランダムに差し替え
-          if (b.rumorActive && oHand.length > 0 && oRemaining.length > 0) {
-            const replaceIdx = Math.floor(Math.random() * oHand.length);
-            const replacedCard = oHand[replaceIdx];
-            const newCardIdx = Math.floor(Math.random() * oRemaining.length);
-            oHand[replaceIdx] = oRemaining[newCardIdx];
-            oRemaining[newCardIdx] = replacedCard;
-          }
-
-          // playerRumor: プレイヤーの手札1枚をデッキからランダムに差し替え
-          if (b.playerRumorActive && pHand.length > 0 && pRemaining.length > 0) {
-            const replaceIdx = Math.floor(Math.random() * pHand.length);
-            const replacedCard = pHand[replaceIdx];
-            const newCardIdx = Math.floor(Math.random() * pRemaining.length);
-            pHand[replaceIdx] = pRemaining[newCardIdx];
-            pRemaining[newCardIdx] = replacedCard;
-          }
-
-          // 手札入れ替え（クロワッサンの手札交換）
-          if (b.swapHandsNextRound) {
-            const tempHand = [...pHand];
-            pHand.length = 0;
-            pHand.push(...oHand);
-            oHand.length = 0;
-            oHand.push(...tempHand);
-          }
-
-          // カード変身（ディープカラーの彩筆）— 最強カードを変身
-          if (b.opponentTransformCard && oHand.length > 0) {
-            oHand[findHighestValueCardIndex(oHand)] = b.opponentTransformCard;
-          }
-          if (b.playerTransformCard && pHand.length > 0) {
-            pHand[findHighestValueCardIndex(pHand)] = b.playerTransformCard;
-          }
-
-          // トークンカード追加（Mon3tr等）
-          for (const extraId of b.playerExtraCards) {
-            pHand.push(extraId);
-          }
-          for (const extraId of b.opponentExtraCards) {
-            oHand.push(extraId);
-          }
-
-          const playerDrunkLv = getDrunkLevel(b.playerDrunk);
-          const opponentDrunkLv = getDrunkLevel(b.opponentDrunk);
-          const playerHiddenCount = getHiddenSlotCount(playerDrunkLv);
-          const opponentHiddenCount = getHiddenSlotCount(opponentDrunkLv);
-          const pickSlots = (size: number, count: number) => {
-            const indices = Array.from({ length: size }, (_, i) => i);
-            shuffleArray(indices);
-            return indices.slice(0, Math.min(size, count));
-          };
-
-          const pHiddenSlots = pickSlots(pHand.length, playerHiddenCount);
-          const oHiddenSlots = pickSlots(oHand.length, opponentHiddenCount);
-
-          // ぼやけスロット: hidden以外からランダム1枚
-          const pickBlurred = (handLen: number, drunkLv: number, hiddenSlots: number[]): number => {
-            if (drunkLv < 1) return -1;
-            const avail = Array.from({ length: handLen }, (_, i) => i).filter(i => !hiddenSlots.includes(i));
-            return avail.length > 0 ? avail[Math.floor(Math.random() * avail.length)] : -1;
-          };
-          const pBlurredSlot = pickBlurred(pHand.length, playerDrunkLv, pHiddenSlots);
-          const oBlurredSlot = pickBlurred(oHand.length, opponentDrunkLv, oHiddenSlots);
-
-          // 汚染スロットを実際の手札サイズに合わせる（デッキ枯渇で手札が少ない場合）
-          let adjustedCorrupted = b.corruptedSlots;
-          if (adjustedCorrupted.length > pHand.length) {
-            adjustedCorrupted = adjustedCorrupted.slice(0, pHand.length);
-          }
-          let adjustedOppCorrupted = b.opponentCorruptedSlots;
-          if (adjustedOppCorrupted.length > oHand.length) {
-            adjustedOppCorrupted = adjustedOppCorrupted.slice(0, oHand.length);
-          }
+          // ステップ4: 視認性スロット計算
+          const pVis = calculateVisibilitySlots(pHand, getDrunkLevel(b.playerDrunk), b.corruptedSlots);
+          const oVis = calculateVisibilitySlots(oHand, getDrunkLevel(b.opponentDrunk), b.opponentCorruptedSlots);
 
           return {
             battle: {
@@ -356,13 +362,13 @@ export const useGameStore = create<GameStore>()(
               opponentDeckRemaining: oRemaining,
               playerHand: pHand,
               opponentHand: oHand,
-              corruptedSlots: adjustedCorrupted,
-              opponentCorruptedSlots: adjustedOppCorrupted,
+              corruptedSlots: pVis.adjustedCorrupted,
+              opponentCorruptedSlots: oVis.adjustedCorrupted,
               selectedCard: null,
-              playerHiddenSlots: pHiddenSlots,
-              opponentHiddenSlots: oHiddenSlots,
-              playerBlurredSlot: pBlurredSlot,
-              opponentBlurredSlot: oBlurredSlot,
+              playerHiddenSlots: pVis.hiddenSlots,
+              opponentHiddenSlots: oVis.hiddenSlots,
+              playerBlurredSlot: pVis.blurredSlot,
+              opponentBlurredSlot: oVis.blurredSlot,
               playerMisplay: false,
               opponentMisplay: false,
               isProcessing: false,
@@ -381,6 +387,8 @@ export const useGameStore = create<GameStore>()(
               opponentExtraCards: [],
               playerTransformCard: null,
               opponentTransformCard: null,
+              playerReducedHand: false,
+              opponentReducedHand: false,
             },
           };
         });
@@ -421,133 +429,26 @@ export const useGameStore = create<GameStore>()(
 
         const result = BattleEngine.resolveRound(resolvedPlayerCardId, opponentCardId, b);
 
-        // BUG-006: 汚染カード使用時の自分へのダメージ処理（プレイヤー）
-        const selectedIdx = b.playerHand.indexOf(resolvedPlayerCardId);
-        if (selectedIdx >= 0 && b.corruptedSlots[selectedIdx]) {
-          result.playerDamage += 1;
-          result.messages.push('🔥 発情状態のカードを使った…自分に酔い+1！');
+        // 汚染スロットの自傷ダメージ適用
+        applyCorruptedSlotDamage(result, resolvedPlayerCardId, opponentCardId, b);
+
+        // CGイベント検索
+        const cgLookup = lookupCGEvents(result, resolvedPlayerCardId, opponentCardId, b, state.currentOpponent);
+        if (cgLookup.playerCgEvent) result.cgEvent = cgLookup.playerCgEvent;
+        const opponentCgEvent = cgLookup.opponentCgEvent;
+
+        // CG解放
+        const cgSet = new Set(state.unlockedCGs);
+        if (result.cgEvent) cgSet.add(result.cgEvent.id);
+        if (opponentCgEvent) cgSet.add(opponentCgEvent.id);
+        if (cgSet.size !== state.unlockedCGs.length) {
+          set({ unlockedCGs: [...cgSet] });
         }
 
-        // 汚染カード使用時の自傷ダメージ（相手）
-        const opSelectedIdx = b.opponentHand.indexOf(opponentCardId);
-        if (opSelectedIdx >= 0 && b.opponentCorruptedSlots[opSelectedIdx]) {
-          result.opponentDamage += 1;
-          result.messages.push('🔥 相手が発情状態のカードを使った…相手に酔い+1！');
-        }
-
-        // === プレイヤーのセクハラ成功時 → CGイベント検索 ===
-        const pCard = CARD_DATA[resolvedPlayerCardId];
-        if (pCard?.type === 'harassment') {
-          const targetDrunk = b.opponentDrunk;
-          const targetLevel = getDrunkLevel(targetDrunk);
-          const adjustedRequired = getAdjustedRequiredLevel(pCard.requiredDrunkLevel ?? 0, b.playerBuffs, b.opponentBuffs, !!pCard.instantWin);
-          const hasCgEvent = state.currentOpponent?.cgEvents.some(e => e.triggerCard === resolvedPlayerCardId);
-          console.log('[CG判定:プレイヤー]', {
-            card: resolvedPlayerCardId,
-            spillNullified: result.spillNullified,
-            targetDrunk, targetLevel, adjustedRequired,
-            conditionMet: targetLevel >= adjustedRequired,
-            hasCgEvent,
-            opponent: state.currentOpponent?.id,
-          });
-          if (!result.spillNullified && state.currentOpponent) {
-            if (targetLevel >= adjustedRequired) {
-              const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === resolvedPlayerCardId);
-              if (cgEvent) {
-                result.cgEvent = cgEvent;
-              }
-            }
-          }
-        }
-
-        // === 相手の逆セクハラ成功時 → CGイベント検索 ===
-        const oCard = CARD_DATA[opponentCardId];
-        let opponentCgEvent: CGEvent | null = null;
-        if (oCard?.type === 'harassment') {
-          const playerDrunk = b.playerDrunk;
-          const playerLevel = getDrunkLevel(playerDrunk);
-          const adjustedRequired = getAdjustedRequiredLevel(oCard.requiredDrunkLevel ?? 0, b.opponentBuffs, b.playerBuffs, !!oCard.instantWin);
-          const hasCgEvent = state.currentOpponent?.cgEvents.some(e => e.triggerCard === opponentCardId);
-          console.log('[CG判定:相手]', {
-            card: opponentCardId,
-            spillNullified: result.spillNullified,
-            playerDrunk, playerLevel, adjustedRequired,
-            conditionMet: playerLevel >= adjustedRequired,
-            hasCgEvent,
-          });
-          if (!result.spillNullified && state.currentOpponent) {
-            if (playerLevel >= adjustedRequired) {
-              const cgEvent = state.currentOpponent.cgEvents.find(e => e.triggerCard === opponentCardId);
-              if (cgEvent) {
-                opponentCgEvent = cgEvent;
-              }
-            }
-          }
-        }
-
-        // CG解放（プレイヤー側 + 相手側の両方）
-        const cgs = [...state.unlockedCGs];
-        if (result.cgEvent && !cgs.includes(result.cgEvent.id)) {
-          cgs.push(result.cgEvent.id);
-        }
-        if (opponentCgEvent && !cgs.includes(opponentCgEvent.id)) {
-          cgs.push(opponentCgEvent.id);
-        }
-        if (cgs.length !== state.unlockedCGs.length) {
-          set({ unlockedCGs: cgs });
-        }
-
-        // === バフ処理 ===
-        // 既存バフのtick（duration減少）
-        let newPlayerBuffs = tickBuffs([...b.playerBuffs]);
-        let newOpponentBuffs = tickBuffs([...b.opponentBuffs]);
-
-        // 消費型バフの除去（next_drink_boost, next_food_boost, negate_next等）
+        // バフ一括処理（tick → 消費 → クレンズ → 全除去 → 新規付与）
+        const { playerBuffs: newPlayerBuffs, opponentBuffs: newOpponentBuffs } =
+          processRoundBuffs(result, b.playerBuffs, b.opponentBuffs);
         const extResult = result as ExtendedResult;
-        if (extResult.consumePlayerBuffs) {
-          for (const buffId of extResult.consumePlayerBuffs) {
-            const idx = newPlayerBuffs.findIndex(bf => bf.id === buffId);
-            if (idx >= 0) newPlayerBuffs.splice(idx, 1);
-          }
-        }
-        if (extResult.consumeOpponentBuffs) {
-          for (const buffId of extResult.consumeOpponentBuffs) {
-            const idx = newOpponentBuffs.findIndex(bf => bf.id === buffId);
-            if (idx >= 0) newOpponentBuffs.splice(idx, 1);
-          }
-        }
-
-        // デバフ除去（クロージャの錠剤等）
-        if (extResult.playerCleanseSelf && extResult.playerCleanseSelf > 0) {
-          newPlayerBuffs = cleanseDebuffs(newPlayerBuffs, extResult.playerCleanseSelf);
-        }
-        if (extResult.playerCleanseDot) {
-          newPlayerBuffs = newPlayerBuffs.filter(bf => bf.id !== 'dot');
-        }
-
-        // 相手側のデバフ除去
-        if (extResult.opponentCleanseSelf && extResult.opponentCleanseSelf > 0) {
-          newOpponentBuffs = cleanseDebuffs(newOpponentBuffs, extResult.opponentCleanseSelf);
-        }
-        if (extResult.opponentCleanseDot) {
-          newOpponentBuffs = newOpponentBuffs.filter(bf => bf.id !== 'dot');
-        }
-
-        // 敵バフ全除去（レイジの落雷）
-        if (extResult.clearAllOpponentBuffs) {
-          newOpponentBuffs = newOpponentBuffs.filter(bf => !(POSITIVE_BUFF_IDS as readonly string[]).includes(bf.id));
-        }
-        if (extResult.clearAllPlayerBuffs) {
-          newPlayerBuffs = newPlayerBuffs.filter(bf => !(POSITIVE_BUFF_IDS as readonly string[]).includes(bf.id));
-        }
-
-        // 今回のラウンドで付与されたバフを追加
-        if (result.newPlayerBuffs) {
-          newPlayerBuffs = [...newPlayerBuffs, ...result.newPlayerBuffs];
-        }
-        if (result.newOpponentBuffs) {
-          newOpponentBuffs = [...newOpponentBuffs, ...result.newOpponentBuffs];
-        }
 
         // === 手札汚染処理（プレイヤー側） ===
         let corruptedSlots = [...b.corruptedSlots];
@@ -909,16 +810,18 @@ export const useGameStore = create<GameStore>()(
         const char = state.currentOpponent;
         const totalCGs = char.cgEvents.length;
         if (totalCGs === 0) return null;
-        const unlockedCount = char.cgEvents.filter(e => state.unlockedCGs.includes(e.id)).length;
+        const cgSet = new Set(state.unlockedCGs);
+        const unlockedCount = char.cgEvents.filter(e => cgSet.has(e.id)).length;
         const cgRate = unlockedCount / totalCGs;
 
         // 条件を満たす未解放の勝利後イベントを探す（最も条件が高いものを優先）
         const charWins = state.winsByCharacter[char.id] ?? 0;
+        const afterEventSet = new Set(state.unlockedAfterEvents);
         const eligible = char.afterEvents
           .filter(ae =>
             cgRate >= ae.requiredCGRate &&
             charWins >= ae.requiredWins &&
-            !state.unlockedAfterEvents.includes(ae.id)
+            !afterEventSet.has(ae.id)
           )
           .sort((a, b) => b.requiredCGRate - a.requiredCGRate);
 
@@ -927,14 +830,14 @@ export const useGameStore = create<GameStore>()(
 
       showAfterEvent: (event) => {
         const state = get();
-        const unlocked = [...state.unlockedAfterEvents];
-        if (!unlocked.includes(event.id)) {
-          unlocked.push(event.id);
-        }
+        const afterEventSet = new Set(state.unlockedAfterEvents);
+        afterEventSet.add(event.id);
         set({
           activeAfterEvent: event,
           afterEventDialogueIndex: 0,
-          unlockedAfterEvents: unlocked,
+          unlockedAfterEvents: afterEventSet.size !== state.unlockedAfterEvents.length
+            ? [...afterEventSet]
+            : state.unlockedAfterEvents,
         });
       },
 
