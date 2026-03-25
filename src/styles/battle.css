@@ -1420,10 +1420,10 @@
   font-size: 12px;
   color: rgba(201, 168, 92, 0.5);
   text-align: center;
-  animation: blink 2s ease-in-out infinite;
+  animation: blink-pulse 2s ease-in-out infinite;
 }
 
-@keyframes blink {
+@keyframes blink-pulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
 }
