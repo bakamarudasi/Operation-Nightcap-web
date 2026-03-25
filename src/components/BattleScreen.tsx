@@ -45,42 +45,7 @@ function getSanityStage(value: number) {
   return SANITY_STAGES[SANITY_STAGES.length - 1];
 }
 
-import { getSharedAudioContext } from '../engine/audioContext.ts';
-
-function playSound(type: 'slam' | 'flip') {
-  try {
-    const x = getSharedAudioContext();
-    if (type === 'slam') {
-      const o = x.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(180, x.currentTime);
-      o.frequency.exponentialRampToValueAtTime(50, x.currentTime + 0.15);
-      const g = x.createGain();
-      g.gain.setValueAtTime(0.12, x.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, x.currentTime + 0.2);
-      o.connect(g); g.connect(x.destination);
-      o.start(); o.stop(x.currentTime + 0.2);
-      const b = x.createBuffer(1, x.sampleRate * 0.08, x.sampleRate);
-      const d = b.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.15));
-      const n = x.createBufferSource();
-      n.buffer = b;
-      const ng = x.createGain();
-      ng.gain.value = 0.08;
-      n.connect(ng); ng.connect(x.destination);
-      n.start();
-    } else if (type === 'flip') {
-      const o = x.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = 2000;
-      const g = x.createGain();
-      g.gain.setValueAtTime(0.04, x.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, x.currentTime + 0.12);
-      o.connect(g); g.connect(x.destination);
-      o.start(); o.stop(x.currentTime + 0.12);
-    }
-  } catch (_) { /* ignore */ }
-}
+import { playSlamSound, playFlipSound } from '../engine/battleAudio.ts';
 
 export function BattleScreen() {
   const { t } = useTranslation();
@@ -284,7 +249,7 @@ export function BattleScreen() {
       setTableCards(prev => ({ ...prev, player: playerCardInfo }));
       setPlayerFlipped(true);
       setSlamPlayer(true);
-      playSound('slam');
+      playSlamSound();
       setFieldShaking(true);
       safeTimeout(() => { setSlamPlayer(false); setFieldShaking(false); }, 400);
     }
@@ -299,13 +264,13 @@ export function BattleScreen() {
       }
 
       setSlamOpp(true);
-      playSound('slam');
+      playSlamSound();
       safeTimeout(() => setSlamOpp(false), 400);
 
       // 相手カードフリップ
       safeTimeout(() => {
         setOppFlipped(true);
-        playSound('flip');
+        playFlipSound();
 
         // 結果表示
         safeTimeout(() => {
