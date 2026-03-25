@@ -62,7 +62,29 @@ export interface ExtendedResult extends RoundResult {
   swapDrinkForHarassment?: boolean;
 }
 
+interface HarassmentSpecialContext {
+  result: ExtendedResult;
+  targetBuffs: Buff[];
+}
 
+const HARASSMENT_SPECIAL_HANDLERS: Record<string, (ctx: HarassmentSpecialContext) => void> = {
+  wall_pin: (ctx) => {
+    ctx.result.clearAllOpponentBuffs = true;
+    ctx.result.messages.push(t('engine.harassment.wallPin'));
+  },
+  ear_bite: (ctx) => {
+    const stealBuff = ctx.targetBuffs.find(b => b.id === 'next_drink_boost');
+    if (stealBuff) {
+      ctx.result.consumeOpponentBuffs = [...(ctx.result.consumeOpponentBuffs ?? []), 'next_drink_boost'];
+      ctx.result.newPlayerBuffs = [...(ctx.result.newPlayerBuffs ?? []), { id: 'next_drink_boost', duration: stealBuff.duration, value: stealBuff.value }];
+      ctx.result.messages.push(t('engine.harassment.earBite'));
+    }
+  },
+  breast_touch: (ctx) => {
+    ctx.result.swapDrinkForHarassment = true;
+    ctx.result.messages.push(t('engine.harassment.breastTouch'));
+  },
+};
 
 export function getMatchupResult(playerType: CardDef['type'], opponentType: CardDef['type']): 'advantage' | 'disadvantage' | 'neutral' {
   if (playerType === 'drink' && opponentType === 'harassment') return 'advantage';
@@ -107,6 +129,15 @@ export function calcDoTDamage(buffs: Buff[]): number {
     .reduce((sum, b) => sum + (b.value ?? 0), 0);
 }
 
+/** 共通バフ適用（all_dmg_up など両カードタイプで共有） */
+function applyCommonBuffs(dmg: number, attackerBuffs: Buff[], _defenderBuffs: Buff[]): number {
+  // all_dmg_up: 全カードdmg+N（バベルの残響）
+  if (hasBuff(attackerBuffs, 'all_dmg_up')) {
+    dmg += getBuffValue(attackerBuffs, 'all_dmg_up', 0);
+  }
+  return dmg;
+}
+
 /** ドリンクダメージにバフ効果を適用 */
 function applyDrinkBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBuffs: Buff[]): number {
   let dmg = baseDmg;
@@ -120,10 +151,8 @@ function applyDrinkBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBuffs: 
     dmg += karaokeVal;
   }
 
-  // all_dmg_up: 全カードdmg+N（バベルの残響）
-  if (hasBuff(attackerBuffs, 'all_dmg_up')) {
-    dmg += getBuffValue(attackerBuffs, 'all_dmg_up', 0);
-  }
+  // 共通バフ適用（all_dmg_up等）
+  dmg = applyCommonBuffs(dmg, attackerBuffs, defenderBuffs);
 
   // next_drink_boost: 次のドリンクダメージ+N（消費型）
   if (hasBuff(attackerBuffs, 'next_drink_boost')) {
@@ -180,10 +209,8 @@ function applyHarassmentBuffs(baseDmg: number, attackerBuffs: Buff[], defenderBu
   if (hasBuff(attackerBuffs, 'alone') || hasBuff(defenderBuffs, 'alone')) {
     dmg *= 2;
   }
-  // all_dmg_up: 全ダメージ+N
-  if (hasBuff(attackerBuffs, 'all_dmg_up')) {
-    dmg += getBuffValue(attackerBuffs, 'all_dmg_up', 0);
-  }
+  // 共通バフ適用（all_dmg_up等）
+  dmg = applyCommonBuffs(dmg, attackerBuffs, defenderBuffs);
   // finger_technique: セクハラダメージ1.5倍
   if (hasBuff(attackerBuffs, 'finger_technique')) {
     dmg = Math.ceil(dmg * 1.5);
@@ -1304,24 +1331,7 @@ export const BattleEngine = {
           dmg = applyHarassmentBuffs(dmg, userBuffs, targetBuffs);
           if (hasAfterglow) { dmg += 2; result.messages.push(t('engine.harassment.afterglow')); }
           // カード個別特殊効果
-          if (hCard.id === 'wall_pin') {
-            result.clearAllOpponentBuffs = true;
-            result.messages.push(t('engine.harassment.wallPin'));
-          }
-          if (hCard.id === 'ear_bite') {
-            // 相手の next_drink_boost を奪う
-            const stealBuff = targetBuffs.find(b => b.id === 'next_drink_boost');
-            if (stealBuff) {
-              result.consumeOpponentBuffs = [...(result.consumeOpponentBuffs ?? []), 'next_drink_boost'];
-              result.newPlayerBuffs = [...(result.newPlayerBuffs ?? []), { id: 'next_drink_boost', duration: stealBuff.duration, value: stealBuff.value }];
-              result.messages.push(t('engine.harassment.earBite'));
-            }
-          }
-          if (hCard.id === 'breast_touch') {
-            // 手札のDrink1枚→デッキからHarassment1枚交換
-            result.swapDrinkForHarassment = true;
-            result.messages.push(t('engine.harassment.breastTouch'));
-          }
+          HARASSMENT_SPECIAL_HANDLERS[hCard.id]?.({ result, targetBuffs });
           result.opponentDamage += dmg;
           result.messages.push(t('engine.harassment.success', { emoji: hCard.emoji, name: cn(hCard), value: dmg }));
         }
