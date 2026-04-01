@@ -22,7 +22,10 @@ export function processEffects(
   }
 }
 
-const EFFECT_HANDLERS: Record<string, (fx: EffectDef, ctx: EffectContext) => void> = {
+// Each handler receives the specific EffectDef variant matched by type,
+// but TypeScript can't narrow the union through the Record pattern.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const EFFECT_HANDLERS: Record<string, (fx: any, ctx: EffectContext) => void> = {
   // --- ダメージ ---
   damage: (fx, { cardEmoji, cardName, isPlayer, result }) => {
     const v = fx.value;
