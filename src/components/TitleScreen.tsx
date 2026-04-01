@@ -3,19 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import '../styles/title.css';
 
-function getTimeOfDay(hour: number) {
-  if (hour >= 6 && hour < 11) return 'morning';
-  if (hour >= 11 && hour < 17) return 'afternoon';
-  if (hour >= 17 && hour < 21) return 'evening';
-  return 'night';
-}
+const TIME_RANGES: { min: number; max: number; period: string; statusKey: string }[] = [
+  { min: 6,  max: 11, period: 'morning',   statusKey: 'title.timeStatus.prep' },
+  { min: 11, max: 17, period: 'afternoon', statusKey: 'title.timeStatus.afternoon' },
+  { min: 17, max: 21, period: 'evening',   statusKey: 'title.timeStatus.evening' },
+  { min: 21, max: 24, period: 'night',     statusKey: 'title.timeStatus.lateNight' },
+];
 
-function getTimeStatusKey(hour: number): string {
-  if (hour >= 6 && hour < 11) return 'title.timeStatus.prep';
-  if (hour >= 11 && hour < 17) return 'title.timeStatus.afternoon';
-  if (hour >= 17 && hour < 21) return 'title.timeStatus.evening';
-  if (hour >= 21) return 'title.timeStatus.lateNight';
-  return 'title.timeStatus.closed';
+function getTimeInfo(hour: number): { period: string; statusKey: string } {
+  const match = TIME_RANGES.find(r => hour >= r.min && hour < r.max);
+  return match
+    ? { period: match.period, statusKey: match.statusKey }
+    : { period: 'night', statusKey: 'title.timeStatus.closed' };
 }
 
 interface AudioNodes {
@@ -47,8 +46,9 @@ export function TitleScreen() {
       const hour = now.getHours();
       const min = String(now.getMinutes()).padStart(2, '0');
       setTimeLabel(`${hour}:${min}`);
-      setTimeStatusKey(getTimeStatusKey(hour));
-      setTimeClass(`time-${getTimeOfDay(hour)}`);
+      const info = getTimeInfo(hour);
+      setTimeStatusKey(info.statusKey);
+      setTimeClass(`time-${info.period}`);
     }
     update();
     const id = setInterval(update, 60000);

@@ -86,10 +86,10 @@
   height: 1em;
   background: var(--amber);
   margin-left: 2px;
-  animation: blink 0.7s step-end infinite;
+  animation: blink-flash 0.7s step-end infinite;
 }
 
-@keyframes blink {
+@keyframes blink-flash {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
@@ -134,7 +134,7 @@
 
 .cg-seq-enter,
 .cg-seq-enter-fade {
-  animation: seqFadeIn 0.3s ease-out forwards;
+  animation: fadeIn 0.3s ease-out forwards;
 }
 
 .cg-seq-enter-zoom {
@@ -169,10 +169,7 @@
 
 /* --- キーフレーム --- */
 
-@keyframes seqFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
+/* seqFadeIn は main.css の fadeIn に統合 */
 
 @keyframes seqFadeOut {
   from { opacity: 1; }

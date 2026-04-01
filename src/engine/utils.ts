@@ -98,6 +98,11 @@ export function randomPick<T>(arr: T[]): T | null {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+/** 配列のランダムなインデックスを返す */
+export function randomIndex(arr: unknown[]): number {
+  return Math.floor(Math.random() * arr.length);
+}
+
 /** 酔い値から酔いレベル(0~4)を算出 */
 export function getDrunkLevel(drunkValue: number): number {
   if (drunkValue >= 10) return 4;

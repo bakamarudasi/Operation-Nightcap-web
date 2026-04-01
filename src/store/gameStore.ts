@@ -3,135 +3,13 @@ import { persist } from 'zustand/middleware';
 import type { ScreenId, BattleState, CharacterDef, CGEvent, AfterEvent, Buff, GachaResult, CardType } from '../data/types.ts';
 import { DEFAULT_DECK, CARD_DATA, getEnhanceCost, MAX_CARD_LEVEL } from '../data/cards.ts';
 import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
-import { shuffleArray, randomPick, findHighestValueCardIndex, getDrunkLevel, hasBuff, buildCorruptedSlots, getHiddenSlotCount, shouldMisplay, isFoodDisabled, canPlayCard } from '../engine/utils.ts';
+import { shuffleArray, randomPick, getDrunkLevel, hasBuff, buildCorruptedSlots, shouldMisplay, isFoodDisabled, canPlayCard } from '../engine/utils.ts';
+import { computeDrawHands } from '../engine/handManager.ts';
 import { BattleEngine, type ExtendedResult } from '../engine/battleEngine.ts';
 import { BattleAI } from '../engine/battleAI.ts';
-import { applyCorruptedSlotDamage, lookupCGEvents, processRoundBuffs } from '../engine/roundProcessor.ts';
+import { applyCorruptedSlotDamage, lookupCGEvents, processRoundBuffs, computeRoundResult, buildNextBattleState } from '../engine/roundProcessor.ts';
 import { pullMulti } from '../engine/gachaEngine.ts';
 import { GACHA_SINGLE_COST, GACHA_MULTI_COST } from '../data/gacha.ts';
-
-
-// ============================================
-// === drawHands 純粋関数ヘルパー群 ===
-// ============================================
-
-/** デッキ→手札を引く共通処理 */
-function drawFromDeck(
-  remaining: string[],
-  discard: string[],
-  handSize: number,
-): { hand: string[]; remaining: string[]; discard: string[] } {
-  let rem = [...remaining];
-  let disc = [...discard];
-  if (rem.length < handSize && disc.length > 0) {
-    shuffleArray(disc);
-    rem = [...rem, ...disc];
-    disc = [];
-  }
-  const hand: string[] = [];
-  const count = Math.min(handSize, rem.length);
-  for (let i = 0; i < count; i++) {
-    hand.push(rem.shift()!);
-  }
-  return { hand, remaining: rem, discard: disc };
-}
-
-/** 手札からランダムN枚を破棄して捨て札へ移す */
-function discardRandomCards(hand: string[], discard: string[], count: number): void {
-  for (let n = 0; n < count && hand.length > 1; n++) {
-    const idx = Math.floor(Math.random() * hand.length);
-    discard.push(...hand.splice(idx, 1));
-  }
-}
-
-/** 手札の破棄処理（最強カード破棄 / N枚破棄 / 乾杯破棄）を適用 */
-function applyDiscards(
-  hand: string[],
-  discard: string[],
-  opts: { discardHighest: boolean; discardCount: number; discardNext: boolean },
-): void {
-  if (opts.discardHighest && hand.length > 1) {
-    discard.push(...hand.splice(findHighestValueCardIndex(hand), 1));
-  }
-  if (opts.discardCount > 0) discardRandomCards(hand, discard, opts.discardCount);
-  if (opts.discardNext) discardRandomCards(hand, discard, 1);
-}
-
-/** rumor / swap / transform / extraCards の手札変更を適用 */
-function applyHandModifications(
-  pHand: string[], oHand: string[],
-  pRemaining: string[], oRemaining: string[],
-  battle: BattleState,
-): void {
-  // rumor: 相手の手札1枚をデッキからランダムに差し替え
-  if (battle.rumorActive && oHand.length > 0 && oRemaining.length > 0) {
-    const replaceIdx = Math.floor(Math.random() * oHand.length);
-    const replacedCard = oHand[replaceIdx];
-    const newCardIdx = Math.floor(Math.random() * oRemaining.length);
-    oHand[replaceIdx] = oRemaining[newCardIdx];
-    oRemaining[newCardIdx] = replacedCard;
-  }
-
-  // playerRumor: プレイヤーの手札1枚をデッキからランダムに差し替え
-  if (battle.playerRumorActive && pHand.length > 0 && pRemaining.length > 0) {
-    const replaceIdx = Math.floor(Math.random() * pHand.length);
-    const replacedCard = pHand[replaceIdx];
-    const newCardIdx = Math.floor(Math.random() * pRemaining.length);
-    pHand[replaceIdx] = pRemaining[newCardIdx];
-    pRemaining[newCardIdx] = replacedCard;
-  }
-
-  // 手札入れ替え（クロワッサンの手札交換）
-  if (battle.swapHandsNextRound) {
-    const tempHand = [...pHand];
-    pHand.length = 0;
-    pHand.push(...oHand);
-    oHand.length = 0;
-    oHand.push(...tempHand);
-  }
-
-  // カード変身（ディープカラーの彩筆）— 最強カードを変身
-  if (battle.opponentTransformCard && oHand.length > 0) {
-    oHand[findHighestValueCardIndex(oHand)] = battle.opponentTransformCard;
-  }
-  if (battle.playerTransformCard && pHand.length > 0) {
-    pHand[findHighestValueCardIndex(pHand)] = battle.playerTransformCard;
-  }
-
-  // トークンカード追加（Mon3tr等）
-  for (const extraId of battle.playerExtraCards) {
-    pHand.push(extraId);
-  }
-  for (const extraId of battle.opponentExtraCards) {
-    oHand.push(extraId);
-  }
-}
-
-/** hidden / blurred / corrupted スロットを計算 */
-function calculateVisibilitySlots(
-  hand: string[],
-  drunkLevel: number,
-  corruptedSlots: boolean[],
-): { hiddenSlots: number[]; blurredSlot: number; adjustedCorrupted: boolean[] } {
-  const hiddenCount = getHiddenSlotCount(drunkLevel);
-  const indices = Array.from({ length: hand.length }, (_, i) => i);
-  shuffleArray(indices);
-  const hiddenSlots = indices.slice(0, Math.min(hand.length, hiddenCount));
-
-  // ぼやけスロット: hidden以外からランダム1枚
-  let blurredSlot = -1;
-  if (drunkLevel >= 1) {
-    const avail = Array.from({ length: hand.length }, (_, i) => i).filter(i => !hiddenSlots.includes(i));
-    blurredSlot = avail.length > 0 ? avail[Math.floor(Math.random() * avail.length)] : -1;
-  }
-
-  // 汚染スロットを実際の手札サイズに合わせる
-  const adjustedCorrupted = corruptedSlots.length > hand.length
-    ? corruptedSlots.slice(0, hand.length)
-    : corruptedSlots;
-
-  return { hiddenSlots, blurredSlot, adjustedCorrupted };
-}
 
 interface GameStore {
   // 永続データ
@@ -321,77 +199,9 @@ export const useGameStore = create<GameStore>()(
       },
 
       drawHands: () => {
-        set((state) => {
-          const b = { ...state.battle };
-
-          // ステップ1: デッキから手札を引く
-          const pHandSize = b.playerReducedHand ? 3 : 4;
-          const oHandSize = b.opponentReducedHand ? 3 : 4;
-          const pDraw = drawFromDeck(b.playerDeckRemaining, b.playerDiscardPile, pHandSize);
-          const oDraw = drawFromDeck(b.opponentDeckRemaining, b.opponentDiscardPile, oHandSize);
-          const pHand = pDraw.hand;
-          const oHand = oDraw.hand;
-          const pRemaining = pDraw.remaining;
-          const oRemaining = oDraw.remaining;
-          const pDiscard = pDraw.discard;
-          const oDiscard = oDraw.discard;
-
-          // ステップ2: 手札の破棄処理
-          applyDiscards(oHand, oDiscard, {
-            discardHighest: b.opponentDiscardHighest,
-            discardCount: b.opponentDiscardCount,
-            discardNext: b.opponentDiscardNext,
-          });
-          applyDiscards(pHand, pDiscard, {
-            discardHighest: b.playerDiscardHighest,
-            discardCount: b.playerDiscardCount,
-            discardNext: b.playerDiscardNext,
-          });
-
-          // ステップ3: rumor / swap / transform / extra cards
-          applyHandModifications(pHand, oHand, pRemaining, oRemaining, b);
-
-          // ステップ4: 視認性スロット計算
-          const pVis = calculateVisibilitySlots(pHand, getDrunkLevel(b.playerDrunk), b.corruptedSlots);
-          const oVis = calculateVisibilitySlots(oHand, getDrunkLevel(b.opponentDrunk), b.opponentCorruptedSlots);
-
-          return {
-            battle: {
-              ...b,
-              playerDeckRemaining: pRemaining,
-              opponentDeckRemaining: oRemaining,
-              playerHand: pHand,
-              opponentHand: oHand,
-              corruptedSlots: pVis.adjustedCorrupted,
-              opponentCorruptedSlots: oVis.adjustedCorrupted,
-              selectedCard: null,
-              playerHiddenSlots: pVis.hiddenSlots,
-              opponentHiddenSlots: oVis.hiddenSlots,
-              playerBlurredSlot: pVis.blurredSlot,
-              opponentBlurredSlot: oVis.blurredSlot,
-              playerMisplay: false,
-              opponentMisplay: false,
-              isProcessing: false,
-              opponentDiscardNext: false,
-              playerDiscardNext: false,
-              opponentDiscardCount: 0,
-              playerDiscardCount: 0,
-              opponentDiscardHighest: false,
-              playerDiscardHighest: false,
-              rumorActive: false,
-              playerRumorActive: false,
-              playerDiscardPile: pDiscard,
-              opponentDiscardPile: oDiscard,
-              swapHandsNextRound: false,
-              playerExtraCards: [],
-              opponentExtraCards: [],
-              playerTransformCard: null,
-              opponentTransformCard: null,
-              playerReducedHand: false,
-              opponentReducedHand: false,
-            },
-          };
-        });
+        set((state) => ({
+          battle: { ...state.battle, ...computeDrawHands(state.battle) },
+        }));
       },
 
       selectCard: (cardId) => {
@@ -402,204 +212,41 @@ export const useGameStore = create<GameStore>()(
 
       playRound: () => {
         const state = get();
-        const b = state.battle;
-        if (!b.selectedCard || b.isProcessing) return null;
-
-        const selectedCard = CARD_DATA[b.selectedCard];
-        if (!selectedCard) return null;
-
-        const playerDrunkLevel = getDrunkLevel(b.playerDrunk);
-        if (!canPlayCard(selectedCard, b.playerDrunk)) return null;
-        if (isFoodDisabled(playerDrunkLevel) && selectedCard.type === 'food') return null;
-
-        const aiPick = BattleAI.selectCard(b.opponentHand, state.currentOpponent!, b);
-        const opponentCardId = aiPick.cardId;
-        if (!opponentCardId) return null;
-
-        let resolvedPlayerCardId = b.selectedCard;
-        let playerMisplay = false;
-        if (shouldMisplay(playerDrunkLevel) && b.playerHand.length > 1) {
-          const alt = b.playerHand.filter(id => id !== b.selectedCard);
-          const picked = randomPick(alt);
-          if (picked) {
-            resolvedPlayerCardId = picked;
-            playerMisplay = true;
-          }
-        }
-
-        const result = BattleEngine.resolveRound(resolvedPlayerCardId, opponentCardId, b);
-
-        // 汚染スロットの自傷ダメージ適用
-        applyCorruptedSlotDamage(result, resolvedPlayerCardId, opponentCardId, b);
-
-        // CGイベント検索
-        const cgLookup = lookupCGEvents(result, resolvedPlayerCardId, opponentCardId, b, state.currentOpponent);
-        if (cgLookup.playerCgEvent) result.cgEvent = cgLookup.playerCgEvent;
-        const opponentCgEvent = cgLookup.opponentCgEvent;
-
-        // CG解放
-        const cgSet = new Set(state.unlockedCGs);
-        if (result.cgEvent) cgSet.add(result.cgEvent.id);
-        if (opponentCgEvent) cgSet.add(opponentCgEvent.id);
-        if (cgSet.size !== state.unlockedCGs.length) {
-          set({ unlockedCGs: [...cgSet] });
-        }
-
-        // バフ一括処理（tick → 消費 → クレンズ → 全除去 → 新規付与）
-        const { playerBuffs: newPlayerBuffs, opponentBuffs: newOpponentBuffs } =
-          processRoundBuffs(result, b.playerBuffs, b.opponentBuffs);
-        const extResult = result as ExtendedResult;
-
-        // === 手札汚染処理（プレイヤー側） ===
-        let corruptedSlots = [...b.corruptedSlots];
-        if (result.corruptCount && result.corruptCount > 0) {
-          const nextHandSize = (result.playerReducedHand ?? b.playerReducedHand) ? 3 : 4;
-          corruptedSlots = buildCorruptedSlots(nextHandSize, result.corruptCount);
-        }
-
-        // === 手札汚染処理（相手側） ===
-        let opponentCorruptedSlots = [...b.opponentCorruptedSlots];
-        if (extResult.opponentCorruptCount && extResult.opponentCorruptCount > 0) {
-          const nextOHandSize = (result.opponentReducedHand ?? b.opponentReducedHand) ? 3 : 4;
-          opponentCorruptedSlots = buildCorruptedSlots(nextOHandSize, extResult.opponentCorruptCount);
-        }
-
-        // 使用済みカードを1枚だけ除いた残り手札をデッキに戻す
-        const unusedPlayerCards = [...b.playerHand];
-        const pIdx = unusedPlayerCards.indexOf(resolvedPlayerCardId);
-        if (pIdx >= 0) unusedPlayerCards.splice(pIdx, 1);
-        const unusedOpponentCards = [...b.opponentHand];
-        const oIdx = unusedOpponentCards.indexOf(opponentCardId);
-        if (oIdx >= 0) unusedOpponentCards.splice(oIdx, 1);
-
-        // === 酔いLv入れ替え（プロジェクト・レッドの奇襲） ===
-        const shouldSwap = extResult.swapDrunk ?? false;
-
-        // === maxRounds減少（危機契約発令） ===
-        const roundReduction = extResult.reduceMaxRounds ?? 0;
-
-        // === 手札破棄フラグ ===
-        const discardEnemyCount = extResult.discardEnemyHandCount ?? 0;
-        const shouldDiscardHighest = extResult.discardHighest ?? false;
-        const discardPlayerCount = extResult.discardPlayerHandCount ?? 0;
-        const shouldDiscardPlayerHighest = extResult.discardPlayerHighest ?? false;
-
-        set((state) => {
-          const pDeckReturn = [...state.battle.playerDeckRemaining, ...unusedPlayerCards];
-          const oDeckReturn = [...state.battle.opponentDeckRemaining, ...unusedOpponentCards];
-          shuffleArray(pDeckReturn);
-          shuffleArray(oDeckReturn);
-
-          // 使用したカードを捨て札に追加
-          const pDiscardPile = [...state.battle.playerDiscardPile, resolvedPlayerCardId];
-          const oDiscardPile = [...state.battle.opponentDiscardPile, opponentCardId];
-
-          // breast_touch: デッキ内のDrink1枚を捨て札へ送り、Harassment1枚を先頭に移動（枚数維持）
-          if (extResult.swapDrinkForHarassment) {
-            const harassIdx = pDeckReturn.findIndex(id => CARD_DATA[id]?.type === 'harassment');
-            if (harassIdx >= 0) {
-              // Harassmentをデッキの先頭に移動（次の手札で引きやすく）
-              const [harassCard] = pDeckReturn.splice(harassIdx, 1);
-              pDeckReturn.unshift(harassCard);
-              // Drinkを1枚捨て札へ移動（デッキ総枚数を維持）
-              const drinkIdx = pDeckReturn.findIndex(id => CARD_DATA[id]?.type === 'drink');
-              if (drinkIdx >= 0) {
-                const [drinkCard] = pDeckReturn.splice(drinkIdx, 1);
-                pDiscardPile.push(drinkCard);
-              }
-            }
-          }
-
-          // 酔いLv計算
-          let newPlayerDrunk = state.battle.playerDrunk + result.playerDamage - result.playerHeal;
-          let newOpponentDrunk = state.battle.opponentDrunk + result.opponentDamage - result.opponentHeal;
-
-          // swap_drunk: 入れ替え（ダメージ適用後に入れ替え）
-          if (shouldSwap) {
-            [newPlayerDrunk, newOpponentDrunk] = [newOpponentDrunk, newPlayerDrunk];
-          }
-
-          newPlayerDrunk = Math.max(0, Math.min(10, newPlayerDrunk));
-          newOpponentDrunk = Math.max(0, Math.min(10, newOpponentDrunk));
-
-          // 理性計算
-          const charSanityMax = state.currentOpponent?.sanityMax ?? 10;
-          let newPlayerSanity = state.battle.playerSanity - result.playerSanityDamage + result.playerSanityHeal;
-          let newOpponentSanity = state.battle.opponentSanity - result.opponentSanityDamage + result.opponentSanityHeal;
-          newPlayerSanity = Math.max(0, Math.min(10, newPlayerSanity));
-          newOpponentSanity = Math.max(0, Math.min(charSanityMax, newOpponentSanity));
-
-          // maxRounds減少
-          const newMaxRounds = Math.max(state.battle.round + 1, state.battle.maxRounds - roundReduction);
-
-          // 乾杯強制（toast効果のランダム1枚破棄）
-          const opToastDiscard = result.opponentDiscardNext ?? state.battle.opponentDiscardNext;
-          const plToastDiscard = result.playerDiscardNext ?? state.battle.playerDiscardNext;
-
-          return {
-            battle: {
-              ...state.battle,
-              round: state.battle.round + 1,
-              maxRounds: newMaxRounds,
-              playerDrunk: newPlayerDrunk,
-              opponentDrunk: newOpponentDrunk,
-              playerSanity: newPlayerSanity,
-              opponentSanity: newOpponentSanity,
-              playerDeckRemaining: pDeckReturn,
-              opponentDeckRemaining: oDeckReturn,
-              playerHand: [],
-              opponentHand: [],
-              selectedCard: null,
-              isProcessing: true,
-              opponentDiscardNext: opToastDiscard,
-              playerDiscardNext: plToastDiscard,
-              opponentDiscardCount: discardEnemyCount,
-              playerDiscardCount: discardPlayerCount,
-              opponentDiscardHighest: shouldDiscardHighest,
-              playerDiscardHighest: shouldDiscardPlayerHighest,
-              playerReducedHand: result.playerReducedHand ?? state.battle.playerReducedHand,
-              opponentReducedHand: result.opponentReducedHand ?? state.battle.opponentReducedHand,
-              playerBuffs: newPlayerBuffs,
-              opponentBuffs: newOpponentBuffs,
-              corruptedSlots,
-              opponentCorruptedSlots,
-              rumorActive: result.rumorActive ?? false,
-              playerRumorActive: extResult.playerRumorActive ?? false,
-              playerDiscardPile: pDiscardPile,
-              opponentDiscardPile: oDiscardPile,
-              swapHandsNextRound: extResult.swapHandsNextRound ?? state.battle.swapHandsNextRound,
-              playerExtraCards: extResult.playerExtraCard
-                ? [...state.battle.playerExtraCards, extResult.playerExtraCard]
-                : state.battle.playerExtraCards,
-              opponentExtraCards: extResult.opponentExtraCard
-                ? [...state.battle.opponentExtraCards, extResult.opponentExtraCard]
-                : state.battle.opponentExtraCards,
-              playerTransformCard: extResult.transformPlayerCard ?? state.battle.playerTransformCard,
-              opponentTransformCard: extResult.transformEnemyCard ?? state.battle.opponentTransformCard,
-              playerMisplay,
-              opponentMisplay: aiPick.misplay,
-              playerCardHistory: [...state.battle.playerCardHistory, CARD_DATA[resolvedPlayerCardId]?.type].filter((x): x is CardType => !!x).slice(-3),
-              opponentCardHistory: [...state.battle.opponentCardHistory, CARD_DATA[opponentCardId]?.type].filter((x): x is CardType => !!x).slice(-3),
-            },
-          };
+        const computed = computeRoundResult({
+          battle: state.battle,
+          currentOpponent: state.currentOpponent,
+          unlockedCGs: state.unlockedCGs,
         });
+        if (!computed) return null;
+
+        // CG unlock
+        if (computed.newUnlockedCGs.length !== state.unlockedCGs.length) {
+          set({ unlockedCGs: computed.newUnlockedCGs });
+        }
+
+        set((state) => ({
+          battle: {
+            ...state.battle,
+            ...buildNextBattleState(state.battle, computed, state.currentOpponent),
+          },
+        }));
 
         return {
-          messages: result.messages,
-          cgEvent: result.cgEvent,
-          opponentCgEvent,
-          instantWin: result.instantWin,
-          opponentCardId,
-          playerCardId: resolvedPlayerCardId,
-          playerMisplay,
-          opponentMisplay: aiPick.misplay,
-          playerMatchup: result.playerMatchup,
-          playerDamage: result.playerDamage,
-          opponentDamage: result.opponentDamage,
-          playerHeal: result.playerHeal,
-          opponentHeal: result.opponentHeal,
-          revealedHand: result.revealedHand,
-          rumorActive: result.rumorActive,
+          messages: computed.result.messages,
+          cgEvent: computed.result.cgEvent,
+          opponentCgEvent: computed.opponentCgEvent,
+          instantWin: computed.result.instantWin,
+          opponentCardId: computed.opponentCardId,
+          playerCardId: computed.resolvedPlayerCardId,
+          playerMisplay: computed.playerMisplay,
+          opponentMisplay: computed.opponentMisplay,
+          playerMatchup: computed.result.playerMatchup,
+          playerDamage: computed.result.playerDamage,
+          opponentDamage: computed.result.opponentDamage,
+          playerHeal: computed.result.playerHeal,
+          opponentHeal: computed.result.opponentHeal,
+          revealedHand: computed.result.revealedHand,
+          rumorActive: computed.result.rumorActive,
         };
       },
 

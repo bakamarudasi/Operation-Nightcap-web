@@ -159,12 +159,9 @@
   align-items: center;
   padding: 2rem;
   opacity: 0;
-  animation: tsFadeInUp 1.2s ease-out 0.3s forwards;
+  animation: fadeInUp 1.2s ease-out 0.3s forwards;
 }
-@keyframes tsFadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* fadeInUp は main.css に統合 */
 
 /* === Noren === */
 .ts-noren-wrapper {
@@ -223,7 +220,7 @@
   gap: 2rem;
   margin-bottom: 2rem;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 0.9s forwards;
+  animation: fadeInUp 1s ease-out 0.9s forwards;
 }
 .ts-lantern {
   position: relative;
@@ -327,7 +324,7 @@
   text-align: center;
   margin-bottom: 2rem;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 1.2s forwards;
+  animation: fadeInUp 1s ease-out 1.2s forwards;
 }
 
 .ts-title-sub {
@@ -336,7 +333,7 @@
   color: var(--ts-gold);
   letter-spacing: 0.5em;
   opacity: 0;
-  animation: tsFadeInUp 0.8s ease-out 1.6s forwards;
+  animation: fadeInUp 0.8s ease-out 1.6s forwards;
 }
 
 /* === Time Indicator === */
@@ -354,7 +351,7 @@
   border-radius: 20px;
   backdrop-filter: blur(8px);
   opacity: 0;
-  animation: tsFadeInUp 0.8s ease-out 2.4s forwards;
+  animation: fadeInUp 0.8s ease-out 2.4s forwards;
 }
 .ts-time-dot {
   width: 8px;
@@ -389,7 +386,7 @@
   margin: 0 auto 2.5rem;
   position: relative;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 1.8s forwards;
+  animation: fadeInUp 1s ease-out 1.8s forwards;
 }
 .ts-deco-line::before {
   content: '◆';
@@ -411,7 +408,7 @@
   gap: 14px;
   width: 560px;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 2s forwards;
+  animation: fadeInUp 1s ease-out 2s forwards;
 }
 .ts-menu-wide {
   flex-basis: 100%;
@@ -597,7 +594,7 @@
   align-items: center;
   gap: 8px;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 2.2s forwards;
+  animation: fadeInUp 1s ease-out 2.2s forwards;
 }
 .ts-currency-icon {
   width: 22px;
@@ -634,7 +631,7 @@
   left: 40px;
   font-size: 2.5rem;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 2.6s forwards;
+  animation: fadeInUp 1s ease-out 2.6s forwards;
   filter: grayscale(0.3) brightness(0.6);
   z-index: 3;
   pointer-events: none;
@@ -645,7 +642,7 @@
   left: 90px;
   font-size: 1.5rem;
   opacity: 0;
-  animation: tsFadeInUp 1s ease-out 2.8s forwards;
+  animation: fadeInUp 1s ease-out 2.8s forwards;
   filter: grayscale(0.3) brightness(0.6);
   z-index: 3;
   pointer-events: none;
@@ -683,7 +680,7 @@
   transition: all 0.3s ease;
   backdrop-filter: blur(8px);
   opacity: 0;
-  animation: tsFadeInUp 0.8s ease-out 2.6s forwards;
+  animation: fadeInUp 0.8s ease-out 2.6s forwards;
 }
 .ts-audio-control:hover {
   background: rgba(50, 30, 15, 0.9);

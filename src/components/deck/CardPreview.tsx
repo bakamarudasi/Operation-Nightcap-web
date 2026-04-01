@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { CardDef } from '../../data/types.ts';
 import { CARD_TYPE_LABELS } from './cardTypeLabels.ts';
+import { formatDamage, formatHeal } from '../../engine/cardFormat.ts';
 
 interface CardPreviewProps {
   card: CardDef;
@@ -22,8 +23,8 @@ export function CardPreview({ card, pos }: CardPreviewProps) {
       </div>
       <div className="card-preview-type">{t(CARD_TYPE_LABELS[card.type])}</div>
       <div className="card-preview-stats">
-        {card.damage !== undefined && <span>{t('cardPreview.attack', { value: card.damage === -1 ? '1~3' : card.damage })}</span>}
-        {card.heal !== undefined && <span>{t('cardPreview.heal', { value: card.heal === 99 ? t('cardPreview.max') : card.heal })}</span>}
+        {card.damage !== undefined && <span>{t('cardPreview.attack', { value: formatDamage(card) })}</span>}
+        {card.heal !== undefined && <span>{t('cardPreview.heal', { value: formatHeal(card) })}</span>}
         {card.requiredDrunkLevel !== undefined && <span>{t('cardPreview.requiredDrunk', { level: card.requiredDrunkLevel })}</span>}
         {card.drunkDamage !== undefined && <span>{t('cardPreview.drunkDamage', { value: card.drunkDamage })}</span>}
         {card.selfDamage !== undefined && <span>{t('cardPreview.selfDamage', { value: card.selfDamage })}</span>}
