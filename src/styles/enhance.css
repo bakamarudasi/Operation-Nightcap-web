@@ -97,7 +97,7 @@
 }
 
 .enhance-card-item.selected-enhance {
-  box-shadow: 0 0 16px rgba(240, 214, 138, 0.3);
+  box-shadow: 0 0 16px rgba(var(--gold-glow-rgb), 0.3);
 }
 
 .enhance-card-item.max-level {
@@ -148,7 +148,7 @@
 .enhance-card-item.rarity-legendary:hover,
 .enhance-card-item.rarity-legendary.selected-enhance {
   border-color: var(--gold-bright);
-  box-shadow: 0 0 14px rgba(240, 214, 138, 0.4);
+  box-shadow: 0 0 14px rgba(var(--gold-glow-rgb), 0.4);
 }
 
 .enhance-card-item.rarity-mythic {
@@ -203,18 +203,18 @@
 
 /* === 強化レベル別グロー === */
 .glow-mid {
-  filter: drop-shadow(0 0 6px rgba(201, 168, 92, 0.5));
+  filter: drop-shadow(0 0 6px rgba(var(--gold-warm-rgb), 0.5));
 }
 
 .glow-max {
-  filter: drop-shadow(0 0 10px rgba(240, 214, 138, 0.7)) drop-shadow(0 0 20px rgba(240, 200, 100, 0.3));
+  filter: drop-shadow(0 0 10px rgba(var(--gold-glow-rgb), 0.7)) drop-shadow(0 0 20px rgba(240, 200, 100, 0.3));
 }
 
 /* === 右: 強化詳細パネル === */
 .enhance-detail {
   width: 280px;
   flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--overlay-light);
   border-radius: 12px;
   border: 1px solid var(--wood-surface);
   padding: 20px;
@@ -250,7 +250,7 @@
   justify-content: center;
   border-radius: 12px;
   border: 3px solid var(--wood-surface);
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--overlay-subtle);
   transition: all 0.3s ease;
 }
 
@@ -264,16 +264,16 @@
 .enhance-card-preview.rarity-uncommon { border-color: #5a9e5a; }
 .enhance-card-preview.rarity-rare { border-color: #4a8ec4; }
 .enhance-card-preview.rarity-epic { border-color: #a855c8; }
-.enhance-card-preview.rarity-legendary { border-color: var(--gold-bright); box-shadow: 0 0 20px rgba(240, 214, 138, 0.25); }
+.enhance-card-preview.rarity-legendary { border-color: var(--gold-bright); box-shadow: 0 0 20px rgba(var(--gold-glow-rgb), 0.25); }
 .enhance-card-preview.rarity-mythic { border-color: #ff5555; box-shadow: 0 0 20px rgba(232, 64, 64, 0.25); }
 
 /* プレビュー内グロー */
 .enhance-card-preview.glow-mid .preview-emoji {
-  filter: drop-shadow(0 0 8px rgba(201, 168, 92, 0.6));
+  filter: drop-shadow(0 0 8px rgba(var(--gold-warm-rgb), 0.6));
 }
 
 .enhance-card-preview.glow-max .preview-emoji {
-  filter: drop-shadow(0 0 12px rgba(240, 214, 138, 0.8)) drop-shadow(0 0 24px rgba(240, 200, 100, 0.4));
+  filter: drop-shadow(0 0 12px rgba(var(--gold-glow-rgb), 0.8)) drop-shadow(0 0 24px rgba(240, 200, 100, 0.4));
 }
 
 /* === ステータス表示 === */
@@ -357,7 +357,7 @@
 
 .enhance-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(201, 168, 92, 0.3);
+  box-shadow: 0 4px 16px rgba(var(--gold-warm-rgb), 0.3);
 }
 
 .enhance-btn:disabled {
@@ -386,7 +386,7 @@
 }
 
 .enhance-shop-link:hover {
-  background: rgba(201, 168, 92, 0.1);
+  background: rgba(var(--gold-warm-rgb), 0.1);
   color: var(--gold-bright);
 }
 
@@ -406,7 +406,7 @@
 /* === 強化成功アニメーション === */
 @keyframes enhanceSuccess {
   0% { transform: scale(1); }
-  20% { transform: scale(1.18); box-shadow: 0 0 30px rgba(240, 214, 138, 0.7); }
+  20% { transform: scale(1.18); box-shadow: 0 0 30px rgba(var(--gold-glow-rgb), 0.7); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
 }
@@ -438,7 +438,7 @@
   border-radius: 50%;
   pointer-events: none;
   animation: particleFly 0.8s ease-out forwards;
-  box-shadow: 0 0 6px rgba(240, 214, 138, 0.8);
+  box-shadow: 0 0 6px rgba(var(--gold-glow-rgb), 0.8);
   --px: 0;
   --py: 0;
 }
@@ -495,7 +495,7 @@
   font-size: 18px;
   font-weight: 700;
   color: var(--gold-bright);
-  text-shadow: 0 0 8px rgba(240, 214, 138, 0.8), 0 2px 4px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 0 8px rgba(var(--gold-glow-rgb), 0.8), 0 2px 4px var(--overlay-dense);
   pointer-events: none;
   animation: statPopup 1s ease-out forwards;
   white-space: nowrap;

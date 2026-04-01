@@ -56,6 +56,24 @@
   --deck-right-w: 380px;
   --deck-grid-cols: 6;
 
+  /* 黒オーバーレイ */
+  --overlay-subtle: rgba(0, 0, 0, 0.15);
+  --overlay-light: rgba(0, 0, 0, 0.2);
+  --overlay-medium: rgba(0, 0, 0, 0.3);
+  --overlay-strong: rgba(0, 0, 0, 0.4);
+  --overlay-heavy: rgba(0, 0, 0, 0.5);
+  --overlay-dense: rgba(0, 0, 0, 0.6);
+  --overlay-dark: rgba(0, 0, 0, 0.7);
+
+  /* よく使う色のRGBベース — rgba(var(--xxx-rgb), 0.3) の形で使用 */
+  --wood-accent-rgb: 180, 140, 90;
+  --wood-shadow-rgb: 80, 50, 25;
+  --wood-deep-rgb: 30, 18, 10;
+  --gold-accent-rgb: 212, 168, 83;
+  --gold-warm-rgb: 201, 168, 92;
+  --gold-glow-rgb: 240, 214, 138;
+  --white-rgb: 255, 255, 255;
+
   /* 共通デザイントークン */
   --radius-md: 8px;
   --radius-sm: 4px;
@@ -163,8 +181,8 @@ body {
   border-left: 3px solid var(--wood-light);
   border-right: 3px solid var(--wood-light);
   box-shadow:
-    0 0 60px rgba(0, 0, 0, 0.6),
-    inset 0 0 80px rgba(0, 0, 0, 0.3);
+    0 0 60px var(--overlay-dense),
+    inset 0 0 80px var(--overlay-medium);
 }
 
 /* --- Hidden utility --- */
@@ -190,10 +208,10 @@ body {
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.25s ease;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 2px var(--overlay-strong);
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 2px 8px var(--overlay-medium),
+    inset 0 1px 0 rgba(var(--white-rgb), 0.05);
 }
 
 .menu-btn:hover {
@@ -201,13 +219,13 @@ body {
   border-color: var(--amber);
   box-shadow:
     0 0 16px rgba(212, 165, 116, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.3);
+    0 4px 12px var(--overlay-medium);
   transform: translateY(-1px);
 }
 
 .menu-btn:active {
   transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 4px var(--overlay-medium);
 }
 
 /* ============================================
@@ -297,7 +315,7 @@ body {
   transform: translateY(-4px);
   border-color: var(--lantern-red);
   box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 8px 24px var(--overlay-strong),
     0 0 20px var(--lantern-glow);
 }
 
@@ -371,7 +389,7 @@ body {
   left: -60px;
   width: 60px;
   height: 100%;
-  background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+  background: linear-gradient(90deg, transparent 0%, var(--overlay-medium) 100%);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.35s ease;
@@ -402,7 +420,7 @@ body {
   justify-content: center;
   overflow: hidden;
   position: relative;
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 0 30px var(--overlay-medium);
 }
 
 .detail-sprite {
@@ -465,7 +483,7 @@ body {
   font-style: italic;
   line-height: 1.6;
   padding: 12px;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--overlay-subtle);
   border-radius: 6px;
   border-left: 3px solid var(--lantern-red);
 }
@@ -481,7 +499,7 @@ body {
   background: linear-gradient(135deg, var(--lantern-bright) 0%, var(--lantern-red) 100%) !important;
   box-shadow:
     0 0 20px var(--lantern-glow),
-    0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    0 4px 12px var(--overlay-medium) !important;
 }
 
 /* ============================================
