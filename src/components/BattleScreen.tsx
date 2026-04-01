@@ -2,14 +2,16 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
-import { getAffinityLevel, getAffinityBonus } from '../data/affinity.ts';
 import { useLocalizedCharacterData } from '../hooks/useLocalizedCharacterData.ts';
 import { gaugePercent } from '../data/constants.ts';
-import { randomPick, getDrunkLevel, BUFF_META, getKanryoku, canPlayCard, isFoodDisabled } from '../engine/utils.ts';
+import { randomPick, getDrunkLevel, getKanryoku } from '../engine/utils.ts';
 import { buildCardDisplayInfo, buildOpponentCardDisplayInfo, computeRoundOutcome } from '../engine/battlePresenter.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { BuffDisplay } from './BuffDisplay.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
+import { BattleResult } from './battle/BattleResult.tsx';
+import { OpponentBar } from './battle/OpponentBar.tsx';
+import { PlayerHand } from './battle/PlayerHand.tsx';
 
 // バフ表示は BUFF_META (utils.ts) から参照
 
@@ -45,42 +47,7 @@ function getSanityStage(value: number) {
   return SANITY_STAGES[SANITY_STAGES.length - 1];
 }
 
-import { getSharedAudioContext } from '../engine/audioContext.ts';
-
-function playSound(type: 'slam' | 'flip') {
-  try {
-    const x = getSharedAudioContext();
-    if (type === 'slam') {
-      const o = x.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(180, x.currentTime);
-      o.frequency.exponentialRampToValueAtTime(50, x.currentTime + 0.15);
-      const g = x.createGain();
-      g.gain.setValueAtTime(0.12, x.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, x.currentTime + 0.2);
-      o.connect(g); g.connect(x.destination);
-      o.start(); o.stop(x.currentTime + 0.2);
-      const b = x.createBuffer(1, x.sampleRate * 0.08, x.sampleRate);
-      const d = b.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.15));
-      const n = x.createBufferSource();
-      n.buffer = b;
-      const ng = x.createGain();
-      ng.gain.value = 0.08;
-      n.connect(ng); ng.connect(x.destination);
-      n.start();
-    } else if (type === 'flip') {
-      const o = x.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = 2000;
-      const g = x.createGain();
-      g.gain.setValueAtTime(0.04, x.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, x.currentTime + 0.12);
-      o.connect(g); g.connect(x.destination);
-      o.start(); o.stop(x.currentTime + 0.12);
-    }
-  } catch (_) { /* ignore */ }
-}
+import { playSlamSound, playFlipSound } from '../engine/battleAudio.ts';
 
 export function BattleScreen() {
   const { t } = useTranslation();
@@ -284,7 +251,7 @@ export function BattleScreen() {
       setTableCards(prev => ({ ...prev, player: playerCardInfo }));
       setPlayerFlipped(true);
       setSlamPlayer(true);
-      playSound('slam');
+      playSlamSound();
       setFieldShaking(true);
       safeTimeout(() => { setSlamPlayer(false); setFieldShaking(false); }, 400);
     }
@@ -299,13 +266,13 @@ export function BattleScreen() {
       }
 
       setSlamOpp(true);
-      playSound('slam');
+      playSlamSound();
       safeTimeout(() => setSlamOpp(false), 400);
 
       // 相手カードフリップ
       safeTimeout(() => {
         setOppFlipped(true);
-        playSound('flip');
+        playFlipSound();
 
         // 結果表示
         safeTimeout(() => {
@@ -504,44 +471,13 @@ export function BattleScreen() {
           {/* 中央: ゲームエリア */}
           <div className="battle-center">
             {/* 相手バー */}
-            <div className="opponent-bar">
-              <div className="opp-portrait-mini">
-                <CharacterPortrait theme={currentOpponent.theme} variant="icon" />
-              </div>
-              <div className="opp-info">
-                <div className="opp-name-row">
-                  <div className="opp-name">{currentOpponent.name}</div>
-                  <div className="opp-title">{currentOpponent.subtitle}</div>
-                </div>
-                <div className="gauge-row">
-                  <div className="gauge-label-sm">{t('battle.drunkLabel')}</div>
-                  <div className="gauge-track">
-                    <div
-                      className="gauge-fill opp-fill"
-                      style={{ width: `${gaugePercent(battle.opponentDrunk, 10)}%` }}
-                    />
-                  </div>
-                  <div className="gauge-lvl">
-                    <span className="lvl-t">{t(oppDrunkStage.textKey)}</span>
-                    <span className="lvl-n">({battle.opponentDrunk}/10)</span>
-                  </div>
-                </div>
-                <div className="gauge-row">
-                  <div className="gauge-label-sm">{t('battle.sanityLabel')}</div>
-                  <div className="gauge-track">
-                    <div
-                      className="gauge-fill sanity-fill"
-                      style={{ width: `${gaugePercent(battle.opponentSanity, currentOpponent.sanityMax ?? 10)}%` }}
-                    />
-                  </div>
-                  <div className={`gauge-lvl ${oppSanityStage.cls}`}>
-                    <span className="lvl-t">{t(oppSanityStage.textKey)}</span>
-                    <span className="lvl-n">({battle.opponentSanity}/{currentOpponent.sanityMax ?? 10})</span>
-                  </div>
-                </div>
-                <BuffDisplay buffs={battle.opponentBuffs} keyPrefix="ob" />
-              </div>
-            </div>
+            <OpponentBar
+              currentOpponent={currentOpponent}
+              battle={battle}
+              oppDrunkStage={oppDrunkStage}
+              oppSanityStage={oppSanityStage}
+              t={t}
+            />
 
             {/* フィールド */}
             <div className="battle-field">
@@ -637,51 +573,13 @@ export function BattleScreen() {
         </div>
 
         {/* 手札エリア */}
-        <div className="hand-area" data-card-count={battle.playerHand.length}>
-          {(() => {
-            const playerDrunkLevel = getDrunkLevel(battle.playerDrunk);
-            const foodDisabled = isFoodDisabled(playerDrunkLevel);
-            return battle.playerHand.map((cardId, i) => {
-            const card = CARD_DATA[cardId];
-            if (!card) return null;
-            const isPlaying = playingCardIdx === i;
-            const costLocked = !canPlayCard(card, battle.playerDrunk);
-            const foodLocked = foodDisabled && card.type === 'food';
-            const isDisabled = ((battle.isProcessing || playingCardIdx !== null) && !isPlaying) || costLocked || foodLocked;
-            const isSelected = battle.selectedCard === cardId && !isPlaying;
-            const isCorrupted = battle.corruptedSlots[i] === true;
-            const isHidden = battle.playerHiddenSlots.includes(i);
-            const isBlurred = i === battle.playerBlurredSlot && !isHidden;
-            const cardLevel = battle.playerCardLevels?.[cardId] ?? 1;
-            const levelClass = cardLevel >= 3 ? 'card-lv3' : cardLevel >= 2 ? 'card-lv2' : '';
-            const valText = isHidden ? '???' : card.type === 'food' ? (card.heal === 99 ? t('battle.maxHeal') : t('battle.heal', { value: card.heal })) :
-                            card.type === 'drink' ? (card.damage === -1 ? '1~3' : `${card.damage}`) :
-                            card.type === 'chug' ? t('battle.special') :
-                            card.type === 'harassment' ? t('battle.special') : '';
-
-            return (
-              <div
-                key={`${cardId}-${i}`}
-                ref={el => { handCardRefs.current[i] = el; }}
-                className={`hand-card type-${card.type} ${levelClass} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${isDisabled ? 'disabled' : ''} ${isCorrupted ? 'corrupted' : ''} ${isBlurred ? 'card-blurred' : ''} ${isHidden ? 'card-hidden' : ''} ${costLocked ? 'card-cost-locked' : ''} ${foodLocked ? 'card-food-locked' : ''}`}
-                onClick={() => handleCardClick(cardId, i)}
-              >
-                {cardLevel >= 2 && !isHidden && (
-                  <div className="card-level-badge">{'★'.repeat(cardLevel)}</div>
-                )}
-                <div className="hand-tooltip">
-                  <div className="tooltip-name">{isHidden ? '???' : t(`cards.${card.id}.name`, card.name)}</div>
-                  <div className="tooltip-desc">{costLocked ? t('battle.costLocked') : foodLocked ? t('battle.foodLocked') : (isHidden ? t('battle.hiddenCard') : t(`cards.${card.id}.desc`, card.description))}</div>
-                </div>
-                <div className="hand-cost">{card.cost}</div>
-                <div className="hand-icon">{isHidden ? '❓' : card.emoji}</div>
-                <div className="hand-name">{isHidden ? '???' : t(`cards.${card.id}.name`, card.name)}</div>
-                <div className="hand-val">{valText}</div>
-              </div>
-            );
-          });
-          })()}
-        </div>
+        <PlayerHand
+          battle={battle}
+          playingCardIdx={playingCardIdx}
+          handCardRefs={handCardRefs}
+          onCardClick={handleCardClick}
+          t={t}
+        />
 
         {matchupBadge && <div className="matchup-badge">{matchupBadge}</div>}
         {misplayFlash && <div className="matchup-badge misplay-shake">{t('battle.rampage')}</div>}
@@ -744,51 +642,17 @@ export function BattleScreen() {
 
       {/* 勝敗リザルト */}
       {gameResult && !activeAfterEvent && (
-        <div className="battle-result">
-          <div className="result-content">
-            <h2>
-              {gameResult === 'player_win'
-                ? (battle.opponentSanity <= 0 ? t('battle.resultSanityWin') : t('battle.resultWin'))
-                : gameResult === 'opponent_win'
-                ? (battle.playerSanity <= 0 ? t('battle.resultSanityLose') : t('battle.resultLose'))
-                : t('battle.resultDraw')}
-            </h2>
-            <p>
-              {gameResult === 'player_win'
-                ? currentOpponent.battleLines.loseLine
-                : gameResult === 'opponent_win'
-                ? currentOpponent.battleLines.winLine
-                : t('battle.goodMatch')}
-            </p>
-            <div className="result-reward">{t('battle.reward', { amount: resultReward })}</div>
-            {gameResult === 'player_win' && currentOpponent && (() => {
-              const charWins = winsByCharacter[currentOpponent.id] ?? 0;
-              const affLv = getAffinityLevel(charWins);
-              const bonus = getAffinityBonus(charWins);
-              return affLv > 0 ? (
-                <div className="result-affinity">
-                  {'❤'.repeat(affLv)} {t('battle.affinityLevel', { level: affLv })}
-                  {bonus > 0 && <span className="affinity-bonus"> ({t('battle.affinityBonus', { bonus })})</span>}
-                </div>
-              ) : null;
-            })()}
-            {gameResult === 'player_win' && pendingAfterEvent && (
-              <button
-                className="menu-btn after-event-btn"
-                onClick={() => showAfterEvent(pendingAfterEvent)}
-                style={{
-                  background: `linear-gradient(135deg, ${pendingAfterEvent.cgColor}cc, ${pendingAfterEvent.cgColor}88)`,
-                  border: `1px solid ${pendingAfterEvent.cgColor}`,
-                }}
-              >
-                {pendingAfterEvent.emoji} {pendingAfterEvent.title}
-              </button>
-            )}
-            <button className="menu-btn" onClick={() => setScreen('title')}>
-              {t('battle.returnToBar')}
-            </button>
-          </div>
-        </div>
+        <BattleResult
+          gameResult={gameResult}
+          battle={battle}
+          currentOpponent={currentOpponent}
+          resultReward={resultReward}
+          winsByCharacter={winsByCharacter}
+          pendingAfterEvent={pendingAfterEvent}
+          t={t}
+          onShowAfterEvent={showAfterEvent}
+          onReturnToBar={() => setScreen('title')}
+        />
       )}
 
       {/* 勝利後イベントオーバーレイ */}

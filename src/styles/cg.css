@@ -86,10 +86,10 @@
   height: 1em;
   background: var(--amber);
   margin-left: 2px;
-  animation: blink 0.7s step-end infinite;
+  animation: blink-flash 0.7s step-end infinite;
 }
 
-@keyframes blink {
+@keyframes blink-flash {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
