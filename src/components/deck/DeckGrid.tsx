@@ -2,6 +2,7 @@ import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CARD_DATA } from '../../data/cards.ts';
 import type { CardDef } from '../../data/types.ts';
+import { formatDamage, formatHeal } from '../../engine/cardFormat.ts';
 
 interface AnimCard {
   id: number;
@@ -85,8 +86,8 @@ export function DeckGrid({
             <div className="deck-slot-emoji">{card.emoji}</div>
             <div className="deck-slot-name">{t(`cards.${card.id}.name`, card.name)}</div>
             <div className="deck-slot-info">
-              {card.type === 'drink' ? t('deckGrid.atkShort', { value: card.damage === -1 ? '1~3' : card.damage }) :
-               card.type === 'food' ? t('deckGrid.healShort', { value: card.heal === 99 ? 'MAX' : card.heal }) :
+              {card.type === 'drink' ? t('deckGrid.atkShort', { value: formatDamage(card) }) :
+               card.type === 'food' ? t('deckGrid.healShort', { value: formatHeal(card) }) :
                card.type === 'harassment' ? `Lv${card.requiredDrunkLevel}` :
                t('deckGrid.special')}
             </div>

@@ -1,6 +1,6 @@
 import { CARD_DATA } from '../data/cards.ts';
 import type { BattleState, CardType, CharacterDef } from '../data/types.ts';
-import { randomPick, getDrunkLevel, hasBuff, canPlayCard, isFoodDisabled } from './utils.ts';
+import { randomPick, randomIndex, getDrunkLevel, hasBuff, canPlayCard, isFoodDisabled } from './utils.ts';
 
 /** 三すくみカウンタータイプ */
 function counterType(t: CardType): CardType {
@@ -46,7 +46,7 @@ export const BattleAI = {
 
     // === 新メカニクス: 暴走 (Lv2: ランダム除外, Lv3: 20%完全ランダム) ===
     if (myDrunkLevel >= 2 && candidates.length > 1) {
-      const dropIdx = Math.floor(Math.random() * candidates.length);
+      const dropIdx = randomIndex(candidates);
       candidates.splice(dropIdx, 1);
     }
     if (myDrunkLevel >= 3 && Math.random() < 0.2) {
@@ -206,7 +206,7 @@ export const BattleAI = {
     }
 
     // 最終フォールバック
-    return { cardId: candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : null, misplay: false };
+    return { cardId: randomPick(candidates), misplay: false };
   },
 
   pickBestDrink(drinks: string[]): string | null {

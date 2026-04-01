@@ -6,6 +6,7 @@ import { useLocalizedCharacterData } from '../hooks/useLocalizedCharacterData.ts
 import { gaugePercent } from '../data/constants.ts';
 import { randomPick, getDrunkLevel, getKanryoku } from '../engine/utils.ts';
 import { buildCardDisplayInfo, buildOpponentCardDisplayInfo, computeRoundOutcome } from '../engine/battlePresenter.ts';
+import { formatDamage } from '../engine/cardFormat.ts';
 import { CharacterPortrait } from './CharacterPortrait.tsx';
 import { BuffDisplay } from './BuffDisplay.tsx';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
@@ -626,7 +627,7 @@ export function BattleScreen() {
                   <div className="revealed-card-emoji">{card.emoji}</div>
                   <div className="revealed-card-name">{t(`cards.${card.id}.name`, card.name)}</div>
                   <div className="revealed-card-type">
-                    {card.type === 'drink' ? t('battle.cardTypeAttack', { value: card.damage === -1 ? '1~3' : card.damage }) :
+                    {card.type === 'drink' ? t('battle.cardTypeAttack', { value: formatDamage(card) }) :
                      card.type === 'food' ? t('battle.cardTypeHeal', { value: card.heal }) :
                      card.type === 'chug' ? t('battle.cardTypeChug') :
                      card.type === 'harassment' ? t('battle.cardTypeHarassment') :

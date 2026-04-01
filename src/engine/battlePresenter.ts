@@ -5,6 +5,7 @@
  */
 import { CARD_DATA } from '../data/cards.ts';
 import type { TFunction } from 'i18next';
+import { formatDamage, formatHeal } from './cardFormat.ts';
 
 export interface CardDisplayInfo {
   id: string;
@@ -21,10 +22,10 @@ export function buildCardDisplayInfo(cardId: string, t: TFunction): CardDisplayI
   let val: string;
   switch (card.type) {
     case 'food':
-      val = card.heal === 99 ? '+MAX' : `+${card.heal ?? 0}`;
+      val = `+${formatHeal(card)}`;
       break;
     case 'drink':
-      val = card.damage === -1 ? '1~3' : `${card.damage}`;
+      val = formatDamage(card);
       break;
     default:
       val = '';
@@ -46,7 +47,7 @@ export function buildOpponentCardDisplayInfo(cardId: string, t: TFunction): Card
   let val: string;
   switch (card.type) {
     case 'food':
-      val = card.heal === 99 ? '+MAX' : `+${card.heal ?? 0}`;
+      val = `+${formatHeal(card)}`;
       break;
     case 'drink':
       val = card.damage === -1 ? '?' : `${card.damage}`;

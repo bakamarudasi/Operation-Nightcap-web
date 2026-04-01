@@ -3,6 +3,7 @@ import type { BattleState } from '../../data/types.ts';
 import { CARD_DATA } from '../../data/cards.ts';
 import { getDrunkLevel } from '../../engine/utils.ts';
 import { canPlayCard, isFoodDisabled } from '../../engine/utils.ts';
+import { formatDamage, formatHeal } from '../../engine/cardFormat.ts';
 
 interface PlayerHandProps {
   battle: BattleState;
@@ -38,7 +39,7 @@ export function PlayerHand({
         const cardLevel = battle.playerCardLevels?.[cardId] ?? 1;
         const levelClass = cardLevel >= 3 ? 'card-lv3' : cardLevel >= 2 ? 'card-lv2' : '';
         const valText = isHidden ? '???' : card.type === 'food' ? (card.heal === 99 ? t('battle.maxHeal') : t('battle.heal', { value: card.heal })) :
-                        card.type === 'drink' ? (card.damage === -1 ? '1~3' : `${card.damage}`) :
+                        card.type === 'drink' ? formatDamage(card) :
                         card.type === 'chug' ? t('battle.special') :
                         card.type === 'harassment' ? t('battle.special') : '';
 

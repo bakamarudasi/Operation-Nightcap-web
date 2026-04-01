@@ -78,27 +78,16 @@ export function SettingsScreen() {
         <div className="settings-section">
           <label className="settings-label">{t('settings.language')}</label>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              className="menu-btn"
-              style={{ backgroundColor: i18n.language === 'ja' ? '#886644' : '#555', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-              onClick={() => i18n.changeLanguage('ja')}
-            >
-              日本語
-            </button>
-            <button
-              className="menu-btn"
-              style={{ backgroundColor: i18n.language === 'en' ? '#886644' : '#555', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-              onClick={() => i18n.changeLanguage('en')}
-            >
-              English
-            </button>
-            <button
-              className="menu-btn"
-              style={{ backgroundColor: i18n.language === 'zh-CN' ? '#886644' : '#555', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-              onClick={() => i18n.changeLanguage('zh-CN')}
-            >
-              简体中文
-            </button>
+            {([['ja', '日本語'], ['en', 'English'], ['zh-CN', '简体中文']] as const).map(([lang, label]) => (
+              <button
+                key={lang}
+                className="menu-btn"
+                style={{ backgroundColor: i18n.language === lang ? '#886644' : '#555', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                onClick={() => i18n.changeLanguage(lang)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
         <div className="settings-divider"></div>
