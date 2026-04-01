@@ -1345,13 +1345,10 @@
   gap: 24px;
   max-width: 600px;
   width: 90%;
-  animation: afterSlideUp 0.8s ease 0.5s both;
+  animation: fadeInUp 0.8s ease 0.5s both;
 }
 
-@keyframes afterSlideUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* afterSlideUp は main.css の fadeInUp に統合 */
 
 .after-event-visual {
   width: 100%;

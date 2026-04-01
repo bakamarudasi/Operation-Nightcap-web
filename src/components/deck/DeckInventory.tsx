@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CARD_DATA } from '../../data/cards.ts';
 import type { CardDef } from '../../data/types.ts';
+import { formatDamage, formatHeal } from '../../engine/cardFormat.ts';
 
 type SortMode = 'rarity' | 'name' | 'power';
 
@@ -125,8 +126,8 @@ export function DeckInventory({
               <div className="inv-card-details">
                 <div className="inv-card-name">{t(`cards.${card.id}.name`, card.name)}</div>
                 <div className="inv-card-desc">
-                  {card.type === 'drink' ? t('battle.cardTypeAttack', { value: card.damage === -1 ? '1~3' : card.damage }) :
-                   card.type === 'food' ? t('battle.cardTypeHeal', { value: card.heal === 99 ? 'MAX' : card.heal }) :
+                  {card.type === 'drink' ? t('battle.cardTypeAttack', { value: formatDamage(card) }) :
+                   card.type === 'food' ? t('battle.cardTypeHeal', { value: formatHeal(card) }) :
                    card.type === 'harassment' ? t('deckGrid.harassmentInfo', { level: card.requiredDrunkLevel, damage: card.drunkDamage ?? 0 }) :
                    t(`cards.${card.id}.desc`, card.description).substring(0, 20)}
                 </div>

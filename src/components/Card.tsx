@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { CARD_DATA } from '../data/cards.ts';
+import { formatDamage, formatHeal } from '../engine/cardFormat.ts';
 
 interface CardProps {
   cardId: string;
@@ -35,12 +36,12 @@ export function Card({ cardId, onClick, selected, size = 'normal', showPrice, le
       <span className="card-name">{t(`cards.${card.id}.name`, card.name)}</span>
       {card.type === 'drink' && card.damage !== undefined && (
         <span className="card-value">
-          {card.damage === -1 ? '1~3' : card.damage}
+          {formatDamage(card)}
         </span>
       )}
       {card.type === 'food' && card.heal !== undefined && (
         <span className="card-value">
-          +{card.heal === 99 ? 'MAX' : card.heal}
+          +{formatHeal(card)}
         </span>
       )}
       {showPrice && (

@@ -1,5 +1,5 @@
 import type { BattleState } from '../data/types.ts';
-import { shuffleArray, findHighestValueCardIndex, getDrunkLevel, getHiddenSlotCount } from './utils.ts';
+import { shuffleArray, randomPick, randomIndex, findHighestValueCardIndex, getDrunkLevel, getHiddenSlotCount } from './utils.ts';
 
 // ============================================
 // === drawHands 純粋関数ヘルパー群 ===
@@ -29,7 +29,7 @@ function drawFromDeck(
 /** 手札からランダムN枚を破棄して捨て札へ移す */
 function discardRandomCards(hand: string[], discard: string[], count: number): void {
   for (let n = 0; n < count && hand.length > 1; n++) {
-    const idx = Math.floor(Math.random() * hand.length);
+    const idx = randomIndex(hand);
     discard.push(...hand.splice(idx, 1));
   }
 }
@@ -55,18 +55,18 @@ function applyHandModifications(
 ): void {
   // rumor: 相手の手札1枚をデッキからランダムに差し替え
   if (battle.rumorActive && oHand.length > 0 && oRemaining.length > 0) {
-    const replaceIdx = Math.floor(Math.random() * oHand.length);
+    const replaceIdx = randomIndex(oHand);
     const replacedCard = oHand[replaceIdx];
-    const newCardIdx = Math.floor(Math.random() * oRemaining.length);
+    const newCardIdx = randomIndex(oRemaining);
     oHand[replaceIdx] = oRemaining[newCardIdx];
     oRemaining[newCardIdx] = replacedCard;
   }
 
   // playerRumor: プレイヤーの手札1枚をデッキからランダムに差し替え
   if (battle.playerRumorActive && pHand.length > 0 && pRemaining.length > 0) {
-    const replaceIdx = Math.floor(Math.random() * pHand.length);
+    const replaceIdx = randomIndex(pHand);
     const replacedCard = pHand[replaceIdx];
-    const newCardIdx = Math.floor(Math.random() * pRemaining.length);
+    const newCardIdx = randomIndex(pRemaining);
     pHand[replaceIdx] = pRemaining[newCardIdx];
     pRemaining[newCardIdx] = replacedCard;
   }
@@ -112,7 +112,7 @@ function calculateVisibilitySlots(
   let blurredSlot = -1;
   if (drunkLevel >= 1) {
     const avail = Array.from({ length: hand.length }, (_, i) => i).filter(i => !hiddenSlots.includes(i));
-    blurredSlot = avail.length > 0 ? avail[Math.floor(Math.random() * avail.length)] : -1;
+    blurredSlot = avail.length > 0 ? (randomPick(avail) ?? -1) : -1;
   }
 
   // 汚染スロットを実際の手札サイズに合わせる
