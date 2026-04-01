@@ -1,0 +1,639 @@
+/* ============================================
+   対戦画面 — レイアウト & 構造
+   ============================================ */
+
+/* --- 背景レイヤー --- */
+.battle-bg-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.battle-bg-gradient {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 30%, rgba(120, 50, 20, 0.1) 0%, transparent 70%),
+    linear-gradient(180deg, var(--wood-darkest), #160c06 50%, var(--wood-darkest));
+}
+
+.battle-bg-noise {
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.battle-bg-table {
+  background: repeating-linear-gradient(
+    92deg,
+    rgba(var(--wood-shadow-rgb), 0.03) 0px,
+    rgba(60, 35, 15, 0.05) 2px,
+    rgba(var(--wood-shadow-rgb), 0.02) 4px,
+    transparent 5px,
+    transparent 20px
+  );
+}
+
+/* --- 酔いブラー（画面全体） --- */
+.battle-drunk-blur {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  backdrop-filter: blur(0px);
+  transition: backdrop-filter 1s ease;
+}
+
+/* --- 酔い傾き（画面全体） --- */
+.battle-tilt-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: transform 1.5s ease;
+  transform-origin: center center;
+  position: relative;
+  z-index: 2;
+}
+
+/* --- パーティクル --- */
+.battle-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.battle-particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: var(--gold-bright);
+  border-radius: 50%;
+  opacity: 0;
+  animation: battleFloatUp linear infinite;
+  box-shadow: 0 0 4px rgba(var(--gold-glow-rgb), 0.3);
+}
+
+@keyframes battleFloatUp {
+  0%   { opacity: 0; transform: translateY(0); }
+  10%  { opacity: 0.3; }
+  90%  { opacity: 0.05; }
+  100% { opacity: 0; transform: translateY(-100vh); }
+}
+
+/* ===== ヘッダー ===== */
+.battle-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 24px;
+  background: rgba(14, 8, 4, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(var(--wood-accent-rgb), 0.2);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+}
+
+.battle-bar-name {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  letter-spacing: 0.15em;
+  color: var(--paper);
+}
+
+.battle-header-center {
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.round-display {
+  padding: 4px 18px;
+  border: 1px solid rgba(138, 110, 56, 0.6);
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--gold);
+  font-weight: 700;
+  background: rgba(40, 25, 12, 0.6);
+}
+
+.battle-money {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.battle-money-icon {
+  width: 16px;
+  height: 16px;
+  background: radial-gradient(circle at 40% 35%, #f0d48a, #c49530);
+  border-radius: 50%;
+  font-size: 0.4rem;
+  color: #5a3a10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* ===== メインレイアウト: 2カラム（立ち絵 + ゲームエリア） ===== */
+.battle-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+
+/* ===== 左カラム: キャラクター立ち絵 ===== */
+.battle-left {
+  width: var(--battle-left-w);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 12px;
+  background: rgba(10, 6, 3, 0.5);
+  border-right: 1px solid rgba(var(--wood-shadow-rgb), 0.15);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* キャラ背景グロウ */
+.battle-left::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200%;
+  height: 70%;
+  background: radial-gradient(ellipse at 50% 100%, var(--char-glow, rgba(232, 93, 58, 0.15)) 0%, transparent 60%);
+  pointer-events: none;
+  transition: all 1s ease;
+}
+
+/* キャラ立ち絵コンテナ */
+.char-portrait {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border-radius: 12px;
+  background: rgba(20, 12, 6, 0.6);
+  border: 1px solid rgba(var(--wood-accent-rgb), 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.5s ease;
+  box-shadow:
+    inset 0 0 40px var(--overlay-medium),
+    0 8px 32px var(--overlay-strong);
+}
+
+/* 将来の立ち絵画像用 */
+.char-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+/* キャラ表示（画像 or emoji） */
+.char-portrait-icon {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  filter: drop-shadow(0 4px 16px var(--overlay-strong));
+  transition: transform 0.4s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.char-portrait-icon .char-emoji {
+  font-size: 10rem;
+}
+
+.char-portrait-icon .char-img {
+  border-radius: 12px;
+}
+
+/* 酔い赤み */
+.char-portrait-flush {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(200, 40, 40, 0), transparent 70%);
+  transition: background 1s ease;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* リアクション絵文字 */
+.char-reaction {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 1.5rem;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 5;
+}
+
+.char-reaction.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 酔い演出: キャラ */
+.char-portrait.drunk-1 {
+  filter: brightness(1.05) saturate(1.1);
+}
+.char-portrait.drunk-2 {
+  filter: brightness(1.1) saturate(1.2);
+  animation: charSway 3s ease-in-out infinite;
+}
+.char-portrait.drunk-3 {
+  filter: brightness(1.15) saturate(1.3) hue-rotate(-5deg);
+  animation: charSway 2s ease-in-out infinite;
+}
+.char-portrait.drunk-4 {
+  filter: brightness(0.9) saturate(1.4) hue-rotate(-10deg);
+  animation: charCollapse 1s ease-in-out forwards;
+}
+
+@keyframes charSway {
+  0%, 100% { transform: rotate(-1.5deg) translateX(-3px); }
+  50%      { transform: rotate(1.5deg) translateX(3px); }
+}
+
+@keyframes charCollapse {
+  0%   { transform: rotate(0) translateY(0); }
+  100% { transform: rotate(8deg) translateY(30px); opacity: 0.7; }
+}
+
+/* キャラ情報（名前・酔い状態） */
+.char-info {
+  margin-top: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 1;
+}
+
+.char-name {
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  letter-spacing: 0.15em;
+  color: var(--paper);
+  text-shadow: 0 2px 8px var(--overlay-heavy);
+}
+
+.char-subtitle {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+
+.char-drunk-label {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  margin-top: 8px;
+  padding: 4px 16px;
+  background: rgba(var(--wood-deep-rgb), 0.5);
+  border-radius: 4px;
+  border: 1px solid rgba(var(--wood-shadow-rgb), 0.2);
+  letter-spacing: 0.15em;
+  transition: all 0.5s ease;
+}
+
+/* 酔い段階カラー */
+.drunk-sober  { color: var(--paper); }
+.drunk-tipsy  { color: #ddaa66; }
+.drunk-good   { color: #ee8844; }
+.drunk-done   { color: #ee5533; }
+.drunk-wasted { color: #ff3333; }
+.drunk-gone   { color: #ff2222; animation: drunkPulse 1s ease-in-out infinite; }
+
+@keyframes drunkPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+/* ===== 中央: ゲームエリア ===== */
+.battle-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* --- 相手バー（中央上部） --- */
+.opponent-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: rgba(18, 10, 5, 0.5);
+  border-bottom: 1px solid rgba(var(--wood-shadow-rgb), 0.15);
+}
+
+.opp-portrait-mini {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: rgba(var(--wood-deep-rgb), 0.7);
+  border: 1px solid rgba(var(--wood-accent-rgb), 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.opp-portrait-mini .char-img {
+  border-radius: 8px;
+}
+
+.opp-portrait-mini .char-emoji {
+  font-size: 1.6rem;
+}
+
+.opp-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.opp-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.opp-name {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  color: var(--paper);
+}
+
+.opp-title {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+
+/* --- ゲージ共通 --- */
+.gauge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gauge-label-sm {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  min-width: 50px;
+  letter-spacing: 0.05em;
+}
+
+.gauge-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(var(--wood-deep-rgb), 0.6);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--wood-shadow-rgb), 0.2);
+}
+
+.gauge-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.gauge-fill.opp-fill {
+  background: linear-gradient(90deg, #884422, #cc5533, #ff6644);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 200, 150, 0.2),
+    0 0 8px rgba(255, 100, 60, 0.3);
+}
+
+.gauge-fill.player-fill {
+  background: linear-gradient(90deg, #336688, #4488aa, #55aacc);
+  box-shadow:
+    inset 0 1px 0 rgba(150, 220, 255, 0.2),
+    0 0 8px rgba(80, 160, 200, 0.3);
+}
+
+.gauge-fill.sanity-fill {
+  background: linear-gradient(90deg, #6b21a8, #8b5cf6, #a78bfa);
+  box-shadow:
+    inset 0 1px 0 rgba(200, 180, 255, 0.2),
+    0 0 8px rgba(139, 92, 246, 0.3);
+}
+
+.sanity-calm { color: #a78bfa; }
+.sanity-shaken { color: #c084fc; }
+.sanity-breaking { color: #f472b6; animation: pulse-sanity 1s infinite; }
+.sanity-gone { color: #ef4444; animation: pulse-sanity 0.5s infinite; }
+
+@keyframes pulse-sanity {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.gauge-lvl {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 100px;
+  text-align: right;
+}
+
+.gauge-lvl .lvl-t {
+  color: var(--gold-bright);
+  margin-right: 4px;
+}
+
+.gauge-lvl .lvl-n {
+  color: var(--text-dim);
+}
+
+/* --- バフ/デバフアイコン表示 --- */
+.buff-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  min-height: 0;
+}
+
+.player-buff-icons {
+  padding: 0 24px;
+  margin-top: 4px;
+}
+
+.buff-chip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  cursor: default;
+  animation: buffAppear 0.3s ease backwards;
+  position: relative;
+}
+
+.buff-chip.buff-positive {
+  background: rgba(80, 160, 80, 0.25);
+  border: 1px solid rgba(100, 200, 100, 0.35);
+  color: #aaffaa;
+}
+
+.buff-chip.buff-negative {
+  background: rgba(180, 60, 60, 0.25);
+  border: 1px solid rgba(220, 80, 80, 0.35);
+  color: #ffaaaa;
+}
+
+.buff-chip-icon {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.buff-chip-dur {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+@keyframes buffAppear {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* --- セリフエリア --- */
+.dialogue-area {
+  padding: 0 24px 8px;
+}
+
+.dialogue-bar {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(var(--wood-deep-rgb), 0.6), rgba(20, 12, 6, 0.7));
+  border-left: 3px solid rgba(138, 110, 56, 0.6);
+  border-radius: 0 8px 8px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 52px;
+  box-shadow: 0 2px 12px var(--overlay-light);
+  position: relative;
+  overflow: hidden;
+}
+
+.dialogue-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(138, 110, 56, 0.4), transparent 60%);
+}
+
+.dlg-name {
+  font-family: var(--font-heading);
+  font-size: 0.82rem;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  padding-top: 1px;
+  flex-shrink: 0;
+}
+
+.dlg-text {
+  font-size: 0.88rem;
+  letter-spacing: 0.05em;
+  line-height: 1.6;
+  color: var(--paper);
+}
+
+/* --- プレイヤーゲージ（中央下） --- */
+.player-gauge-row {
+  padding: 0 24px 8px;
+}
+
+/* ===== 下部ステータスバー ===== */
+.battle-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 6px 24px;
+  background: rgba(14, 8, 4, 0.85);
+  border-top: 1px solid rgba(var(--wood-accent-rgb), 0.2);
+  flex-shrink: 0;
+}
+
+.status-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+}
+
+.status-bar-label {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.status-bar-val {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--paper);
+  white-space: nowrap;
+}
+
+.status-bar-sep {
+  color: var(--text-dim);
+  margin: 0 2px;
+}
+
+.status-bar-divider {
+  width: 1px;
+  height: 16px;
+  background: rgba(var(--wood-accent-rgb), 0.2);
+  flex-shrink: 0;
+}
+
+.status-bar-detail {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  margin-left: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.win-c  { color: #8bc98b; }
+.lose-c { color: #c98b8b; }
+.draw-c { color: var(--gold); }
