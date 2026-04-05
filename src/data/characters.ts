@@ -1,4 +1,82 @@
+import type { TFunction } from 'i18next';
 import type { CharacterDef } from './types.ts';
+
+/**
+ * CHARACTER_DATA を i18n の t 関数でローカライズしたコピーを返す。
+ * 翻訳キーが存在しない場合は日本語（元データ）にフォールバックする。
+ */
+export function getLocalizedCharacterData(t: TFunction): Record<string, CharacterDef> {
+  const result: Record<string, CharacterDef> = {};
+
+  for (const [charId, base] of Object.entries(CHARACTER_DATA)) {
+    const ck = `char.${charId}`;
+
+    result[charId] = {
+      ...base,
+      name: t(`${ck}.name`, base.name),
+      subtitle: t(`${ck}.subtitle`, base.subtitle),
+      costumeStates: base.costumeStates.map((cs, i) => ({
+        ...cs,
+        label: t(`${ck}.costume.${i}.label`, cs.label),
+        description: t(`${ck}.costume.${i}.desc`, cs.description),
+      })),
+      drunkLevels: base.drunkLevels.map((dl, i) => ({
+        ...dl,
+        name: t(`${ck}.drunk.${i}.name`, dl.name),
+        lines: (t(`${ck}.drunk.${i}.lines`, { returnObjects: true, defaultValue: dl.lines }) as string[]),
+      })),
+      battleLines: {
+        playDrink: t(`${ck}.battle.playDrink`, { returnObjects: true, defaultValue: base.battleLines.playDrink }) as string[],
+        playFood: t(`${ck}.battle.playFood`, { returnObjects: true, defaultValue: base.battleLines.playFood }) as string[],
+        playChug: t(`${ck}.battle.playChug`, { returnObjects: true, defaultValue: base.battleLines.playChug }) as string[],
+        takeDamage: t(`${ck}.battle.takeDamage`, { returnObjects: true, defaultValue: base.battleLines.takeDamage }) as string[],
+        dealDamage: t(`${ck}.battle.dealDamage`, { returnObjects: true, defaultValue: base.battleLines.dealDamage }) as string[],
+        harassmentSuccess: t(`${ck}.battle.harassmentSuccess`, { returnObjects: true, defaultValue: base.battleLines.harassmentSuccess }) as string[],
+        harassmentFail: t(`${ck}.battle.harassmentFail`, { returnObjects: true, defaultValue: base.battleLines.harassmentFail }) as string[],
+        winLine: t(`${ck}.battle.winLine`, base.battleLines.winLine),
+        loseLine: t(`${ck}.battle.loseLine`, base.battleLines.loseLine),
+      },
+      cgEvents: base.cgEvents.map(ev => {
+        const evData = t(`${ck}.cg.${ev.id}`, { returnObjects: true, defaultValue: null }) as {
+          frames?: string[];
+          dialogue?: { s: string; t: string }[];
+        } | null;
+        if (!evData) return ev;
+        return {
+          ...ev,
+          frames: evData.frames
+            ? ev.frames?.map((f, i) => ({ ...f, label: evData.frames![i] ?? f.label }))
+            : ev.frames,
+          dialogue: evData.dialogue
+            ? evData.dialogue.map(d => ({
+                speaker: d.s ? t(d.s, d.s) : '',
+                text: d.t,
+              }))
+            : ev.dialogue,
+        };
+      }),
+      afterEvents: base.afterEvents.map(ae => {
+        const aeData = t(`${ck}.after.${ae.id}`, { returnObjects: true, defaultValue: null }) as {
+          title?: string;
+          dialogue?: { s: string; t: string }[];
+        } | null;
+        if (!aeData) return ae;
+        return {
+          ...ae,
+          title: aeData.title ?? ae.title,
+          dialogue: aeData.dialogue
+            ? aeData.dialogue.map(d => ({
+                speaker: d.s ? t(d.s, d.s) : '',
+                text: d.t,
+              }))
+            : ae.dialogue,
+        };
+      }),
+    };
+  }
+
+  return result;
+}
 
 export const CHARACTER_DATA: Record<string, CharacterDef> = {
   blaze: {
