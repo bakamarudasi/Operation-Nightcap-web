@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ラテラーノ秘密任務 — LATERANO CONFIDENTIAL — Proto</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Cinzel:wght@400;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0a0810;
+  color: #e0dcd0;
+  font-family: 'Noto Sans JP', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+#game-wrapper {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* === マップキャンバス === */
+#map-container {
+  position: relative;
+  border: 2px solid rgba(200, 170, 100, 0.3);
+  border-radius: 4px;
+  background: #0d0b14;
+  box-shadow: 0 0 40px rgba(100, 60, 180, 0.15), inset 0 0 60px rgba(0,0,0,0.5);
+}
+
+canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* === 右パネル（立ち絵） === */
+#portrait-panel {
+  width: 220px;
+  background: linear-gradient(180deg, #110e1a 0%, #0a0812 100%);
+  border: 1px solid rgba(200, 170, 100, 0.25);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 0 30px rgba(80, 50, 140, 0.1);
+  min-height: 460px;
+}
+
+#portrait-direction {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  color: #c8a84e;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+#portrait-box {
+  width: 196px;
+  height: 300px;
+  border-radius: 4px;
+  border: 1px solid rgba(200, 170, 100, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s ease;
+}
+
+#portrait-box .portrait-silhouette {
+  font-size: 120px;
+  opacity: 0.6;
+  transition: all 0.4s ease;
+  filter: drop-shadow(0 0 20px rgba(200, 170, 100, 0.3));
+}
+
+#portrait-name {
+  font-size: 14px;
+  color: #c8a84e;
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+
+#portrait-status {
+  font-size: 11px;
+  color: #8a7a60;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* === HUD === */
+#hud {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.hud-item {
+  font-size: 12px;
+  color: rgba(200, 190, 170, 0.7);
+  background: rgba(10, 8, 16, 0.7);
+  padding: 3px 8px;
+  border-radius: 3px;
+  backdrop-filter: blur(4px);
+}
+
+.hud-item.level {
+  color: #c8a84e;
+  border-left: 2px solid #c8a84e;
+}
+
+.hud-item.direction {
+  color: #7eb8e0;
+  border-left: 2px solid #7eb8e0;
+}
+
+/* === ふれあいプロンプト === */
+#interact-prompt {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 12, 25, 0.9);
+  border: 1px solid rgba(200, 170, 100, 0.5);
+  border-radius: 20px;
+  padding: 6px 20px;
+  font-size: 14px;
+  color: #c8a84e;
+  pointer-events: none;
+  animation: promptPulse 2s ease-in-out infinite;
+  white-space: nowrap;
+}
+
+@keyframes promptPulse {
+  0%, 100% { opacity: 0.7; box-shadow: 0 0 8px rgba(200, 170, 100, 0.2); }
+  50% { opacity: 1; box-shadow: 0 0 16px rgba(200, 170, 100, 0.4); }
+}
+
+/* === ふれあいメニュー === */
+#interaction-menu {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(12, 10, 20, 0.97);
+  border: 2px solid rgba(200, 170, 100, 0.6);
+  border-radius: 10px;
+  padding: 16px;
+  min-width: 320px;
+  max-height: 420px;
+  overflow-y: auto;
+  box-shadow: 0 0 60px rgba(100, 60, 160, 0.3), 0 0 120px rgba(0,0,0,0.5);
+  animation: menuAppear 0.2s ease-out;
+}
+
+@keyframes menuAppear {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+#interaction-menu h3 {
+  font-size: 15px;
+  color: #c8a84e;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+#interaction-menu .section-label {
+  font-size: 11px;
+  color: #6a6070;
+  margin: 8px 0 4px;
+  letter-spacing: 1px;
+}
+
+#interaction-menu .cmd-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  margin: 2px 0;
+  background: rgba(25, 20, 40, 0.8);
+  border: 1px solid rgba(100, 80, 140, 0.2);
+  border-radius: 5px;
+  color: #d0ccc0;
+  font-size: 14px;
+  font-family: 'Noto Sans JP', sans-serif;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+#interaction-menu .cmd-btn:hover {
+  background: rgba(60, 40, 100, 0.5);
+  border-color: rgba(200, 170, 100, 0.4);
+  color: #fff;
+  transform: translateX(4px);
+}
+
+#interaction-menu .cmd-btn.locked {
+  color: #4a4550;
+  cursor: not-allowed;
+  font-style: italic;
+}
+
+#interaction-menu .cmd-btn.locked:hover {
+  background: rgba(25, 20, 40, 0.8);
+  border-color: rgba(100, 80, 140, 0.2);
+  color: #4a4550;
+  transform: none;
+}
+
+#interaction-menu .close-btn {
+  display: block;
+  width: 100%;
+  padding: 6px;
+  margin-top: 10px;
+  background: rgba(80, 20, 20, 0.4);
+  border: 1px solid rgba(160, 60, 60, 0.3);
+  border-radius: 5px;
+  color: #a08080;
+  font-size: 12px;
+  font-family: 'Noto Sans JP', sans-serif;
+  cursor: pointer;
+  text-align: center;
+}
+
+#interaction-menu .close-btn:hover {
+  background: rgba(120, 30, 30, 0.5);
+  color: #d0a0a0;
+}
+
+/* === ダイアログ === */
+#dialogue-box {
+  display: none;
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  background: rgba(8, 5, 15, 0.96);
+  border: 2px solid rgba(200, 170, 100, 0.4);
+  border-radius: 8px;
+  padding: 14px 18px;
+  animation: dialogAppear 0.15s ease-out;
+}
+
+@keyframes dialogAppear {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#dialogue-speaker {
+  font-size: 13px;
+  color: #c8a84e;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+#dialogue-text {
+  font-size: 17px;
+  line-height: 1.6;
+  color: #e8e4d8;
+  min-height: 28px;
+}
+
+#dialogue-hint {
+  font-size: 11px;
+  color: #5a5560;
+  text-align: right;
+  margin-top: 6px;
+}
+
+/* === 操作説明 === */
+#controls-bar {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #4a4550;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+#controls-bar kbd {
+  background: rgba(40, 30, 60, 0.5);
+  border: 1px solid rgba(100, 80, 140, 0.3);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-family: inherit;
+  color: #8a80a0;
+}
+
+/* === スクロールバー === */
+#interaction-menu::-webkit-scrollbar { width: 4px; }
+#interaction-menu::-webkit-scrollbar-track { background: transparent; }
+#interaction-menu::-webkit-scrollbar-thumb { background: rgba(200, 170, 100, 0.3); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="game-wrapper">
+  <!-- マップ -->
+  <div id="map-container">
+    <canvas id="game-canvas" width="576" height="432"></canvas>
+    <div id="hud">
+      <div class="hud-item level" id="hud-level">♥ Lv.0（警戒） 触れた回数: 0</div>
+      <div class="hud-item direction" id="hud-direction">方向: —</div>
+    </div>
+    <div id="interact-prompt" style="display:none">【Space】ふれあいメニュー</div>
+    <div id="interaction-menu"></div>
+    <div id="dialogue-box">
+      <div id="dialogue-speaker">ヴィルトゥオーサ</div>
+      <div id="dialogue-text"></div>
+      <div id="dialogue-hint">【Space / Esc で閉じる】</div>
+    </div>
+  </div>
+
+  <!-- 立ち絵パネル -->
+  <div id="portrait-panel">
+    <div id="portrait-direction">— FRONT —</div>
+    <div id="portrait-box">
+      <div class="portrait-silhouette">👤</div>
+    </div>
+    <div id="portrait-name">ヴィルトゥオーサ</div>
+    <div id="portrait-status">
+      祭儀師（補助）<br>
+      <span style="font-size:10px;color:#6a6060">「人の心を探るアーツ」</span>
+    </div>
+  </div>
+</div>
+
+<div id="controls-bar">
+  <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動　
+  <kbd>Space</kbd> ふれあい　
+  <kbd>Esc</kbd> 閉じる　
+  ※キャラの周りを回って方向を変えてみて！
+</div>
+
+<script>
+// ============================================================
+// ラテラーノ秘密任務 プロトタイプ
+// ============================================================
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+const TILE = 48;
+const COLS = 12, ROWS = 9;
+
+// --- 色 ---
+const C = {
+  wall: '#3a3248', wallHi: '#4a4260', floor: '#1a1624', floorPattern: '#1e1a2a',
+  player: '#4a8aee', playerOutline: '#3060c0',
+  companion: '#d4b44a', companionOutline: '#a08830', companionGlow: 'rgba(212,180,74,0.15)',
+  halo: '#f0e080',
+};
+
+// --- ゲーム状態 ---
+const state = {
+  px: 3 * TILE + TILE/2, py: 6 * TILE + TILE/2,  // プレイヤー位置
+  cx: COLS/2 * TILE, cy: ROWS/2 * TILE,            // コンパニオン位置
+  speed: 3.2,
+  near: false,
+  menuOpen: false,
+  dialogOpen: false,
+  direction: 'front',  // front / back / side
+  affectionLv: 0,
+  touchCount: 0,
+  keys: {},
+  time: 0,
+};
+
+// --- 方向名 ---
+const dirNames = { front: '正面', back: '背後', side: '側面' };
+const dirEn = { front: 'FRONT', back: 'BACK', side: 'SIDE' };
+
+// --- コマンド定義 ---
+const cmds = {
+  front: [
+    ['👁 顔を見つめる', 'gaze_face'],
+    ['👁 胸を見つめる', 'gaze_chest'],
+    ['✋ 頭を撫でる', 'touch_head'],
+    ['✋ 胸に触れる', 'touch_chest'],
+    ['✋ お腹に触れる', 'touch_belly'],
+  ],
+  back: [
+    ['👁 背中を見つめる', 'gaze_back'],
+    ['👁 お尻を見つめる', 'gaze_butt'],
+    ['✋ 髪に触れる', 'touch_hair'],
+    ['✋ 背中に触れる', 'touch_back'],
+    ['✋ 翼に触れる', 'touch_wing'],
+  ],
+  side: [
+    ['👁 横顔を見つめる', 'gaze_profile'],
+    ['✋ 腰に触れる', 'touch_waist'],
+    ['✋ 翼の付け根に触れる', 'touch_wing_base'],
+  ],
+  common: [
+    ['💬 話しかける', 'talk'],
+    ['🤗 抱きしめる', 'hug'],
+  ],
+};
+
+// --- 反応テキスト ---
+const reactions = {
+  gaze_face: [
+    '何？ 私の顔に何かついてる？',
+    '…そんなに見つめられると、さすがに気になるわ',
+    'ふふ、見つめ合うのも悪くないわね',
+    '…あなたの瞳に映る私、綺麗？',
+  ],
+  gaze_chest: [
+    '…あなた今、どこを見てるか当てましょうか？',
+    'もう、わかっててやってるでしょう。…私にはお見通しよ？',
+    'そんなに気になる？ ふふ…後でね',
+    '…いいわよ、好きなだけ見て。あなただけの特別',
+  ],
+  touch_head: [
+    '急に何…？ …ふふ、撫でたかったの？',
+    '…嫌じゃないけど、もう少し優しくして',
+    'んっ…もう、好きにしていいわよ',
+    '…あなたに撫でられると、アーツが勝手に反応するの',
+  ],
+  touch_chest: [
+    '——！ …何をしているのかしら？ 説明してもらえる？',
+    '…また？ あなたの大胆さは予測の範囲外ね',
+    'もう…驚かないわよ。…少しだけ、ドキドキするけど',
+    '…っ。感応アーツのせいで、あなたの手の温度が直接伝わるの…',
+  ],
+  touch_belly: [
+    '…お腹？ くすぐったいんだけど…',
+    '…何がしたいの？ …わかってるけど、言わないであげる',
+    'んっ…そこ、弱いの…知ってるでしょ',
+    '…あなたの手、あったかい…もう少しそうしてて',
+  ],
+  gaze_back: [
+    '…後ろにいるの、気配でわかるわ。何か用？',
+    '…背中をじっと見るの、やめてくれないかしら。落ち着かないの',
+    '…後ろ姿、そんなに気になる？',
+    '…あなたの視線、背中で感じるの。アーツのせいかしら…それとも',
+  ],
+  gaze_butt: [
+    '——…今、どこを見ていたの？ 正直に答えなさい',
+    '…後ろからなら見えないと思った？ 感応アーツを甘く見ないで',
+    '…もう怒らないわ。でも、あんまりじろじろ見ないでね？',
+    '…背後からそういう視線を送られると…意識しちゃうじゃない',
+  ],
+  touch_hair: [
+    '…髪に触らないで。手入れが大変なの',
+    '…そっとなら、いいわよ。引っ張らないでね',
+    'ん…後ろから髪を触られるの、嫌いじゃないかも',
+    '…もっと触って。あなたの手が好き…',
+  ],
+  touch_back: [
+    'っ…！ 背中は不意打ちよ。やめて',
+    '…後ろから触るの、卑怯だと思わない？',
+    '…ん。背中、あなたに預けてもいい？',
+    '…もたれかかっていい？ あなたの胸に',
+  ],
+  touch_wing: [
+    '——っ！！ …翼は…ダメ…っ！ サンクタの翼がどれだけ繊細か知らないの…！？',
+    '…っ！ だ、ダメだって言ったでしょ…！ …なんで触るの…',
+    '…っん…翼は…本当に…敏感なの……わかってて触ってるでしょ…',
+    '…あっ……あなたにだけ…許すから…優しく…して…',
+  ],
+  gaze_profile: [
+    '…横から見てるの？ 何か珍しいものでもある？',
+    '…横顔をじっと見られると、ちょっと恥ずかしいわね',
+    'ふふ、横顔がお好き？',
+    '…あなたが隣にいるだけで、光輪が少し明るくなるの',
+  ],
+  touch_waist: [
+    '…腰に手を？ 随分馴れ馴れしいわね',
+    '…エスコートのつもり？ …下手ね',
+    '…そうやって腰に手を回すの、少し好きよ',
+    '…このまま引き寄せてくれても、いいのよ？',
+  ],
+  touch_wing_base: [
+    'っ——！！ そ、そこは…！ 翼の付け根は一番…っ！',
+    '…っ！ や、やめ…！ そこだけは本当に…ダメなの…！',
+    'ひっ…んっ…あなた…わざと…でしょ……',
+    '…あっ…そこ触られると…頭が…真っ白に……',
+  ],
+  talk: [
+    '何か聞きたいことがあるなら、遠慮なくどうぞ？',
+    'あなたと話すの、嫌いじゃないわ',
+    'ふふ、あなたの声を聞くと少し安心するの',
+    'ねえ…ここを出たら、また二人で話せるかしら？',
+  ],
+  hug: [
+    '…！ ちょっと…いきなり何を…',
+    '…はぁ。仕方ないわね…少しだけよ',
+    '…あったかい。もう少しこうしてていい？',
+    '離さないで…あなたの心音が聞こえるわ',
+  ],
+};
+
+// ============================================================
+// 描画
+// ============================================================
+function drawRoom() {
+  // 床
+  ctx.fillStyle = C.floor;
+  ctx.fillRect(TILE, TILE, (COLS-2)*TILE, (ROWS-2)*TILE);
+  
+  // 床パターン（タイル模様）
+  ctx.strokeStyle = C.floorPattern;
+  ctx.lineWidth = 0.5;
+  for (let x = 1; x < COLS-1; x++) {
+    for (let y = 1; y < ROWS-1; y++) {
+      ctx.strokeRect(x*TILE+1, y*TILE+1, TILE-2, TILE-2);
+    }
+  }
+  
+  // 壁
+  ctx.fillStyle = C.wall;
+  ctx.fillRect(0, 0, COLS*TILE, TILE);
+  ctx.fillRect(0, (ROWS-1)*TILE, COLS*TILE, TILE);
+  ctx.fillRect(0, TILE, TILE, (ROWS-2)*TILE);
+  ctx.fillRect((COLS-1)*TILE, TILE, TILE, (ROWS-2)*TILE);
+  
+  // 壁ハイライト
+  ctx.fillStyle = C.wallHi;
+  for (let x = 0; x < COLS; x++) {
+    ctx.fillRect(x*TILE, 0, TILE, 4);
+    ctx.fillRect(x*TILE, (ROWS-1)*TILE, TILE, 4);
+  }
+  for (let y = 1; y < ROWS-1; y++) {
+    ctx.fillRect(0, y*TILE, 4, TILE);
+    ctx.fillRect((COLS-1)*TILE, y*TILE, 4, TILE);
+  }
+
+  // 遺跡っぽい装飾（中央に紋章）
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.strokeStyle = '#c8a84e';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(state.cx, state.cy, 80, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(state.cx, state.cy, 60, 0, Math.PI * 2);
+  ctx.stroke();
+  // 十字
+  ctx.beginPath();
+  ctx.moveTo(state.cx - 90, state.cy);
+  ctx.lineTo(state.cx + 90, state.cy);
+  ctx.moveTo(state.cx, state.cy - 90);
+  ctx.lineTo(state.cx, state.cy + 90);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawCompanion() {
+  const {cx, cy, time} = state;
+  
+  // グロー
+  ctx.save();
+  const glowR = 50 + Math.sin(time * 0.02) * 5;
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+  grd.addColorStop(0, 'rgba(212,180,74,0.12)');
+  grd.addColorStop(1, 'rgba(212,180,74,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(cx - glowR, cy - glowR, glowR*2, glowR*2);
+  ctx.restore();
+  
+  // 光輪（halo）
+  ctx.save();
+  ctx.strokeStyle = C.halo;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.4 + Math.sin(time * 0.03) * 0.15;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - 24, 14, 5, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+  
+  // 本体
+  ctx.fillStyle = C.companion;
+  ctx.strokeStyle = C.companionOutline;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(cx - 16, cy - 16, 32, 32, 4);
+  ctx.fill();
+  ctx.stroke();
+  
+  // 翼（小さな三角）
+  ctx.fillStyle = 'rgba(240, 224, 128, 0.3)';
+  // 左翼
+  ctx.beginPath();
+  ctx.moveTo(cx - 16, cy - 8);
+  ctx.lineTo(cx - 28, cy - 18);
+  ctx.lineTo(cx - 16, cy + 4);
+  ctx.fill();
+  // 右翼
+  ctx.beginPath();
+  ctx.moveTo(cx + 16, cy - 8);
+  ctx.lineTo(cx + 28, cy - 18);
+  ctx.lineTo(cx + 16, cy + 4);
+  ctx.fill();
+  
+  // ラベル
+  ctx.fillStyle = C.companion;
+  ctx.font = '11px "Noto Sans JP"';
+  ctx.textAlign = 'center';
+  ctx.fillText('ヴィルトゥオーサ', cx, cy - 32);
+}
+
+function drawPlayer() {
+  const {px, py} = state;
+  
+  ctx.fillStyle = C.player;
+  ctx.strokeStyle = C.playerOutline;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(px - 14, py - 14, 28, 28, 4);
+  ctx.fill();
+  ctx.stroke();
+  
+  ctx.fillStyle = '#b0d0ff';
+  ctx.font = '11px "Noto Sans JP"';
+  ctx.textAlign = 'center';
+  ctx.fillText('ドクター', px, py - 20);
+}
+
+// 方向インジケーター（コンパニオンの周りに弧）
+function drawDirectionIndicator() {
+  if (!state.near) return;
+  const {cx, cy, direction, time} = state;
+  
+  ctx.save();
+  ctx.strokeStyle = direction === 'front' ? '#c8a84e' : direction === 'back' ? '#e07040' : '#70b0e0';
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.4 + Math.sin(time * 0.05) * 0.2;
+  
+  const dx = state.px - cx;
+  const dy = state.py - cy;
+  const angle = Math.atan2(dy, dx);
+  
+  ctx.beginPath();
+  ctx.arc(cx, cy, 40, angle - 0.4, angle + 0.4);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ============================================================
+// ゲームロジック
+// ============================================================
+function updatePlayer() {
+  if (state.menuOpen || state.dialogOpen) return;
+  
+  let dx = 0, dy = 0;
+  if (state.keys['w'] || state.keys['arrowup']) dy = -1;
+  if (state.keys['s'] || state.keys['arrowdown']) dy = 1;
+  if (state.keys['a'] || state.keys['arrowleft']) dx = -1;
+  if (state.keys['d'] || state.keys['arrowright']) dx = 1;
+  
+  if (dx !== 0 && dy !== 0) {
+    dx *= 0.707;
+    dy *= 0.707;
+  }
+  
+  let nx = state.px + dx * state.speed;
+  let ny = state.py + dy * state.speed;
+  
+  // 壁衝突
+  const margin = 16;
+  nx = Math.max(TILE + margin, Math.min((COLS-1)*TILE - margin, nx));
+  ny = Math.max(TILE + margin, Math.min((ROWS-1)*TILE - margin, ny));
+  
+  // コンパニオン衝突
+  const cdx = nx - state.cx;
+  const cdy = ny - state.cy;
+  const cdist = Math.sqrt(cdx*cdx + cdy*cdy);
+  if (cdist < 32) {
+    const pushAngle = Math.atan2(cdy, cdx);
+    nx = state.cx + Math.cos(pushAngle) * 32;
+    ny = state.cy + Math.sin(pushAngle) * 32;
+  }
+  
+  state.px = nx;
+  state.py = ny;
+}
+
+function updateProximity() {
+  const dx = state.px - state.cx;
+  const dy = state.py - state.cy;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const wasNear = state.near;
+  state.near = dist < 70;
+  
+  document.getElementById('interact-prompt').style.display = 
+    (state.near && !state.menuOpen && !state.dialogOpen) ? 'block' : 'none';
+  
+  if (state.near) {
+    updateDirection();
+  } else if (wasNear) {
+    document.getElementById('hud-direction').textContent = '方向: —';
+    document.getElementById('portrait-direction').textContent = '— — —';
+  }
+}
+
+function updateDirection() {
+  const dx = state.px - state.cx;
+  const dy = state.py - state.cy;
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  
+  let newDir;
+  if (angle > 30 && angle < 150) newDir = 'front';
+  else if (angle < -30 && angle > -150) newDir = 'back';
+  else newDir = 'side';
+  
+  if (newDir !== state.direction) {
+    state.direction = newDir;
+    updatePortrait();
+    document.getElementById('hud-direction').textContent = `方向: ${dirNames[newDir]}`;
+  }
+}
+
+function updatePortrait() {
+  const d = state.direction;
+  document.getElementById('portrait-direction').textContent = `— ${dirEn[d]} —`;
+  
+  const box = document.getElementById('portrait-box');
+  const silhouette = box.querySelector('.portrait-silhouette');
+  
+  const styles = {
+    front: { bg: 'linear-gradient(180deg, rgba(60,50,30,0.3) 0%, rgba(20,15,10,0.8) 100%)', border: 'rgba(200,170,100,0.3)', emoji: '👤', shadow: '0 0 30px rgba(200,170,100,0.1)' },
+    back: { bg: 'linear-gradient(180deg, rgba(60,30,20,0.3) 0%, rgba(20,10,8,0.8) 100%)', border: 'rgba(220,100,60,0.3)', emoji: '🔙', shadow: '0 0 30px rgba(220,100,60,0.1)' },
+    side: { bg: 'linear-gradient(180deg, rgba(30,40,60,0.3) 0%, rgba(10,15,25,0.8) 100%)', border: 'rgba(100,170,220,0.3)', emoji: '👤', shadow: '0 0 30px rgba(100,170,220,0.1)' },
+  };
+  
+  const s = styles[d];
+  box.style.background = s.bg;
+  box.style.borderColor = s.border;
+  box.style.boxShadow = s.shadow;
+  silhouette.textContent = s.emoji;
+  silhouette.style.transform = d === 'side' ? 'scaleX(-1)' : d === 'back' ? 'rotate(180deg)' : '';
+}
+
+// ============================================================
+// ふれあいメニュー
+// ============================================================
+function openMenu() {
+  state.menuOpen = true;
+  const menu = document.getElementById('interaction-menu');
+  const d = state.direction;
+  
+  let html = `<h3>${d === 'front' ? '⬇' : d === 'back' ? '⬆' : '↔'} ヴィルトゥオーサにふれあう【${dirNames[d]}】</h3>`;
+  html += `<div class="section-label">── ${dirNames[d]}から ──</div>`;
+  
+  for (const [label, id] of cmds[d]) {
+    html += `<button class="cmd-btn" onclick="execCommand('${id}')">${label}</button>`;
+  }
+  
+  html += `<div class="section-label">── 共通 ──</div>`;
+  for (const [label, id] of cmds.common) {
+    if (id === 'hug' && state.affectionLv < 2) {
+      html += `<button class="cmd-btn locked" disabled>🔒 抱きしめる（Lv.2で解放）</button>`;
+    } else {
+      html += `<button class="cmd-btn" onclick="execCommand('${id}')">${label}</button>`;
+    }
+  }
+  
+  html += `<button class="close-btn" onclick="closeMenu()">✕ 閉じる（Esc）</button>`;
+  menu.innerHTML = html;
+  menu.style.display = 'block';
+  document.getElementById('interact-prompt').style.display = 'none';
+}
+
+function closeMenu() {
+  state.menuOpen = false;
+  document.getElementById('interaction-menu').style.display = 'none';
+  if (state.near) {
+    document.getElementById('interact-prompt').style.display = 'block';
+  }
+}
+
+function execCommand(cmdId) {
+  closeMenu();
+  
+  // タッチカウント（gaze以外）
+  if (!cmdId.startsWith('gaze_') && cmdId !== 'talk') {
+    state.touchCount++;
+    checkAffectionUp();
+  }
+  
+  const r = reactions[cmdId];
+  const text = r ? r[Math.min(state.affectionLv, r.length - 1)] : '…';
+  showDialogue('ヴィルトゥオーサ', text);
+}
+
+// ============================================================
+// ダイアログ
+// ============================================================
+function showDialogue(speaker, text) {
+  state.dialogOpen = true;
+  document.getElementById('dialogue-speaker').textContent = speaker;
+  document.getElementById('dialogue-text').textContent = '';
+  document.getElementById('dialogue-box').style.display = 'block';
+  document.getElementById('interact-prompt').style.display = 'none';
+  
+  // タイプライター演出
+  let i = 0;
+  const el = document.getElementById('dialogue-text');
+  const interval = setInterval(() => {
+    if (i < text.length) {
+      el.textContent += text[i];
+      i++;
+    } else {
+      clearInterval(interval);
+    }
+  }, 30);
+  el._interval = interval;
+}
+
+function closeDialogue() {
+  const el = document.getElementById('dialogue-text');
+  if (el._interval) clearInterval(el._interval);
+  state.dialogOpen = false;
+  document.getElementById('dialogue-box').style.display = 'none';
+  if (state.near) {
+    document.getElementById('interact-prompt').style.display = 'block';
+  }
+}
+
+// ============================================================
+// 好感度
+// ============================================================
+const lvNames = ['警戒', '容認', '好意', '信頼'];
+
+function checkAffectionUp() {
+  const old = state.affectionLv;
+  if (state.touchCount >= 50) state.affectionLv = 3;
+  else if (state.touchCount >= 25) state.affectionLv = 2;
+  else if (state.touchCount >= 10) state.affectionLv = 1;
+  
+  updateHudLevel();
+  
+  if (state.affectionLv !== old) {
+    showDialogue('【システム】', `♥ ふれあいレベルが上がった！ → Lv.${state.affectionLv}（${lvNames[state.affectionLv]}）`);
+  }
+}
+
+function updateHudLevel() {
+  document.getElementById('hud-level').textContent = 
+    `♥ Lv.${state.affectionLv}（${lvNames[state.affectionLv]}） 触れた回数: ${state.touchCount}`;
+}
+
+// ============================================================
+// 入力
+// ============================================================
+document.addEventListener('keydown', e => {
+  state.keys[e.key.toLowerCase()] = true;
+  
+  if (e.key === ' ' || e.key === 'Space') {
+    e.preventDefault();
+    if (state.dialogOpen) { closeDialogue(); return; }
+    if (state.menuOpen) { closeMenu(); return; }
+    if (state.near) openMenu();
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (state.dialogOpen) closeDialogue();
+    else if (state.menuOpen) closeMenu();
+  }
+});
+
+document.addEventListener('keyup', e => {
+  state.keys[e.key.toLowerCase()] = false;
+});
+
+// ============================================================
+// メインループ
+// ============================================================
+function gameLoop() {
+  state.time++;
+  updatePlayer();
+  updateProximity();
+  
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawRoom();
+  drawDirectionIndicator();
+  drawCompanion();
+  drawPlayer();
+  
+  requestAnimationFrame(gameLoop);
+}
+
+// 初期化
+updatePortrait();
+gameLoop();
+</script>
+</body>
+</html>

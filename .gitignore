@@ -11,3 +11,6 @@ assets/**/*.jpeg
 
 # マニフェストは追跡する (tools/manifests/ に集約)
 !tools/manifests/*.txt
+
+# アーカイブ
+*.zip
