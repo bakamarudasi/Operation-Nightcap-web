@@ -100,7 +100,12 @@
           </div>
           <div class="field">
             <label>triggerCard</label>
-            <input id="dTriggerCard" style="width:130px;padding:4px 6px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:0.8em" onchange="saveEventProps()">
+            <div style="display:flex;gap:4px;align-items:center">
+              <input id="dTriggerCard" style="width:130px;padding:4px 6px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:0.8em" onchange="saveEventProps()">
+              <select id="dTriggerCardSelect" onchange="onTriggerCardSelect()" style="padding:4px 6px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:0.75em">
+                <option value="">選択...</option>
+              </select>
+            </div>
           </div>
           <div class="field">
             <label>requiredDrunkLevel</label>
@@ -268,6 +273,13 @@
   <div class="modal new-event-modal">
     <h3>新規CGイベント作成</h3>
     <div class="field-grid">
+      <div class="field" style="grid-column:1/-1">
+        <label>既存のセクハラカードから選ぶ</label>
+        <select id="newEvCardSelect" onchange="onNewEvCardSelect()" style="width:100%;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:0.85em">
+          <option value="">-- 手動入力 --</option>
+        </select>
+        <div id="newEvCardInfo" style="font-size:0.72em;color:var(--text-dim);margin-top:4px"></div>
+      </div>
       <div class="field">
         <label>トリガーカードID</label>
         <input id="newEvTriggerCard" placeholder="例: shoulder_lean">
@@ -288,10 +300,45 @@
         <input type="color" id="newEvColor" value="#e85d3a">
       </div>
     </div>
-    <div style="margin:8px 0">
+    <div style="margin:8px 0;display:flex;flex-direction:column;gap:6px">
       <label style="font-size:0.78em;color:var(--text-dim);display:flex;align-items:center;gap:6px">
         <input type="checkbox" id="newEvInstantWin"> instantWin（即勝利）
       </label>
+      <label style="font-size:0.78em;color:var(--text-dim);display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="newEvAlsoCreateCard"> cards.ts 用のカード定義も同時に生成する
+      </label>
+    </div>
+    <!-- カード定義用フィールド（同時生成チェック時に表示） -->
+    <div id="newEvCardFields" style="display:none;border:1px solid var(--border);border-radius:6px;padding:10px;margin:8px 0;background:rgba(255,255,255,.03)">
+      <div style="font-size:0.78em;color:var(--accent);margin-bottom:6px;font-weight:600">カード定義 (cards.ts)</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>emoji</label>
+          <input id="newEvCardEmoji" value="💋" style="width:50px">
+        </div>
+        <div class="field">
+          <label>drunkDamage</label>
+          <input id="newEvCardDmg" type="number" value="2" min="0" max="10" style="width:60px">
+        </div>
+        <div class="field">
+          <label>cost</label>
+          <input id="newEvCardCost" type="number" value="3" min="1" max="5" style="width:60px">
+        </div>
+        <div class="field">
+          <label>rarity</label>
+          <select id="newEvCardRarity" style="padding:4px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text)">
+            <option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>price</label>
+          <input id="newEvCardPrice" type="number" value="1500" step="100" style="width:80px">
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label>description</label>
+          <input id="newEvCardDesc" placeholder="カードの説明文">
+        </div>
+      </div>
     </div>
     <div class="ma">
       <button onclick="closeModal('newEventModal')">キャンセル</button>

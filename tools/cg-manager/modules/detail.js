@@ -50,6 +50,7 @@ function selectItem(id) {
     document.getElementById('dTriggerCard').value = item.triggerCard || item.id;
     document.getElementById('dDrunkLevel').value = String(parseInt(item.level?.replace('Lv.', '') || '0'));
     document.getElementById('dInstantWin').checked = !!item.instantWin;
+    populateTriggerCardSelect(item.triggerCard || item.id);
   }
 
   renderFrames(item);
@@ -141,4 +142,29 @@ function saveEventProps() {
   item.level = 'Lv.' + dlVal;
   document.getElementById('dLevel').value = item.level;
   saveAll();
+}
+
+// triggerCard ドロップダウンに harassment カード一覧を表示
+function populateTriggerCardSelect(currentValue) {
+  const sel = document.getElementById('dTriggerCardSelect');
+  if (!sel) return;
+  let html = '<option value="">選択...</option>';
+  for (const card of harassmentCardCache) {
+    const selected = card.id === currentValue ? ' selected' : '';
+    html += `<option value="${esc(card.id)}"${selected}>${esc(card.name)} (${card.id})</option>`;
+  }
+  sel.innerHTML = html;
+}
+
+function onTriggerCardSelect() {
+  const sel = document.getElementById('dTriggerCardSelect');
+  if (!sel.value) return;
+  document.getElementById('dTriggerCard').value = sel.value;
+  // カード情報から酔いレベルも同期
+  const card = harassmentCardCache.find(c => c.id === sel.value);
+  if (card) {
+    document.getElementById('dDrunkLevel').value = String(card.requiredDrunkLevel);
+    document.getElementById('dInstantWin').checked = card.instantWin;
+  }
+  saveEventProps();
 }

@@ -26,6 +26,7 @@ let viewMode = 'list';
 let charDataCache = null;   // { charId → { name, nameEn, cgEvents[], costumeStates[] } }
 let charSourceRaw = null;   // characters.ts の生ソースコード
 let cardNameCache = {};     // cardId → 日本語名
+let harassmentCardCache = []; // [{ id, name, requiredDrunkLevel, instantWin }]
 let reverseHarassCards = [];
 
 // File System Access API

@@ -8,7 +8,69 @@ function showNewEventModal() {
   document.getElementById('newEvDrunkLevel').value = '2';
   document.getElementById('newEvColor').value = '#e85d3a';
   document.getElementById('newEvInstantWin').checked = false;
+  document.getElementById('newEvCardInfo').textContent = '';
+
+  // 既存 harassment カードでドロップダウンを構築
+  const sel = document.getElementById('newEvCardSelect');
+  const existingTriggers = new Set(items.filter(i => i.type === 'cg').map(i => i.triggerCard || i.id));
+  let html = '<option value="">-- 手動入力 --</option>';
+  if (harassmentCardCache.length > 0) {
+    html += '<optgroup label="未作成のセクハラカード">';
+    for (const card of harassmentCardCache) {
+      if (existingTriggers.has(card.id)) continue;
+      html += `<option value="${esc(card.id)}" data-name="${esc(card.name)}" data-lvl="${card.requiredDrunkLevel}" data-iw="${card.instantWin}">`;
+      html += `${esc(card.name)} (${card.id}) — Lv.${card.requiredDrunkLevel}`;
+      html += `</option>`;
+    }
+    html += '</optgroup>';
+    html += '<optgroup label="作成済み">';
+    for (const card of harassmentCardCache) {
+      if (!existingTriggers.has(card.id)) continue;
+      html += `<option value="${esc(card.id)}" disabled>✓ ${esc(card.name)} (${card.id})</option>`;
+    }
+    html += '</optgroup>';
+  }
+  sel.innerHTML = html;
+
   document.getElementById('newEventModal').classList.remove('hidden');
+}
+
+// カード同時生成チェックボックスのトグル
+document.addEventListener('DOMContentLoaded', () => {
+  const cb = document.getElementById('newEvAlsoCreateCard');
+  if (cb) {
+    cb.addEventListener('change', () => {
+      document.getElementById('newEvCardFields').style.display = cb.checked ? 'block' : 'none';
+    });
+  }
+});
+// DOMContentLoaded が間に合わない場合のフォールバック
+setTimeout(() => {
+  const cb = document.getElementById('newEvAlsoCreateCard');
+  if (cb) {
+    cb.addEventListener('change', () => {
+      document.getElementById('newEvCardFields').style.display = cb.checked ? 'block' : 'none';
+    });
+  }
+}, 100);
+
+function onNewEvCardSelect() {
+  const sel = document.getElementById('newEvCardSelect');
+  const opt = sel.selectedOptions[0];
+  if (!sel.value) {
+    document.getElementById('newEvCardInfo').textContent = '';
+    return;
+  }
+  const name = opt.dataset.name || '';
+  const lvl = opt.dataset.lvl || '2';
+  const iw = opt.dataset.iw === 'true';
+
+  document.getElementById('newEvTriggerCard').value = sel.value;
+  document.getElementById('newEvTriggerName').value = name;
+  document.getElementById('newEvDrunkLevel').value = lvl;
+  document.getElementById('newEvInstantWin').checked = iw;
+  document.getElementById('newEvCardInfo').innerHTML =
+    `<span style="color:var(--done)">✓</span> cards.ts の定義から自動入力しました（Lv.${lvl}${iw ? ' / 即勝利' : ''}）`;
 }
 
 function doCreateEvent() {
@@ -17,6 +79,7 @@ function doCreateEvent() {
   const drunkLevel = parseInt(document.getElementById('newEvDrunkLevel').value);
   const cgColor = document.getElementById('newEvColor').value;
   const instantWin = document.getElementById('newEvInstantWin').checked;
+  const alsoCreateCard = document.getElementById('newEvAlsoCreateCard').checked;
 
   if (!triggerCard) { toast('トリガーカードIDを入力してください', 'err'); return; }
   if (items.find(i => i.id === triggerCard)) { toast('このIDは既に存在します', 'err'); return; }
@@ -40,7 +103,38 @@ function doCreateEvent() {
   renderList();
   updateCounts();
   selectItem(triggerCard);
-  toast(`CGイベント「${triggerName || triggerCard}」を作成`, 'ok');
+
+  // カード定義コードを同時生成
+  if (alsoCreateCard) {
+    const cardCode = generateCardDefCode(triggerCard, triggerName, drunkLevel, instantWin);
+    document.getElementById('codeOutput').value = cardCode;
+    toast(`CGイベント + カード定義コードを生成しました`, 'ok');
+  } else {
+    toast(`CGイベント「${triggerName || triggerCard}」を作成`, 'ok');
+  }
+}
+
+function generateCardDefCode(id, name, drunkLevel, instantWin) {
+  const emoji = document.getElementById('newEvCardEmoji')?.value || '💋';
+  const dmg = parseInt(document.getElementById('newEvCardDmg')?.value || '2');
+  const cost = parseInt(document.getElementById('newEvCardCost')?.value || '3');
+  const rarity = parseInt(document.getElementById('newEvCardRarity')?.value || '4');
+  const price = parseInt(document.getElementById('newEvCardPrice')?.value || '1500');
+  const desc = document.getElementById('newEvCardDesc')?.value || '';
+
+  let code = `// ── cards.ts に追加 ──\n`;
+  code += `  ${id}: {\n`;
+  code += `    id: '${id}', name: '${escCode(name || id)}', emoji: '${escCode(emoji)}', type: 'harassment',\n`;
+  code += `    requiredDrunkLevel: ${drunkLevel},`;
+  if (instantWin) {
+    code += ` instantWin: true,\n`;
+  } else {
+    code += ` drunkDamage: ${dmg},\n`;
+  }
+  code += `    description: '${escCode(desc)}', cost: ${cost}, rarity: ${rarity}, price: ${price}\n`;
+  code += `  },\n`;
+  code += `\n// ── 上記を cards.ts のセクハラカードセクションに貼り付けてください ──`;
+  return code;
 }
 
 // ============================================================

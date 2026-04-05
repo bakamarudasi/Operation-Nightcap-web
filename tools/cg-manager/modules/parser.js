@@ -221,6 +221,19 @@ function parseCards(src) {
     cardNameCache[m[1]] = m[2];
   }
 
+  // harassment カードの詳細情報を抽出
+  harassmentCardCache = [];
+  const harassRe = /(\w+):\s*\{[^}]*id:\s*'([^']+)'[^}]*name:\s*'([^']+)'[^}]*type:\s*'harassment'[^}]*requiredDrunkLevel:\s*(\d+)/g;
+  let hm;
+  while ((hm = harassRe.exec(src)) !== null) {
+    harassmentCardCache.push({
+      id: hm[2],
+      name: hm[3],
+      requiredDrunkLevel: parseInt(hm[4]),
+      instantWin: new RegExp(`${hm[1]}:[^}]*instantWin:\\s*true`).test(src),
+    });
+  }
+
   reverseHarassCards = [];
   const blockRe = /(\w+):\s*\{[^}]*id:\s*'([^']+)'[^}]*type:\s*'harassment'[^}]*requiredDrunkLevel:\s*(\d+)[^}]*sanityDamage:\s*(\d+)/g;
   let bm;
