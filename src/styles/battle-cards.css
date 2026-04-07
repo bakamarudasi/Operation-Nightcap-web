@@ -1,0 +1,609 @@
+/* ============================================
+   対戦画面 — カード & 手札
+   ============================================ */
+
+/* --- フィールド（カード対戦場） --- */
+.battle-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 20px 32px;
+}
+
+.field-table {
+  width: 100%;
+  max-width: 780px;
+  aspect-ratio: 16 / 9;
+  max-height: 100%;
+  border: 1px solid rgba(var(--wood-accent-rgb), 0.08);
+  border-radius: 20px;
+  background: rgba(20, 12, 6, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 60px var(--overlay-subtle);
+}
+
+.field-table::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(var(--wood-shadow-rgb), 0.08), transparent 70%);
+}
+
+/* --- 3Dカードスロット --- */
+.card-slots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 56px;
+  z-index: 10;
+}
+
+.card-slot {
+  width: var(--card-slot-w);
+  height: var(--card-slot-h);
+  perspective: 800px;
+  position: relative;
+}
+
+.card-3d {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s ease;
+}
+
+.card-3d.flipped {
+  transform: rotateY(180deg);
+}
+
+/* プレイヤーカード: 選んだカードなので即表面表示（フリップ不要） */
+.card-3d.instant-flip {
+  transform: rotateY(180deg);
+  transition: none;
+}
+
+.card-3d-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  backface-visibility: hidden;
+  overflow: hidden;
+}
+
+/* カード裏面（3D） */
+.card-3d-back {
+  background: linear-gradient(160deg, #2a1810, #1e1008);
+  border: 1px solid rgba(var(--wood-accent-rgb), 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-back-pattern {
+  position: absolute;
+  inset: 5px;
+  border-radius: 6px;
+  overflow: hidden;
+  opacity: 0.15;
+}
+
+.card-back-pattern.wave {
+  background:
+    radial-gradient(circle at 50% 100%, transparent 36%, rgba(var(--gold-accent-rgb), 0.5) 36%, rgba(var(--gold-accent-rgb), 0.5) 38%, transparent 38%) 0 0 / 24px 24px,
+    radial-gradient(circle at 50% 100%, transparent 36%, rgba(var(--gold-accent-rgb), 0.3) 36%, rgba(var(--gold-accent-rgb), 0.3) 38%, transparent 38%) 12px 0 / 24px 24px;
+}
+
+.card-back-pattern.check {
+  background: repeating-conic-gradient(rgba(var(--gold-accent-rgb), 0.3) 0% 25%, transparent 0% 50%) 0 0 / 16px 16px;
+}
+
+.card-back-q {
+  font-size: 2.8rem;
+  color: rgba(138, 110, 56, 0.6);
+  z-index: 1;
+  font-family: var(--font-heading);
+  text-shadow: 0 2px 4px var(--overlay-strong);
+}
+
+.card-back-frame {
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(var(--gold-accent-rgb), 0.08);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+/* カード表面（3D） */
+.card-3d-front {
+  transform: rotateY(180deg);
+  border: 1px solid rgba(var(--wood-accent-rgb), 0.3);
+  background: linear-gradient(160deg, rgba(40, 25, 12, 0.95), rgba(25, 15, 8, 0.98));
+}
+
+.card-front-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+.card-front-icon {
+  font-size: 3.5rem;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 4px 12px var(--overlay-heavy));
+}
+
+.card-front-name {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+  text-shadow: 0 1px 4px var(--overlay-heavy);
+  color: var(--paper);
+}
+
+.card-front-val {
+  font-family: var(--font-body);
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-top: 6px;
+  color: var(--gold);
+}
+
+/* カード叩きつけ演出 */
+@keyframes cardSlam {
+  0%   { transform: translateY(-80px) scale(1.4) rotate(-6deg); opacity: 0; }
+  45%  { transform: translateY(6px) scale(1.06) rotate(1deg); opacity: 1; }
+  60%  { transform: translateY(-4px) scale(0.97); }
+  75%  { transform: translateY(2px) scale(1.01); }
+  100% { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+}
+
+.card-slam {
+  animation: cardSlam 0.45s cubic-bezier(0.22, 0.85, 0.32, 1);
+}
+
+/* VSバッジ */
+.vs-badge {
+  font-family: var(--font-heading);
+  font-size: 2.8rem;
+  color: var(--lantern-red);
+  text-shadow:
+    0 0 30px rgba(201, 48, 48, 0.4),
+    0 0 60px rgba(201, 48, 48, 0.15),
+    0 2px 4px var(--overlay-dense);
+  position: relative;
+  letter-spacing: 0.05em;
+  animation: vsPulse 2s ease-in-out infinite;
+}
+
+@keyframes vsPulse {
+  0%, 100% { text-shadow: 0 0 30px rgba(201, 48, 48, 0.4), 0 0 60px rgba(201, 48, 48, 0.15), 0 2px 4px var(--overlay-dense); }
+  50%      { text-shadow: 0 0 40px rgba(201, 48, 48, 0.6), 0 0 80px rgba(201, 48, 48, 0.25), 0 2px 4px var(--overlay-dense); }
+}
+
+.vs-badge::before,
+.vs-badge::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 50px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 48, 48, 0.5), transparent);
+}
+
+.vs-badge::before { right: calc(100% + 12px); }
+.vs-badge::after  { left: calc(100% + 12px); }
+
+/* 結果ポップアップ（フィールド上） */
+.card-result-popup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  font-weight: 900;
+  opacity: 0;
+  z-index: 30;
+  text-shadow: 0 2px 12px var(--overlay-dark);
+  letter-spacing: 0.15em;
+  pointer-events: none;
+  padding: 8px 24px;
+  border-radius: 8px;
+  background: rgba(10, 6, 3, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.card-result-popup.result-win {
+  color: #8bea8b;
+  border: 1px solid rgba(139, 234, 139, 0.3);
+  box-shadow: 0 0 24px rgba(139, 234, 139, 0.2);
+}
+
+.card-result-popup.result-lose {
+  color: #ea8b8b;
+  border: 1px solid rgba(234, 139, 139, 0.3);
+  box-shadow: 0 0 24px rgba(234, 139, 139, 0.2);
+}
+
+.card-result-popup.result-draw {
+  color: var(--gold-bright);
+  border: 1px solid rgba(var(--gold-glow-rgb), 0.3);
+  box-shadow: 0 0 24px rgba(var(--gold-glow-rgb), 0.2);
+}
+
+@keyframes resultPop {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(2.5); }
+  40%  { opacity: 1; transform: translate(-50%, -50%) scale(0.9); }
+  60%  { transform: translate(-50%, -50%) scale(1.05); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.card-result-popup.show {
+  animation: resultPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ===== 手札エリア ===== */
+.hand-area {
+  padding: 8px 24px 16px;
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+  z-index: 50;
+  background: linear-gradient(180deg, transparent, rgba(14, 8, 4, 0.3));
+  flex-shrink: 0;
+}
+
+.hand-card {
+  width: var(--hand-card-w);
+  height: var(--hand-card-h);
+  min-width: 0;
+  flex-shrink: 1;
+  background: rgba(var(--wood-deep-rgb), 0.8);
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transform-origin: bottom center;
+  border: 1px solid rgba(var(--wood-accent-rgb), 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 -3px;
+  overflow: visible;
+}
+
+/* 5枚以上: カードを縮小 */
+.hand-area[data-card-count="5"] .hand-card {
+  width: 82px;
+  height: 112px;
+  margin: 0 -5px;
+}
+.hand-area[data-card-count="5"] .hand-icon { font-size: 1.6rem; }
+.hand-area[data-card-count="5"] .hand-name { font-size: 0.6rem; }
+
+.hand-area[data-card-count="6"] .hand-card {
+  width: 72px;
+  height: 100px;
+  margin: 0 -6px;
+}
+.hand-area[data-card-count="6"] .hand-icon { font-size: 1.4rem; }
+.hand-area[data-card-count="6"] .hand-name { font-size: 0.55rem; }
+.hand-area[data-card-count="6"] .hand-val { font-size: 0.6rem; }
+
+/* 7枚以上: さらに縮小（フォールバック） */
+.hand-area[data-card-count="7"] .hand-card,
+.hand-area[data-card-count="8"] .hand-card {
+  width: 64px;
+  height: 90px;
+  margin: 0 -7px;
+}
+.hand-area[data-card-count="7"] .hand-icon,
+.hand-area[data-card-count="8"] .hand-icon { font-size: 1.2rem; }
+.hand-area[data-card-count="7"] .hand-name,
+.hand-area[data-card-count="8"] .hand-name { font-size: 0.5rem; }
+.hand-area[data-card-count="7"] .hand-val,
+.hand-area[data-card-count="8"] .hand-val { font-size: 0.55rem; }
+
+.hand-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(var(--white-rgb), 0.03), transparent 40%);
+  pointer-events: none;
+}
+
+.hand-card:hover {
+  transform: translateY(-28px) scale(1.1);
+  z-index: 60;
+  border-color: rgba(var(--gold-accent-rgb), 0.4);
+  box-shadow:
+    0 16px 35px var(--overlay-heavy),
+    0 0 20px rgba(var(--gold-accent-rgb), 0.08);
+}
+
+.hand-card:active {
+  transform: translateY(-18px) scale(1.04);
+}
+
+.hand-card.selected {
+  transform: translateY(-32px) scale(1.12);
+  z-index: 60;
+  border-color: var(--gold-bright);
+  box-shadow:
+    0 16px 35px var(--overlay-heavy),
+    0 0 24px rgba(var(--gold-glow-rgb), 0.2);
+}
+
+/* 手札カードタイプ別 */
+.hand-card[class*="type-"] {
+  background: var(--type-bg);
+  border-bottom: 3px solid var(--type-border);
+}
+
+.hand-card.corrupted {
+  border-bottom: 3px solid #ff3366;
+  background: linear-gradient(160deg, rgba(80, 10, 30, 0.9), rgba(50, 5, 15, 0.95));
+  box-shadow: 0 0 12px rgba(255, 51, 102, 0.4);
+  animation: corrupt-pulse 1.5s ease-in-out infinite;
+  position: relative;
+}
+.hand-card.corrupted::after {
+  content: '🔥';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.8rem;
+}
+@keyframes corrupt-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 51, 102, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(255, 51, 102, 0.6); }
+}
+
+.hand-icon {
+  font-size: 2.2rem;
+  filter: drop-shadow(0 2px 6px var(--overlay-medium));
+  transition: transform 0.3s ease;
+}
+
+.hand-card:hover .hand-icon {
+  transform: scale(1.15);
+}
+
+.hand-name {
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--paper);
+}
+
+.hand-val {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+/* ツールチップ */
+.hand-tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: rgba(20, 12, 6, 0.95);
+  border: 1px solid rgba(var(--gold-accent-rgb), 0.4);
+  border-radius: 6px;
+  padding: 8px 14px;
+  width: 170px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s ease;
+  z-index: 100;
+  box-shadow: 0 8px 20px var(--overlay-heavy);
+}
+
+.hand-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(20, 12, 6, 0.95);
+}
+
+.hand-card:hover .hand-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tooltip-name {
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  color: var(--gold);
+  margin-bottom: 4px;
+  letter-spacing: 0.1em;
+}
+
+.tooltip-desc {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* 手札カードの出す演出 */
+@keyframes cardToField {
+  0%   { opacity: 1; transform: translate(0, 0) scale(1) rotate(0); }
+  50%  { opacity: 1; transform: translate(var(--tx), var(--ty)) scale(0.8) rotate(-5deg); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.6) rotate(-10deg); }
+}
+
+.hand-card.playing {
+  animation: cardToField 0.5s ease-in forwards;
+  pointer-events: none;
+}
+
+.hand-card.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+  filter: grayscale(0.5);
+}
+
+.hand-cost {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 0.62rem;
+  color: var(--gold-bright);
+}
+
+.card-blurred .hand-name,
+.card-blurred .hand-val {
+  filter: blur(3px);
+}
+
+.card-hidden {
+  background: linear-gradient(145deg, rgba(26, 26, 34, 0.95), rgba(8, 8, 12, 0.95));
+  border-bottom-color: rgba(120, 120, 150, 0.9) !important;
+}
+
+.card-cost-locked {
+  opacity: 0.45;
+  filter: grayscale(0.8);
+}
+
+.card-food-locked::after {
+  content: '🚫';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.kanryoku-display {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--gold-bright);
+}
+
+.matchup-badge {
+  position: absolute;
+  bottom: 146px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 120;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(var(--white-rgb), 0.25);
+  font-size: 0.78rem;
+}
+
+@keyframes misplayShake {
+  0%,100% { transform: translateX(-50%) translateX(0); }
+  25% { transform: translateX(-50%) translateX(-4px); }
+  75% { transform: translateX(-50%) translateX(4px); }
+}
+
+.misplay-shake { animation: misplayShake 0.25s linear 3; }
+
+/* ============================================
+   distract: 相手の手札公開オーバーレイ
+   ============================================ */
+
+.revealed-hand-overlay {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 180;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 28px;
+  background: rgba(10, 6, 3, 0.92);
+  border: 1px solid rgba(var(--gold-warm-rgb), 0.4);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px var(--overlay-dense), 0 0 24px rgba(var(--gold-warm-rgb), 0.1);
+  animation: revealIn 0.4s ease;
+}
+
+@keyframes revealIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.revealed-hand-title {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--gold-bright);
+  letter-spacing: 0.1em;
+}
+
+.revealed-hand-cards {
+  display: flex;
+  gap: 10px;
+}
+
+.revealed-card {
+  width: 80px;
+  height: 108px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid rgba(var(--wood-accent-rgb), 0.3);
+  animation: revealCardPop 0.3s ease backwards;
+}
+
+.revealed-card:nth-child(1) { animation-delay: 0.1s; }
+.revealed-card:nth-child(2) { animation-delay: 0.2s; }
+.revealed-card:nth-child(3) { animation-delay: 0.3s; }
+.revealed-card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes revealCardPop {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.revealed-card[class*="type-"] {
+  background: var(--type-bg);
+  border-bottom: 3px solid var(--type-border);
+}
+
+.revealed-card-emoji {
+  font-size: 1.8rem;
+}
+
+.revealed-card-name {
+  font-family: var(--font-heading);
+  font-size: 0.6rem;
+  color: var(--paper);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.revealed-card-type {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+}

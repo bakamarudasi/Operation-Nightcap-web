@@ -10,7 +10,7 @@
 .closure-dialogue {
   padding: 16px 24px;
   margin: 16px 24px 0;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--overlay-light);
   border-radius: 8px;
   border-left: 3px solid var(--gold);
   font-size: 14px;
@@ -52,7 +52,7 @@
 
 .shop-item:hover {
   border-color: var(--gold);
-  box-shadow: 0 0 12px rgba(201, 168, 92, 0.15);
+  box-shadow: 0 0 12px rgba(var(--gold-warm-rgb), 0.15);
   transform: translateY(-2px);
 }
 

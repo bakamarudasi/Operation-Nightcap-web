@@ -162,7 +162,7 @@
   transform: scale(1);
   border-color: var(--char-color, var(--lantern-red));
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 8px 32px var(--overlay-heavy),
     0 0 24px color-mix(in srgb, var(--char-color, var(--lantern-red)) 40%, transparent);
 }
 
@@ -180,7 +180,7 @@
   justify-content: center;
   font-size: 56px;
   z-index: 1;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 0 20px var(--overlay-medium);
   overflow: hidden;
 }
 
@@ -281,7 +281,7 @@
   color: var(--amber-light);
   font-style: italic;
   padding: 8px 16px;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--overlay-subtle);
   border-radius: 6px;
   border-left: 3px solid var(--lantern-red);
   max-width: 400px;
@@ -307,7 +307,7 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px var(--overlay-light);
 }
 
 .sel-deck-btn:hover:not(:disabled) {
@@ -338,14 +338,14 @@
   transition: all 0.25s ease;
   box-shadow:
     0 2px 12px rgba(196, 30, 58, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    inset 0 1px 0 rgba(var(--white-rgb), 0.1);
 }
 
 .sel-drink-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--lantern-bright) 0%, var(--lantern-red) 100%);
   box-shadow:
     0 0 24px var(--lantern-glow),
-    0 4px 16px rgba(0, 0, 0, 0.3);
+    0 4px 16px var(--overlay-medium);
   transform: translateY(-2px);
 }
 
@@ -406,7 +406,7 @@
   color: var(--lantern-red);
   text-shadow:
     0 0 20px var(--lantern-glow),
-    0 2px 4px rgba(0, 0, 0, 0.5);
+    0 2px 4px var(--overlay-heavy);
 }
 
 /* Closing: slide in from sides */
@@ -510,7 +510,7 @@
   width: 120px;
   height: 120px;
   font-size: 72px;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 4px 12px var(--overlay-heavy));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -531,7 +531,7 @@
   font-size: 24px;
   font-weight: 900;
   color: var(--paper);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 2px 8px var(--overlay-heavy);
 }
 
 .sel-vs-badge {
@@ -544,7 +544,7 @@
   text-shadow:
     0 0 30px var(--lantern-glow),
     0 0 60px var(--lantern-glow),
-    0 2px 4px rgba(0, 0, 0, 0.6);
+    0 2px 4px var(--overlay-dense);
   animation: vsBadgePop 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) 0.3s both;
 }
 
@@ -579,7 +579,7 @@
 
 .sel-cup {
   font-size: 80px;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 4px 8px var(--overlay-strong));
 }
 
 .sel-cup-left {
@@ -607,7 +607,7 @@
   position: absolute;
   inset: 0;
   z-index: 10;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(var(--white-rgb), 0.8);
   animation: kanpaiFlash 0.2s ease-out forwards;
 }
 
@@ -626,9 +626,9 @@
   font-weight: 900;
   color: var(--gold-bright);
   text-shadow:
-    0 0 30px rgba(240, 214, 138, 0.6),
-    0 0 60px rgba(240, 214, 138, 0.3),
-    0 4px 8px rgba(0, 0, 0, 0.5);
+    0 0 30px rgba(var(--gold-glow-rgb), 0.6),
+    0 0 60px rgba(var(--gold-glow-rgb), 0.3),
+    0 4px 8px var(--overlay-heavy);
   animation: kanpaiTextPop 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 
@@ -678,7 +678,7 @@
   align-items: center;
   gap: 4px;
   padding: 12px 24px;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--overlay-dark);
   border-radius: 8px;
   border: 1px solid var(--wood-surface);
   backdrop-filter: blur(4px);

@@ -33,7 +33,7 @@
   color: var(--text-dim);
   font-size: 24px;
   font-weight: 900;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px var(--overlay-medium);
 }
 
 /* カード表面 */
@@ -41,8 +41,8 @@
   background: linear-gradient(180deg, var(--wood-mid) 0%, var(--wood-dark) 100%);
   border: 2px solid var(--wood-surface);
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 2px 8px var(--overlay-medium),
+    inset 0 1px 0 rgba(var(--white-rgb), 0.05);
 }
 
 .card-face .card-emoji {
@@ -68,7 +68,7 @@
   transform: translateY(-8px);
   border-color: var(--amber);
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.4),
+    0 8px 20px var(--overlay-strong),
     0 0 12px rgba(212, 165, 116, 0.25);
 }
 
@@ -76,8 +76,8 @@
   transform: translateY(-12px);
   border-color: var(--gold-bright);
   box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.4),
-    0 0 20px rgba(240, 214, 138, 0.3);
+    0 10px 24px var(--overlay-strong),
+    0 0 20px rgba(var(--gold-glow-rgb), 0.3);
 }
 
 .card-face.selected::after {
@@ -98,7 +98,7 @@
 .card-drink.selected {
   border-color: var(--lantern-bright) !important;
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.4),
+    0 8px 20px var(--overlay-strong),
     0 0 12px rgba(230, 57, 70, 0.25) !important;
 }
 
@@ -111,7 +111,7 @@
 .card-food.selected {
   border-color: var(--sake-green) !important;
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.4),
+    0 8px 20px var(--overlay-strong),
     0 0 12px rgba(123, 158, 94, 0.25) !important;
 }
 
@@ -124,7 +124,7 @@
 .card-chug.selected {
   border-color: #b060d0 !important;
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.4),
+    0 8px 20px var(--overlay-strong),
     0 0 12px rgba(176, 96, 208, 0.25) !important;
 }
 
@@ -137,7 +137,7 @@
 .card-harassment.selected {
   border-color: #ff4488 !important;
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.4),
+    0 8px 20px var(--overlay-strong),
     0 0 12px rgba(255, 68, 136, 0.25) !important;
 }
 
@@ -149,30 +149,30 @@
   font-size: 8px;
   line-height: 1;
   color: var(--gold-bright);
-  text-shadow: 0 0 4px rgba(240, 214, 138, 0.6);
+  text-shadow: 0 0 4px rgba(var(--gold-glow-rgb), 0.6);
   z-index: 1;
 }
 
 .card-lv2 {
   border-color: var(--gold) !important;
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 2px 8px var(--overlay-medium),
     0 0 8px rgba(212, 165, 116, 0.3) !important;
 }
 
 .card-lv3 {
   border-color: #e0a0ff !important;
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 2px 8px var(--overlay-medium),
     0 0 12px rgba(224, 160, 255, 0.4) !important;
   animation: rainbowGlow 3s linear infinite;
 }
 
 @keyframes rainbowGlow {
-  0% { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(255, 100, 100, 0.4); }
-  33% { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(100, 255, 100, 0.4); }
-  66% { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(100, 100, 255, 0.4); }
-  100% { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(255, 100, 100, 0.4); }
+  0% { box-shadow: 0 2px 8px var(--overlay-medium), 0 0 12px rgba(255, 100, 100, 0.4); }
+  33% { box-shadow: 0 2px 8px var(--overlay-medium), 0 0 12px rgba(100, 255, 100, 0.4); }
+  66% { box-shadow: 0 2px 8px var(--overlay-medium), 0 0 12px rgba(100, 100, 255, 0.4); }
+  100% { box-shadow: 0 2px 8px var(--overlay-medium), 0 0 12px rgba(255, 100, 100, 0.4); }
 }
 
 /* --- カード出し演出 --- */

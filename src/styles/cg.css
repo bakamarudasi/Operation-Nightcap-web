@@ -212,7 +212,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--white-rgb), 0.3);
   transition: background 0.3s, transform 0.3s;
 }
 
@@ -222,5 +222,5 @@
 }
 
 .cg-seq-dot.passed {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(var(--white-rgb), 0.6);
 }
