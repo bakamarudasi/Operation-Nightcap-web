@@ -3,52 +3,20 @@ import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../store/gameStore.ts';
 import { CARD_DATA } from '../data/cards.ts';
 import { useLocalizedCharacterData } from '../hooks/useLocalizedCharacterData.ts';
-import { gaugePercent } from '../data/constants.ts';
-import { randomPick, getDrunkLevel, getKanryoku } from '../engine/utils.ts';
+import { randomPick, getDrunkLevel } from '../engine/utils.ts';
 import { buildCardDisplayInfo, buildOpponentCardDisplayInfo, computeRoundOutcome } from '../engine/battlePresenter.ts';
-import { formatDamage } from '../engine/cardFormat.ts';
-import { CharacterPortrait } from './CharacterPortrait.tsx';
-import { BuffDisplay } from './BuffDisplay.tsx';
+import { playSlamSound, playFlipSound } from '../engine/battleAudio.ts';
 import { AfterEventOverlay } from './AfterEventOverlay.tsx';
 import { BattleResult } from './battle/BattleResult.tsx';
 import { OpponentBar } from './battle/OpponentBar.tsx';
 import { PlayerHand } from './battle/PlayerHand.tsx';
-
-// バフ表示は BUFF_META (utils.ts) から参照
-
-// 酔い段階
-const DRUNK_STAGES = [
-  { max: 0, textKey: 'battle.drunkStages.sober',   cls: 'drunk-sober' },
-  { max: 1, textKey: 'battle.drunkStages.tipsy', cls: 'drunk-tipsy' },
-  { max: 3, textKey: 'battle.drunkStages.drunk',     cls: 'drunk-good' },
-  { max: 6, textKey: 'battle.drunkStages.wasted', cls: 'drunk-done' },
-  { max: 9, textKey: 'battle.drunkStages.hammered',     cls: 'drunk-wasted' },
-  { max: 10, textKey: 'battle.drunkStages.passed',    cls: 'drunk-gone' },
-];
-
-function getDrunkStage(value: number) {
-  for (const s of DRUNK_STAGES) {
-    if (value <= s.max) return s;
-  }
-  return DRUNK_STAGES[DRUNK_STAGES.length - 1];
-}
-
-// 理性段階
-const SANITY_STAGES = [
-  { min: 8, textKey: 'battle.sanityStages.calm',       cls: 'sanity-calm' },
-  { min: 5, textKey: 'battle.sanityStages.shaken',       cls: 'sanity-shaken' },
-  { min: 2, textKey: 'battle.sanityStages.breaking', cls: 'sanity-breaking' },
-  { min: 0, textKey: 'battle.sanityStages.gone',    cls: 'sanity-gone' },
-];
-
-function getSanityStage(value: number) {
-  for (const s of SANITY_STAGES) {
-    if (value >= s.min) return s;
-  }
-  return SANITY_STAGES[SANITY_STAGES.length - 1];
-}
-
-import { playSlamSound, playFlipSound } from '../engine/battleAudio.ts';
+import { BattleBackground } from './battle/BattleBackground.tsx';
+import { OpponentPortrait } from './battle/OpponentPortrait.tsx';
+import { BattleField } from './battle/BattleField.tsx';
+import { PlayerGauges } from './battle/PlayerGauges.tsx';
+import { BattleStatusBar, type LastRoundInfo } from './battle/BattleStatusBar.tsx';
+import { RevealedHandOverlay } from './battle/RevealedHandOverlay.tsx';
+import { getDrunkStage, getSanityStage } from './battle/battleStages.ts';
 
 export function BattleScreen() {
   const { t } = useTranslation();
@@ -91,7 +59,7 @@ export function BattleScreen() {
   const [misplayFlash, setMisplayFlash] = useState(false);
   const [revealedCards, setRevealedCards] = useState<string[] | null>(null);
   const [playingCardIdx, setPlayingCardIdx] = useState<number | null>(null);
-  const [lastRound, setLastRound] = useState<{ pl: string; op: string; res: string; resColor: string }>({
+  const [lastRound, setLastRound] = useState<LastRoundInfo>({
     pl: '-', op: '-', res: '-', resColor: 'var(--gold)'
   });
 
@@ -129,7 +97,6 @@ export function BattleScreen() {
     const fresh = characterData[currentOpponent.id];
     if (!fresh || fresh.name === currentOpponent.name) return;
     updateCurrentOpponent(fresh);
-    // 表示中のCG/AfterEventも再ローカライズ
     if (activeCG) {
       const freshCG = fresh.cgEvents.find((e) => e.id === activeCG.id);
       if (freshCG) showCG(freshCG);
@@ -209,7 +176,6 @@ export function BattleScreen() {
     if (battle.isProcessing || gameResult || playingCardIdx !== null || cardPlayLock.current) return;
     cardPlayLock.current = true;
 
-    // cardToField アニメーション用に --tx/--ty を計算
     const cardEl = handCardRefs.current[idx];
     const fieldEl = fieldRef.current;
     if (cardEl && fieldEl) {
@@ -232,13 +198,11 @@ export function BattleScreen() {
     const pCard = CARD_DATA[selectedId];
     const result = playRound();
     if (!result) {
-      // playRound失敗時はロックを解除して復帰
       cardPlayLock.current = false;
       setPlayingCardIdx(null);
       return;
     }
 
-    // cardPlayLock の安全タイムアウト（15秒で強制解除）
     const lockSafetyTimer = safeTimeout(() => {
       if (cardPlayLock.current) {
         cardPlayLock.current = false;
@@ -246,7 +210,6 @@ export function BattleScreen() {
       }
     }, 15000);
 
-    // プレイヤーカードをフィールドに表示
     const playerCardInfo = buildCardDisplayInfo(result.playerCardId, t);
     if (playerCardInfo) {
       setTableCards(prev => ({ ...prev, player: playerCardInfo }));
@@ -257,9 +220,7 @@ export function BattleScreen() {
       safeTimeout(() => { setSlamPlayer(false); setFieldShaking(false); }, 400);
     }
 
-    // 相手カードを少し遅れて表示
     safeTimeout(() => {
-      // 相手カードをplayRoundの結果から直接取得
       const oppCardInfo = buildOpponentCardDisplayInfo(result.opponentCardId, t);
 
       if (oppCardInfo) {
@@ -270,19 +231,15 @@ export function BattleScreen() {
       playSlamSound();
       safeTimeout(() => setSlamOpp(false), 400);
 
-      // 相手カードフリップ
       safeTimeout(() => {
         setOppFlipped(true);
         playFlipSound();
 
-        // 結果表示
         safeTimeout(() => {
-          // セリフ
           if (result.messages.length > 0) {
             setDialogue({ speaker: currentOpponent?.name ?? '', text: result.messages.join(' / ') });
           }
 
-          // ラウンドアウトカム計算
           const outcome = computeRoundOutcome(result);
           setReaction(outcome.reaction);
           safeTimeout(() => setReaction(null), 2000);
@@ -295,7 +252,6 @@ export function BattleScreen() {
           else if (result.playerMatchup === 'disadvantage') setMatchupBadge(t('battle.disadvantageBadge'));
           else setMatchupBadge(null);
 
-          // ラウンド結果ポップアップ
           const popupMap = {
             win:  { text: t('battle.roundWin'), cls: 'result-win' },
             lose: { text: t('battle.roundLose'), cls: 'result-lose' },
@@ -304,19 +260,15 @@ export function BattleScreen() {
           setRoundPopup(popupMap[outcome.roundResultType]);
           safeTimeout(() => setRoundPopup(null), 1800);
 
-          // distract: 相手の手札を公開
           if (result.revealedHand && result.revealedHand.length > 0) {
             setRevealedCards(result.revealedHand);
             safeTimeout(() => setRevealedCards(null), 4000);
           }
 
-          // CG（プレイヤーのセクハラ成功時）
           if (result.cgEvent) {
             safeTimeout(() => { showCG(result.cgEvent!); }, 1000);
           }
 
-          // CG（相手の逆セクハラ成功時）
-          // プレイヤー側CGがある場合はその後に表示、なければ同タイミング
           if (result.opponentCgEvent) {
             const delay = result.cgEvent ? 5000 : 1000;
             safeTimeout(() => { showCG(result.opponentCgEvent!); }, delay);
@@ -325,7 +277,6 @@ export function BattleScreen() {
           const hasCG = !!(result.cgEvent || result.opponentCgEvent);
           const cgDelay = result.cgEvent && result.opponentCgEvent ? 9000 : hasCG ? 5000 : 2000;
 
-          // 即勝利
           if (result.instantWin) {
             safeTimeout(() => {
               clearTimeout(lockSafetyTimer);
@@ -339,7 +290,6 @@ export function BattleScreen() {
             return;
           }
 
-          // 勝敗チェック（CG表示中は待つ）
           const endCheckDelay = hasCG ? cgDelay : 1500;
           safeTimeout(() => {
             const end = checkGameEnd();
@@ -354,7 +304,6 @@ export function BattleScreen() {
                 if (afterEvt) setPendingAfterEvent(afterEvt);
               }
             } else {
-              // 直前のラウンド記録
               const pc = pCard;
               if (pc && oppCardInfo) {
                 const lastRoundMap = {
@@ -371,7 +320,6 @@ export function BattleScreen() {
                 });
               }
 
-              // リセットして次のラウンド
               setTableCards({ player: null, opponent: null });
               setPlayerFlipped(false);
               setOppFlipped(false);
@@ -381,7 +329,6 @@ export function BattleScreen() {
               cardPlayLock.current = false;
               drawHands();
 
-              // 相手のセリフ更新
               const s = useGameStore.getState();
               if (s.currentOpponent) {
                 const lvl = getDrunkLevel(s.battle.opponentDrunk);
@@ -395,7 +342,7 @@ export function BattleScreen() {
         }, 400);
       }, 400);
     }, 800);
-  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, playRound, checkAfterEvent, safeTimeout]);
+  }, [battle.selectedCard, battle.isProcessing, gameResult, currentOpponent, drawHands, endBattle, checkGameEnd, showCG, playRound, checkAfterEvent, safeTimeout, t]);
 
   // カード選択後に自動で出す
   useEffect(() => {
@@ -407,32 +354,11 @@ export function BattleScreen() {
 
   if (!currentOpponent) return null;
 
-  const charGlow = currentOpponent.theme.colorGlow;
-
   return (
     <div className="screen active" style={{ position: 'relative' }}>
-      {/* 背景レイヤー */}
-      <div className="battle-bg-layer battle-bg-gradient" />
-      <div className="battle-bg-layer battle-bg-noise" />
-      <div className="battle-bg-layer battle-bg-table" />
+      <BattleBackground ref={blurRef} particleStyles={particleStyles} />
 
-      {/* 酔いブラー */}
-      <div className="battle-drunk-blur" ref={blurRef} />
-
-      {/* パーティクル */}
-      <div className="battle-particles">
-        {particleStyles.map((style, i) => (
-          <div
-            key={i}
-            className="battle-particle"
-            style={style}
-          />
-        ))}
-      </div>
-
-      {/* 酔い傾きラッパー */}
       <div className="battle-tilt-wrapper" ref={tiltRef}>
-        {/* ヘッダー */}
         <div className="battle-header">
           <div className="battle-bar-name">{t('battle.barName')}</div>
           <div className="battle-header-center">
@@ -444,34 +370,18 @@ export function BattleScreen() {
           </div>
         </div>
 
-        {/* メインレイアウト */}
         <div className="battle-main">
-          {/* 左: キャラクター立ち絵 */}
-          <div className="battle-left" style={{ '--char-glow': charGlow } as React.CSSProperties}>
-            <div className={`char-portrait ${drunkClassName(opponentDrunkLevel)}`}>
-              <div className="char-portrait-flush" style={{ background: oppFlush }} />
-              <div className="char-portrait-icon">
-                <CharacterPortrait
-                  theme={currentOpponent.theme}
-                  variant="portrait"
-                  drunkLevel={opponentDrunkLevel}
-                  costumeStates={currentOpponent.costumeStates}
-                />
-              </div>
-              <div className={`char-reaction ${reaction ? 'show' : ''}`}>{reaction}</div>
-            </div>
-            <div className="char-info">
-              <div className="char-name">{currentOpponent.name}</div>
-              <div className="char-subtitle">{currentOpponent.subtitle}</div>
-              <div className={`char-drunk-label ${oppDrunkStage.cls}`}>
-                {t(oppDrunkStage.textKey)}
-              </div>
-            </div>
-          </div>
+          <OpponentPortrait
+            currentOpponent={currentOpponent}
+            opponentDrunkLevel={opponentDrunkLevel}
+            oppDrunkStage={oppDrunkStage}
+            oppFlush={oppFlush}
+            reaction={reaction}
+            drunkClassName={drunkClassName}
+            t={t}
+          />
 
-          {/* 中央: ゲームエリア */}
           <div className="battle-center">
-            {/* 相手バー */}
             <OpponentBar
               currentOpponent={currentOpponent}
               battle={battle}
@@ -480,59 +390,17 @@ export function BattleScreen() {
               t={t}
             />
 
-            {/* フィールド */}
-            <div className="battle-field">
-              <div className={`field-table ${fieldShaking ? 'field-shaking' : ''}`} ref={fieldRef}>
-                <div className="card-slots">
-                  {/* 相手カード */}
-                  <div className={`card-slot ${slamOpp ? 'card-slam' : ''}`}>
-                    <div className={`card-3d ${oppFlipped ? 'flipped' : ''}`}>
-                      <div className="card-3d-face card-3d-back">
-                        <div className="card-back-pattern wave" />
-                        <div className="card-back-frame" />
-                        <div className="card-back-q">？</div>
-                      </div>
-                      <div className="card-3d-face card-3d-front">
-                        <div className="card-front-content">
-                          <div className="card-front-icon">{tableCards.opponent?.emoji ?? ''}</div>
-                          <div className="card-front-name">{tableCards.opponent?.name ?? ''}</div>
-                          <div className="card-front-val">{tableCards.opponent?.val ?? ''}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+            <BattleField
+              ref={fieldRef}
+              tableCards={tableCards}
+              playerFlipped={playerFlipped}
+              oppFlipped={oppFlipped}
+              slamPlayer={slamPlayer}
+              slamOpp={slamOpp}
+              fieldShaking={fieldShaking}
+              roundPopup={roundPopup}
+            />
 
-                  <div className="vs-badge">VS</div>
-
-                  {/* プレイヤーカード（自分のカードなので即表面表示） */}
-                  <div className={`card-slot ${slamPlayer ? 'card-slam' : ''}`}>
-                    <div className={`card-3d ${playerFlipped ? 'instant-flip' : ''}`}>
-                      <div className="card-3d-face card-3d-back">
-                        <div className="card-back-pattern check" />
-                        <div className="card-back-frame" />
-                        <div className="card-back-q">？</div>
-                      </div>
-                      <div className="card-3d-face card-3d-front">
-                        <div className="card-front-content">
-                          <div className="card-front-icon">{tableCards.player?.emoji ?? ''}</div>
-                          <div className="card-front-name">{tableCards.player?.name ?? ''}</div>
-                          <div className="card-front-val">{tableCards.player?.val ?? ''}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ラウンド結果ポップアップ */}
-                {roundPopup && (
-                  <div className={`card-result-popup show ${roundPopup.cls}`}>
-                    {roundPopup.text}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* セリフ */}
             <div className="dialogue-area">
               <div className="dialogue-bar">
                 <div className="dlg-name">{dialogue.speaker ? `${dialogue.speaker}：` : ''}</div>
@@ -540,40 +408,15 @@ export function BattleScreen() {
               </div>
             </div>
 
-            {/* プレイヤーゲージ */}
-            <div className="player-gauge-row gauge-row">
-              <div className="gauge-label-sm">{t('battle.playerDrunk')}</div>
-              <div className="gauge-track">
-                <div
-                  className="gauge-fill player-fill"
-                  style={{ width: `${gaugePercent(battle.playerDrunk, 10)}%` }}
-                />
-              </div>
-              <div className="gauge-lvl">
-                <span className="lvl-t">{t(plDrunkStage.textKey)}</span>
-                <span className="lvl-n">({battle.playerDrunk}/10)</span>
-              </div>
-            </div>
-            <div className="player-gauge-row gauge-row">
-              <div className="gauge-label-sm">{t('battle.playerSanity')}</div>
-              <div className="gauge-track">
-                <div
-                  className="gauge-fill sanity-fill"
-                  style={{ width: `${gaugePercent(battle.playerSanity, 10)}%` }}
-                />
-              </div>
-              <div className="kanryoku-display">{t('battle.kanryoku', { value: getKanryoku(getDrunkLevel(battle.playerDrunk)) })}</div>
-              <div className={`gauge-lvl ${plSanityStage.cls}`}>
-                <span className="lvl-t">{t(plSanityStage.textKey)}</span>
-                <span className="lvl-n">({battle.playerSanity}/10)</span>
-              </div>
-            </div>
-            <BuffDisplay buffs={battle.playerBuffs} keyPrefix="pb" className="player-buff-icons" />
+            <PlayerGauges
+              battle={battle}
+              plDrunkStage={plDrunkStage}
+              plSanityStage={plSanityStage}
+              t={t}
+            />
           </div>
-
         </div>
 
-        {/* 手札エリア */}
         <PlayerHand
           battle={battle}
           playingCardIdx={playingCardIdx}
@@ -585,63 +428,17 @@ export function BattleScreen() {
         {matchupBadge && <div className="matchup-badge">{matchupBadge}</div>}
         {misplayFlash && <div className="matchup-badge misplay-shake">{t('battle.rampage')}</div>}
 
-        {/* 下部ステータスバー */}
-        <div className="battle-status-bar">
-          <div className="status-bar-item">
-            <span className="status-bar-label">{t('battle.recordLabel')}</span>
-            <span className="status-bar-val">
-              <span className="win-c">{t('battle.winsShort', { count: wins })}</span>
-              <span className="status-bar-sep">/</span>
-              <span className="lose-c">{t('battle.lossesShort', { count: losses })}</span>
-            </span>
-          </div>
-          <div className="status-bar-divider" />
-          <div className="status-bar-item">
-            <span className="status-bar-label">{t('battle.deck')}</span>
-            <span className="status-bar-val">{battle.playerDeckRemaining.length}</span>
-          </div>
-          <div className="status-bar-divider" />
-          <div className="status-bar-item">
-            <span className="status-bar-label">{t('battle.opponentDeck')}</span>
-            <span className="status-bar-val">{battle.opponentDeckRemaining.length}</span>
-          </div>
-          <div className="status-bar-divider" />
-          <div className="status-bar-item status-bar-lastround">
-            <span className="status-bar-label">{t('battle.prevRound')}</span>
-            <span className="status-bar-val" style={{ color: lastRound.resColor }}>{lastRound.res}</span>
-            <span className="status-bar-detail">{lastRound.pl} vs {lastRound.op}</span>
-          </div>
-        </div>
+        <BattleStatusBar
+          battle={battle}
+          wins={wins}
+          losses={losses}
+          lastRound={lastRound}
+          t={t}
+        />
       </div>
 
-      {/* distract: 相手の手札公開 */}
-      {revealedCards && (
-        <div className="revealed-hand-overlay">
-          <div className="revealed-hand-title">{t('battle.revealedHand')}</div>
-          <div className="revealed-hand-cards">
-            {revealedCards.map((cardId, i) => {
-              const card = CARD_DATA[cardId];
-              if (!card) return null;
-              return (
-                <div key={`reveal-${i}`} className={`revealed-card type-${card.type}`}>
-                  <div className="revealed-card-emoji">{card.emoji}</div>
-                  <div className="revealed-card-name">{t(`cards.${card.id}.name`, card.name)}</div>
-                  <div className="revealed-card-type">
-                    {card.type === 'drink' ? t('battle.cardTypeAttack', { value: formatDamage(card) }) :
-                     card.type === 'food' ? t('battle.cardTypeHeal', { value: card.heal }) :
-                     card.type === 'chug' ? t('battle.cardTypeChug') :
-                     card.type === 'harassment' ? t('battle.cardTypeHarassment') :
-                     card.type === 'strategy' ? t('battle.cardTypeStrategy') :
-                     card.type === 'environment' ? t('battle.cardTypeEnvironment') : t('battle.cardTypeStatus')}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {revealedCards && <RevealedHandOverlay revealedCards={revealedCards} t={t} />}
 
-      {/* 勝敗リザルト */}
       {gameResult && !activeAfterEvent && (
         <BattleResult
           gameResult={gameResult}
@@ -656,7 +453,6 @@ export function BattleScreen() {
         />
       )}
 
-      {/* 勝利後イベントオーバーレイ */}
       <AfterEventOverlay />
     </div>
   );
